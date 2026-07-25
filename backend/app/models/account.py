@@ -1,0 +1,97 @@
+"""Account, User, ApiKey, AuditLog — Section 4.1 + consent fields (Section 23.3)."""
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.dialects.postgresql import INET, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+from app.models.base import TimestampMixin, UUIDPk
+
+
+class Account(UUIDPk, TimestampMixin, Base):
+    __tablename__ = "accounts"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    plan: Mapped[str] = mapped_column(String(50), default="trial", nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="active", nullable=False)
+    logo_url: Mapped[str | None] = mapped_column(String(1024))
+    report_header: Mapped[str | None] = mapped_column(Text)
+
+    # Soft delete (Section 20.2 unsubscribed account)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Consent record (Section 23.3) — set server-side, immutable after creation
+    accepted_terms_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_privacy_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_data_retention_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    terms_acceptance_ip: Mapped[str] = mapped_column(INET, nullable=False)
+    terms_acceptance_user_agent: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Trial / usage
+    trial_messages_remaining: Mapped[int] = mapped_column(default=500, nullable=False)
+    trial_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    users: Mapped[list["User"]] = relationship(back_populates="account")
+
+
+class User(UUIDPk, TimestampMixin, Base):
+    __tablename__ = "users"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    # owner | admin | member | superadmin
+    role: Mapped[str] = mapped_column(String(20), default="owner", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    account: Mapped[Account] = relationship(back_populates="users")
+
+
+class ApiKey(UUIDPk, TimestampMixin, Base):
+    __tablename__ = "api_keys"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class AuditLog(UUIDPk, Base):
+    """Append-only. No UPDATE or DELETE ever permitted (Section 4.1)."""
+
+    __tablename__ = "audit_logs"
+    __table_args__ = (Index("ix_audit_resource", "resource_type", "resource_id"),)
+
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    actor_email: Mapped[str | None] = mapped_column(String(320))
+    action: Mapped[str] = mapped_column(String(120), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(120))
+    details: Mapped[dict] = mapped_column(JSONB, default=dict)
+    ip_address: Mapped[str | None] = mapped_column(INET)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )

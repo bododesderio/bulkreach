@@ -1,0 +1,113 @@
+name: bulkreach
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bulkreach
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: bulkreach
+    ports: ["5432:5432"]
+    volumes: ["pg_live:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulkreach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres_archive:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bulkreach
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: bulkreach_archive
+    ports: ["5433:5432"]
+    volumes: ["pg_archive:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulkreach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    ports: ["8123:8123", "9000:9000"]
+    volumes:
+      - ch_live:/var/lib/clickhouse
+      - ./clickhouse/live-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+  clickhouse_archive:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    ports: ["8124:8123", "9001:9000"]
+    volumes:
+      - ch_archive:/var/lib/clickhouse
+      - ./clickhouse/archive-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports: ["9010:9000", "9011:9001"]
+    volumes: ["minio_data:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    env_file: ../../backend/.env
+    ports: ["8000:8000"]
+    volumes: ["../../backend:/app"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    env_file: ../../backend/.env
+    volumes: ["../../backend:/app"]
+    command: arq app.workers.campaign_worker.WorkerSettings
+    depends_on:
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports: ["3000:3000"]
+    volumes: ["../../frontend:/app", "/app/node_modules"]
+    command: npm run dev
+
+volumes:
+  pg_live:
+  pg_archive:
+  redis_data:
+  ch_live:
+  ch_archive:
+  minio_data:

@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Env / secrets
+.env
+.env.local
+backend/.env
+frontend/.env.local
+
+# Node / Next
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Build / data
+dist/
+*.parquet
+uploads/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Playwright
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# Local dev artifacts (verification screenshots, session memory)
+/*.png
+.claude/
