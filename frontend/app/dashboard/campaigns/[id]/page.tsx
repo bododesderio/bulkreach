@@ -11,8 +11,10 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Download,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, ApiError, apiDownload } from "@/lib/api";
 import {
   type CampaignDetail,
   type MessageOut,
@@ -50,7 +52,19 @@ export default function CampaignDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<Progress | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  const [downloading, setDownloading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  async function downloadReport() {
+    setDownloading(true);
+    try {
+      await apiDownload(`/reports/campaigns/${id}/pdf`, "bulkreach-report.pdf");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not generate PDF");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   // Load campaign + messages (also used to refresh after dispatch settles).
   async function refresh() {
@@ -161,18 +175,33 @@ export default function CampaignDetailPage() {
       >
         <ArrowLeft className="h-4 w-4" /> Campaigns
       </Link>
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h2 className="text-2xl font-bold">{campaign.name}</h2>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusTone(
-            campaign.status,
-          )}`}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-2xl font-bold">{campaign.name}</h2>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusTone(
+              campaign.status,
+            )}`}
+          >
+            {isLive(campaign.status) && (
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+            )}
+            {campaign.status}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={downloadReport}
+          disabled={downloading}
+          className="btn-outline h-9 px-3 text-sm"
         >
-          {isLive(campaign.status) && (
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+          {downloading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
           )}
-          {campaign.status}
-        </span>
+          Report PDF
+        </button>
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
         <Icon className="h-4 w-4" />

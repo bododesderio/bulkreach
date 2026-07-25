@@ -48,7 +48,9 @@ async def health() -> JSONResponse:
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.campaigns import router as campaigns_router  # noqa: E402
 from app.api.v1.contacts import router as contacts_router  # noqa: E402
+from app.api.v1.reports import router as reports_router  # noqa: E402
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(contacts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)
+app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

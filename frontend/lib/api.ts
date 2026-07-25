@@ -52,6 +52,39 @@ export async function api<T = unknown>(
   return data as T;
 }
 
+/** Download an authed binary response (e.g. a PDF) and trigger a Save dialog.
+ *  Uses fetch+blob because a plain anchor can't send the Bearer header. */
+export async function apiDownload(path: string, fallbackName = "download"): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`/api/v1${path}`, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let detail = `Download failed (${res.status})`;
+    try {
+      const j = text ? JSON.parse(text) : null;
+      if (j?.detail || j?.message) detail = j.detail || j.message;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match?.[1] ?? fallbackName;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Multipart upload — never sets Content-Type so the browser adds the boundary. */
 export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
   const token = getToken();
