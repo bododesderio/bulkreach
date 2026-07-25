@@ -76,12 +76,16 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
 - Docker stack not yet brought up (no daemon verification this session).
 
 ## Next steps — RESUME HERE (2026-07-25)
-M3 Campaigns BACKEND complete & verified. Remaining/next:
-1. FRONTEND: wire /dashboard/campaigns/new composer Send → POST /api/v1/campaigns then /send;
-   add live progress bar consuming GET /api/v1/campaigns/{id}/progress (EventSource/SSE). Add a
-   campaigns list (GET /campaigns) + detail w/ delivery stats on /dashboard/campaigns.
-2. M4 Reports (analytics + client-success PDF via WeasyPrint — NOT yet installed) + Flutterwave payments/webhook.
+M3 Campaigns BACKEND complete & verified. Frontend campaign lifecycle DONE:
+1. ✅ DONE (PR #1, branch feat/campaigns-list-detail): composer Send wired to POST /campaigns → /send
+   with live SSE progress (fetch-reader, not EventSource — Bearer auth); campaigns list (GET /campaigns,
+   auto-refresh while live) + detail [id] (KPI stats, live progress, per-message delivery table).
+   Shared code in frontend/lib/campaigns.ts. Client-side merge-tag validation mirrors backend.
+   Initial repo commit also pushed to main (c84a933).
+2. NEXT → M4 Reports (analytics + client-success PDF via WeasyPrint — NOT yet installed) + Flutterwave payments/webhook.
 3. M5 Admin backend (replace admin seed data with real superadmin API), M6 Archive subsystem, M8 tests.
+
+Note: merge PR #1 before starting M4 (or keep building on the branch).
 
 ## M3 Campaigns backend — how to run / verify
 - Endpoints (all under /api/v1/campaigns, JWT-auth): GET /providers, POST "" (create draft),

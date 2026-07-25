@@ -71,6 +71,37 @@ export interface PaginatedMessages {
   page_size: number;
 }
 
+export interface ChannelBreakdown {
+  sms_sent: number;
+  sms_failed: number;
+  email_sent: number;
+  email_failed: number;
+}
+
+export interface CampaignSummaryRow {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  delivered: number;
+  failed: number;
+  delivery_rate: number; // percentage 0–100
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface ReportSummary {
+  period: string;
+  campaigns: number;
+  recipients: number;
+  delivered: number;
+  failed: number;
+  delivery_rate: number; // percentage 0–100
+  channels: ChannelBreakdown;
+  daily: { date: string; delivered: number }[];
+  recent: CampaignSummaryRow[];
+}
+
 export interface SendResponse {
   id: string;
   status: string;
