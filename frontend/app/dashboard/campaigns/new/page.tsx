@@ -16,7 +16,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api, ApiError, getToken } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import {
+  type Channel,
+  type Progress,
+  type SendResponse,
+  TERMINAL,
+  streamProgress,
+} from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
 
 interface ContactList {
@@ -29,31 +36,11 @@ interface ContactList {
   email_column: string | null;
 }
 
-type Channel = "sms" | "email" | "both";
-
 const CHANNELS: { key: Channel; label: string; icon: typeof Mail }[] = [
   { key: "sms", label: "SMS", icon: MessageSquare },
   { key: "email", label: "Email", icon: Mail },
   { key: "both", label: "SMS + Email", icon: Layers },
 ];
-
-interface SendResponse {
-  id: string;
-  status: string;
-  queued_messages: number;
-  recipients: number;
-}
-
-interface Progress {
-  status: string;
-  total: number;
-  sent: number;
-  failed: number;
-  pending: number;
-  pct: number;
-}
-
-const TERMINAL = new Set(["completed", "cancelled", "failed"]);
 
 /** Plain-text body → minimal HTML for the email channel. Merge tags ({{tag}})
  *  pass through untouched; the backend's sandboxed Jinja env renders them. */
@@ -64,42 +51,6 @@ function bodyToHtml(text: string): string {
     .split(/\n{2,}/)
     .map((para) => `<p>${esc(para).replace(/\n/g, "<br>")}</p>`)
     .join("\n");
-}
-
-/** Consume the SSE dispatch stream with a fetch reader so the Bearer token
- *  travels in a header (EventSource can't set Authorization). */
-async function streamProgress(
-  campaignId: string,
-  onData: (p: Progress) => void,
-  signal: AbortSignal,
-): Promise<void> {
-  const token = getToken();
-  const res = await fetch(`/api/v1/campaigns/${campaignId}/progress`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    credentials: "include",
-    signal,
-  });
-  const reader = res.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buf.indexOf("\n\n")) !== -1) {
-      const frame = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      const line = frame.split("\n").find((l) => l.startsWith("data:"));
-      if (!line) continue;
-      try {
-        onData(JSON.parse(line.slice(5).trim()) as Progress);
-      } catch {
-        /* ignore malformed frame */
-      }
-    }
-  }
 }
 
 /** Sample values used only to render the live preview. */
