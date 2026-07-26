@@ -53,7 +53,14 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
       fallback in dev. messages table + retry w/ exponential backoff (≤3), ARQ worker + scheduled-poller cron.
       Verified: direct engine test (40 msgs, retry path) + full HTTP flow (upload→create→preview→send→SSE→messages).
       REMAINING M3: wire frontend composer Send button + SSE progress bar to these endpoints (frontend follow-up).
-- [ ] M4 Reports (analytics + client success PDF) + Flutterwave payments/webhook
+- [~] M4 Reports (analytics + client success PDF) ✅ DONE (M4a). Payments ✅ DONE (multi-provider):
+      provider registry + method routing — Flutterwave v3 + Pesapal 3.0 (real APIs) + MTN MoMo & Airtel
+      direct + dev simulator. Admin-configurable (encrypted keys, test/live, method→provider) at
+      /admin/settings/payments. Client checkout + USSD/redirect + history at /dashboard/billing.
+      PaymentService state machine (server-authoritative amount, FOR-UPDATE + UNIQUE upsert, idempotent
+      webhooks, fail-closed signature+amount). Security-audited & fixed. Logos in public/logos/payments.
+      REMAINING M4: wire /admin/payments + /admin/subscriptions LISTS to real Payment/Subscription data
+      (currently seed); rate-limit webhook/checkout routes; managed-service billing (invoices/receipts = M5/H).
 - [ ] M5 Admin portal + managed service workflow
 - [ ] M6 Data Archive subsystem (ingestion, retention, anonymiser, glacier, export, access log)
 - [x] M7 Frontend — design system + public marketing site + admin subsystem + auth restyle + admin liveliness DONE.
