@@ -21,7 +21,7 @@ services:
       POSTGRES_USER: bulkreach
       POSTGRES_PASSWORD: pw
       POSTGRES_DB: bulkreach_archive
-    ports: ["5433:5432"]
+    ports: ["3110:5432"]
     volumes: ["pg_archive:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bulkreach"]
@@ -41,7 +41,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3-alpine
-    ports: ["8123:8123", "9000:9000"]
+    ports: ["3112:8123", "3113:9000"]
     volumes:
       - ch_live:/var/lib/clickhouse
       - ./clickhouse/live-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -50,7 +50,7 @@ services:
 
   clickhouse_archive:
     image: clickhouse/clickhouse-server:24.3-alpine
-    ports: ["8124:8123", "9001:9000"]
+    ports: ["3114:8123", "3115:9000"]
     volumes:
       - ch_archive:/var/lib/clickhouse
       - ./clickhouse/archive-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -63,7 +63,7 @@ services:
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
-    ports: ["9010:9000", "9011:9001"]
+    ports: ["3120:9000", "3121:9001"]
     volumes: ["minio_data:/data"]
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -76,7 +76,7 @@ services:
       context: ../../backend
       dockerfile: Dockerfile
     env_file: ../../backend/.env
-    ports: ["8000:8000"]
+    ports: ["3101:8000"]
     volumes: ["../../backend:/app"]
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
@@ -99,8 +99,8 @@ services:
       context: ../../frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
-    ports: ["3000:3000"]
+      NEXT_PUBLIC_API_URL: http://localhost:3101/api/v1
+    ports: ["3100:3000"]
     volumes: ["../../frontend:/app", "/app/node_modules"]
     command: npm run dev
 
