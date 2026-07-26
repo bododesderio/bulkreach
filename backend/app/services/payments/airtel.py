@@ -1,9 +1,9 @@
 """Airtel Money Collections (direct) adapter — customer pays us.
 
-USSD-push flow (no redirect): OAuth2 client-credentials token →
-POST /merchant/v1/payments/ → reconcile via
-GET /standard/v1/payments/{tx_ref}. Live requires Airtel go-live/KYC, so this
-works only with real UAT/production credentials configured from the admin UI.
+USSD-push flow (STK-style, no redirect): OAuth2 client-credentials token (cached
++ auto-refreshed) → POST /merchant/v1/payments/ → reconcile via
+GET /standard/v1/payments/{tx_ref}. Refund via POST /standard/v1/payments/refund.
+Live requires Airtel go-live/KYC, so this works only with real credentials.
 """
 from __future__ import annotations
 
@@ -17,15 +17,17 @@ from app.services.payments.base import (
     CredentialField,
     Customer,
     PaymentProvider,
+    RefundResult,
     VerifyResult,
     WebhookResult,
 )
+from app.services.payments.http import DEFAULT_TIMEOUT, request_with_retry
+from app.services.payments.token_cache import get_token, make_key
 
 _HOSTS = {
     "test": "https://openapiuat.airtel.africa",
     "live": "https://openapi.airtel.africa",
 }
-_TIMEOUT = httpx.Timeout(20.0)
 
 
 def _map_status(code: str | None, message: str | None = None) -> str:
@@ -55,16 +57,20 @@ class AirtelProvider(PaymentProvider):
         return self.cred("country", "UG")
 
     async def _token(self, client: httpx.AsyncClient) -> str:
-        resp = await client.post(
-            f"{self._base}/auth/oauth2/token",
-            json={
-                "client_id": self.cred("client_id"),
-                "client_secret": self.cred("client_secret"),
-                "grant_type": "client_credentials",
-            },
-            headers={"Content-Type": "application/json", "Accept": "*/*"},
-        )
-        return (resp.json() or {}).get("access_token", "")
+        key = make_key(self.slug, self.mode, self.cred("client_id"), self.cred("client_secret"))
+
+        async def fetch() -> tuple[str, float]:
+            resp = await request_with_retry(
+                client, "POST", f"{self._base}/auth/oauth2/token",
+                json={"client_id": self.cred("client_id"),
+                      "client_secret": self.cred("client_secret"),
+                      "grant_type": "client_credentials"},
+                headers={"Content-Type": "application/json", "Accept": "*/*"},
+            )
+            j = resp.json() or {}
+            return j.get("access_token", ""), float(j.get("expires_in", 3600) or 3600)
+
+        return await get_token(key, fetch)
 
     def _headers(self, token: str, currency: str) -> dict[str, str]:
         return {
@@ -93,14 +99,13 @@ class AirtelProvider(PaymentProvider):
             },
         }
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
                 if not token:
                     return ChargeResult(ok=False, status=FAILED, error="airtel: auth failed")
-                resp = await client.post(
-                    f"{self._base}/merchant/v1/payments/",
-                    json=body,
-                    headers=self._headers(token, currency),
+                resp = await request_with_retry(
+                    client, "POST", f"{self._base}/merchant/v1/payments/",
+                    json=body, retry_on_5xx=False, headers=self._headers(token, currency),
                 )
             data = resp.json()
         except (httpx.HTTPError, ValueError) as exc:
@@ -114,10 +119,10 @@ class AirtelProvider(PaymentProvider):
     async def verify(self, *, tx_ref, provider_tx_id) -> VerifyResult:
         ref = provider_tx_id or tx_ref
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
-                resp = await client.get(
-                    f"{self._base}/standard/v1/payments/{ref}",
+                resp = await request_with_retry(
+                    client, "GET", f"{self._base}/standard/v1/payments/{ref}",
                     headers=self._headers(token, "UGX"),
                 )
             data = resp.json()
@@ -131,6 +136,24 @@ class AirtelProvider(PaymentProvider):
             provider_tx_id=ref,
             raw=data,
         )
+
+    async def refund(self, *, tx_ref, provider_tx_id, amount, currency, reason) -> RefundResult:
+        ref = provider_tx_id or tx_ref
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+                token = await self._token(client)
+                resp = await request_with_retry(
+                    client, "POST", f"{self._base}/standard/v1/payments/refund",
+                    json={"transaction": {"airtel_money_id": ref}}, retry_on_5xx=False,
+                    headers=self._headers(token, currency),
+                )
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            return RefundResult(ok=False, error=f"airtel: {exc}")
+        status = (data.get("status") or {})
+        ok = str(status.get("code")) == "200" or str(status.get("success")).lower() == "true"
+        return RefundResult(ok=ok, provider_refund_id=ref, raw=data,
+                            error=None if ok else str(status.get("message")))
 
     def verify_webhook_signature(self, *, headers, raw_body: bytes) -> bool:
         # Airtel callbacks are reconciled via the payment status poll (verify),

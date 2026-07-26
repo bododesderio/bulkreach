@@ -60,6 +60,10 @@ class Payment(UUIDPk, Base):
     )
     # Last provider payload seen (verify/webhook) — audit trail, never trusted raw.
     raw_response: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    # Refund tracking (status → "refunded" when a successful payment is reversed).
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refund_provider_id: Mapped[str | None] = mapped_column(String(160))
+    refund_reason: Mapped[str | None] = mapped_column(String(255))
     # Legacy column retained for back-compat with the initial schema.
     flutterwave_tx_id: Mapped[str | None] = mapped_column(String(120), index=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -65,6 +65,14 @@ class VerifyResult:
 
 
 @dataclass
+class RefundResult:
+    ok: bool
+    provider_refund_id: str | None = None
+    raw: dict = field(default_factory=dict)
+    error: str | None = None
+
+
+@dataclass
 class WebhookResult:
     tx_ref: str | None
     status: str
@@ -115,6 +123,13 @@ class PaymentProvider(ABC):
         # because the service re-verifies authoritatively via verify()) override this
         # explicitly with a documented rationale.
         return False
+
+    async def refund(
+        self, *, tx_ref: str, provider_tx_id: str | None, amount: float,
+        currency: str, reason: str,
+    ) -> "RefundResult":
+        # Default: provider hasn't implemented refunds.
+        return RefundResult(ok=False, error=f"{self.slug}: refunds not supported")
 
     @abstractmethod
     def parse_webhook(self, payload: dict) -> WebhookResult: ...

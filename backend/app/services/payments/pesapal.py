@@ -1,10 +1,10 @@
 """Pesapal API 3.0 adapter (aggregator: MoMo + Airtel + card, East Africa).
 
-Flow: RequestToken (5-min bearer) → SubmitOrderRequest (needs a registered IPN
-id) → redirect customer to `redirect_url` → Pesapal hits our IPN + we call
-GetTransactionStatus for the authoritative result. Pesapal IPNs carry no
-signature and no status, only an order id, so every reconciliation goes through
-GetTransactionStatus (needs_verify=True).
+Flow: RequestToken (5-min bearer, cached+auto-refreshed) → SubmitOrderRequest
+(needs a registered IPN id) → redirect customer to `redirect_url` → Pesapal hits
+our IPN + we call GetTransactionStatus for the authoritative result. Pesapal IPNs
+carry no signature and no status, only an order id, so every reconciliation goes
+through GetTransactionStatus (needs_verify=True).
 """
 from __future__ import annotations
 
@@ -18,15 +18,18 @@ from app.services.payments.base import (
     CredentialField,
     Customer,
     PaymentProvider,
+    RefundResult,
     VerifyResult,
     WebhookResult,
 )
+from app.services.payments.http import DEFAULT_TIMEOUT, request_with_retry
+from app.services.payments.token_cache import get_token, make_key
 
 _HOSTS = {
     "test": "https://cybqa.pesapal.com/pesapalv3",
     "live": "https://pay.pesapal.com/v3",
 }
-_TIMEOUT = httpx.Timeout(20.0)
+_TOKEN_TTL = 240.0  # Pesapal tokens live 5 min; refresh well before.
 
 
 def _map_status(desc: str | None, code: int | str | None = None) -> str:
@@ -56,23 +59,26 @@ class PesapalProvider(PaymentProvider):
         return _HOSTS["live" if self.is_live else "test"]
 
     async def _token(self, client: httpx.AsyncClient) -> str:
-        resp = await client.post(
-            f"{self._base}/api/Auth/RequestToken",
-            json={
-                "consumer_key": self.cred("consumer_key"),
-                "consumer_secret": self.cred("consumer_secret"),
-            },
-            headers={"Accept": "application/json"},
-        )
-        return (resp.json() or {}).get("token", "")
+        key = make_key(self.slug, self.mode, self.cred("consumer_key"), self.cred("consumer_secret"))
+
+        async def fetch() -> tuple[str, float]:
+            resp = await request_with_retry(
+                client, "POST", f"{self._base}/api/Auth/RequestToken",
+                json={"consumer_key": self.cred("consumer_key"),
+                      "consumer_secret": self.cred("consumer_secret")},
+                headers={"Accept": "application/json"},
+            )
+            return (resp.json() or {}).get("token", ""), _TOKEN_TTL
+
+        return await get_token(key, fetch)
 
     async def _ensure_ipn(self, client: httpx.AsyncClient, token: str, callback_url: str) -> str:
         ipn = self.cred("ipn_id")
         if ipn:
             return ipn
-        resp = await client.post(
-            f"{self._base}/api/URLSetup/RegisterIPN",
-            json={"url": callback_url, "ipn_notification_type": "POST"},
+        resp = await request_with_retry(
+            client, "POST", f"{self._base}/api/URLSetup/RegisterIPN",
+            json={"url": callback_url, "ipn_notification_type": "POST"}, retry_on_5xx=False,
             headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
         )
         return (resp.json() or {}).get("ipn_id", "")
@@ -81,7 +87,7 @@ class PesapalProvider(PaymentProvider):
         self, *, tx_ref, amount, currency, method, customer, callback_url,
     ) -> ChargeResult:
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
                 if not token:
                     return ChargeResult(ok=False, status=FAILED, error="pesapal: auth failed")
@@ -99,9 +105,9 @@ class PesapalProvider(PaymentProvider):
                         "first_name": customer.name or customer.email,
                     },
                 }
-                resp = await client.post(
-                    f"{self._base}/api/Transactions/SubmitOrderRequest",
-                    json=order,
+                resp = await request_with_retry(
+                    client, "POST", f"{self._base}/api/Transactions/SubmitOrderRequest",
+                    json=order, retry_on_5xx=False,
                     headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
                 )
             data = resp.json()
@@ -119,10 +125,10 @@ class PesapalProvider(PaymentProvider):
         if not provider_tx_id:
             return VerifyResult(status=PENDING, raw={"error": "no order_tracking_id"})
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
-                resp = await client.get(
-                    f"{self._base}/api/Transactions/GetTransactionStatus",
+                resp = await request_with_retry(
+                    client, "GET", f"{self._base}/api/Transactions/GetTransactionStatus",
                     params={"orderTrackingId": provider_tx_id},
                     headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
                 )
@@ -136,6 +142,26 @@ class PesapalProvider(PaymentProvider):
             provider_tx_id=provider_tx_id,
             raw=data,
         )
+
+    async def refund(self, *, tx_ref, provider_tx_id, amount, currency, reason) -> RefundResult:
+        if not provider_tx_id:
+            return RefundResult(ok=False, error="pesapal: no order_tracking_id")
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+                token = await self._token(client)
+                resp = await request_with_retry(
+                    client, "POST", f"{self._base}/api/Transactions/RefundRequest",
+                    retry_on_5xx=False,
+                    json={"confirmation_code": provider_tx_id, "amount": str(amount),
+                          "username": "BulkReach", "remarks": reason or "refund"},
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                )
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            return RefundResult(ok=False, error=f"pesapal: {exc}")
+        ok = str(data.get("status")) == "200"
+        return RefundResult(ok=ok, provider_refund_id=str(data.get("message", ""))[:120] or None,
+                            raw=data, error=None if ok else str(data.get("message")))
 
     def verify_webhook_signature(self, *, headers, raw_body: bytes) -> bool:
         # Pesapal IPNs carry no signature by design. Safe because the service never
