@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  CreditCard,
   FileBarChart,
   LayoutDashboard,
   LogOut,
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/dashboard/contacts", label: "Contacts", icon: Users },
   { href: "/dashboard/campaigns", label: "Campaigns", icon: Send },
   { href: "/dashboard/reports", label: "Reports", icon: FileBarChart },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -28,6 +30,7 @@ const TITLES: Record<string, string> = {
   "/dashboard/contacts": "Contacts",
   "/dashboard/campaigns": "Campaigns",
   "/dashboard/reports": "Reports",
+  "/dashboard/billing": "Billing",
   "/dashboard/settings": "Settings",
 };
 

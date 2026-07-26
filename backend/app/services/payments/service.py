@@ -1,0 +1,232 @@
+"""PaymentService — orchestrates the transaction state machine.
+
+    created → pending → (successful | failed | timeout)
+
+Golden rules enforced here (payments skill):
+- Amount/currency/plan are server-authoritative; the client only names a plan.
+- A tx_ref + Payment row are written BEFORE any provider call.
+- Terminal states are write-once; a duplicated webhook/poll is a logged no-op.
+- Success is only granted after a server-side verify() whose amount matches the
+  stored intent — never from an unverified webhook.
+"""
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.models.account import Account
+from app.models.billing import Payment, Plan, Subscription
+from app.models.payment_provider import RawWebhookEvent
+from app.services.payments import registry
+from app.services.payments.base import FAILED, PENDING, SUCCESSFUL, Customer
+
+log = logging.getLogger("bulkreach.payments")
+
+_TERMINAL = {SUCCESSFUL, FAILED, "timeout"}
+
+
+def _mask_phone(phone: str) -> str:
+    return ("••••" + phone[-4:]) if phone and len(phone) > 4 else "••••"
+
+
+def _new_tx_ref() -> str:
+    return f"BR-{uuid.uuid4().hex[:24]}"
+
+
+class PaymentService:
+    async def start_checkout(
+        self,
+        db: AsyncSession,
+        account: Account,
+        *,
+        method: str,
+        plan_id: uuid.UUID | None,
+        customer: Customer,
+        callback_url: str,
+        purpose: str = "subscription",
+    ) -> Payment:
+        # Server-authoritative amount: subscription price comes from the plan row.
+        plan: Plan | None = None
+        if plan_id is not None:
+            plan = await db.get(Plan, plan_id)
+            if plan is None:
+                raise ValueError("Unknown plan")
+        if plan is None:
+            raise ValueError("A plan is required to start checkout")
+        amount = int(plan.price_ugx)
+        currency = "UGX"
+
+        provider = await registry.resolve_provider_for_method(db, method)
+        tx_ref = _new_tx_ref()
+
+        payment = Payment(
+            account_id=account.id,
+            amount_ugx=amount,
+            currency=currency,
+            method=method,
+            status="created",
+            purpose=purpose,
+            provider=provider.slug,
+            tx_ref=tx_ref,
+            plan_id=plan.id,
+        )
+        db.add(payment)
+        await db.flush()  # persist CREATED before any provider call
+
+        result = await provider.create_charge(
+            tx_ref=tx_ref, amount=amount, currency=currency, method=method,
+            customer=customer, callback_url=callback_url,
+        )
+        payment.raw_response = result.raw or {}
+        if not result.ok:
+            payment.status = FAILED
+            await db.commit()
+            log.warning("checkout failed acct=%s method=%s err=%s", account.id, method, result.error)
+            raise ValueError(result.error or "Payment initiation failed")
+
+        payment.status = PENDING
+        payment.provider_tx_id = result.provider_tx_id
+        # Stash redirect URL on the raw blob so the router can return it.
+        payment.raw_response = {**payment.raw_response, "_redirect_url": result.redirect_url}
+        await db.commit()
+        await db.refresh(payment)
+        return payment
+
+    async def reconcile(self, db: AsyncSession, payment: Payment) -> Payment:
+        """Poll the provider for authoritative status and apply it idempotently.
+
+        The provider verify() (a network call) runs WITHOUT a DB lock; the state
+        transition then re-reads the row `FOR UPDATE` so a concurrent /verify and
+        webhook reconcile for the same tx_ref serialize — the loser sees the
+        terminal status and no-ops (no double credit)."""
+        if payment.status in _TERMINAL:
+            return payment
+        provider = await registry.load_provider_by_slug(db, payment.provider or "")
+        if provider is None:
+            return payment
+        verify = await provider.verify(tx_ref=payment.tx_ref, provider_tx_id=payment.provider_tx_id)
+        locked = await db.execute(
+            select(Payment).where(Payment.id == payment.id).with_for_update()
+        )
+        payment = locked.scalar_one()
+        await self._apply(db, payment, verify.status, amount=verify.amount,
+                          currency=verify.currency, raw=verify.raw,
+                          provider_tx_id=verify.provider_tx_id)
+        return payment
+
+    async def handle_webhook(
+        self, db: AsyncSession, slug: str, *, headers, raw_body: bytes, payload: dict, source_ip: str | None,
+    ) -> bool:
+        """Return True if accepted (200). Store raw verbatim, verify signature,
+        then reconcile authoritatively. Unknown tx → 200 + log (no retry storm)."""
+        provider = await registry.load_provider_by_slug(db, slug)
+        sig_ok = bool(provider) and provider.verify_webhook_signature(headers=headers, raw_body=raw_body)
+        parsed = provider.parse_webhook(payload) if provider else None
+
+        db.add(RawWebhookEvent(
+            provider=slug, signature_valid=sig_ok,
+            tx_ref=parsed.tx_ref if parsed else None,
+            source_ip=source_ip, payload=payload,
+        ))
+        await db.flush()
+
+        if provider is None:
+            await db.commit()
+            return False
+        if not sig_ok:
+            await db.commit()
+            log.warning("webhook signature REJECTED provider=%s ip=%s", slug, source_ip)
+            return False
+        if parsed is None or not parsed.tx_ref:
+            await db.commit()
+            return True
+
+        res = await db.execute(select(Payment).where(Payment.tx_ref == parsed.tx_ref))
+        payment = res.scalar_one_or_none()
+        if payment is None:
+            await db.commit()
+            log.warning("webhook for unknown tx_ref=%s provider=%s", parsed.tx_ref, slug)
+            return True
+        if payment.status in _TERMINAL:
+            await db.commit()  # already settled — no-op
+            return True
+
+        # Always reconcile via server-side verify (skill: don't trust webhook status).
+        await self.reconcile(db, payment)
+        return True
+
+    async def _apply(
+        self, db: AsyncSession, payment: Payment, status: str, *,
+        amount: float | None, currency: str | None, raw: dict | None, provider_tx_id: str | None,
+    ) -> None:
+        if payment.status in _TERMINAL:
+            log.info("terminal no-op tx=%s already=%s", payment.tx_ref, payment.status)
+            return
+        if provider_tx_id and not payment.provider_tx_id:
+            payment.provider_tx_id = provider_tx_id
+        if raw:
+            payment.raw_response = {**(payment.raw_response or {}), "verify": raw}
+
+        if status == SUCCESSFUL:
+            if payment.provider == "simulator":
+                # Dev-only provider reports no amount; never credit in production.
+                if settings.is_production:
+                    payment.status = FAILED
+                    log.error("simulator settlement blocked in production tx=%s", payment.tx_ref)
+                    await db.commit()
+                    return
+            else:
+                # Fail closed: a real provider MUST report an amount+currency that
+                # matches the stored intent. Missing is treated as a mismatch.
+                if amount is None or int(round(float(amount))) != payment.amount_ugx:
+                    payment.status = FAILED
+                    log.error("AMOUNT MISMATCH/ABSENT tx=%s intent=%s got=%s",
+                              payment.tx_ref, payment.amount_ugx, amount)
+                    await db.commit()
+                    return
+                if not currency or currency.upper() != payment.currency.upper():
+                    payment.status = FAILED
+                    log.error("CURRENCY MISMATCH/ABSENT tx=%s intent=%s got=%s",
+                              payment.tx_ref, payment.currency, currency)
+                    await db.commit()
+                    return
+            payment.status = SUCCESSFUL
+            await self._on_success(db, payment)
+        elif status in _TERMINAL:
+            payment.status = status
+        else:
+            payment.status = PENDING
+        await db.commit()
+
+    async def _on_success(self, db: AsyncSession, payment: Payment) -> None:
+        """Grant what was paid for. Idempotent across payments via a UNIQUE
+        constraint on subscriptions.account_id + an atomic upsert, so two
+        successful payments for one account can't create duplicate subscriptions."""
+        if payment.purpose != "subscription" or payment.plan_id is None:
+            return
+        plan = await db.get(Plan, payment.plan_id)
+        account = await db.get(Account, payment.account_id)
+        if plan is None or account is None:
+            return
+        account.plan = plan.name.lower()
+        now = datetime.now(timezone.utc)
+        period_end = now + timedelta(days=30)
+        stmt = pg_insert(Subscription).values(
+            account_id=account.id, plan_id=plan.id, status="active",
+            current_period_start=now, current_period_end=period_end,
+        ).on_conflict_do_update(
+            index_elements=[Subscription.account_id],
+            set_=dict(plan_id=plan.id, status="active",
+                      current_period_start=now, current_period_end=period_end),
+        )
+        await db.execute(stmt)
+        log.info("subscription activated acct=%s plan=%s tx=%s", account.id, plan.name, payment.tx_ref)
+
+
+payment_service = PaymentService()

@@ -123,7 +123,17 @@ class Settings(BaseSettings):
     DISPATCH_INLINE: bool = False
     SCHEDULE_POLL_SECONDS: int = 30  # cron cadence for promoting scheduled campaigns
 
-    # --- Payments (Flutterwave) ---
+    # --- Payments ---
+    # Provider credentials (Flutterwave, Pesapal, MTN MoMo, Airtel) are configured
+    # from the admin UI and stored encrypted in the DB — NOT here. This key encrypts
+    # them at rest; leave blank in dev (derived from SECRET_KEY), set a dedicated
+    # urlsafe-base64 32-byte key in production and rotate independently.
+    PAYMENTS_ENCRYPTION_KEY: str = ""
+    # Public base for building payment redirect/callback URLs the provider sends
+    # the customer back to. Defaults to FRONTEND_URL when blank.
+    PAYMENTS_CALLBACK_BASE_URL: str = ""
+
+    # Legacy Flutterwave env fallback (superseded by DB-stored provider config).
     FLUTTERWAVE_PUBLIC_KEY: str = ""
     FLUTTERWAVE_SECRET_KEY: str = ""
     FLUTTERWAVE_ENCRYPTION_KEY: str = ""
