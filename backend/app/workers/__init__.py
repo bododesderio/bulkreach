@@ -86,6 +86,17 @@ async def promote_scheduled(ctx: dict) -> int:
     return promoted
 
 
+async def reconcile_payments(ctx: dict) -> dict:
+    """Cron: backstop for missed payment webhooks — re-verify stuck PENDING rows."""
+    from app.services.payments import payment_service
+
+    async with LiveSessionLocal() as db:
+        result = await payment_service.reconcile_stale(db)
+    if result.get("reconciled") or result.get("timed_out"):
+        logger.info("worker: payments reconcile %s", result)
+    return result
+
+
 async def _startup(ctx: dict) -> None:
     logger.info("BulkReach dispatch worker online.")
 
@@ -96,7 +107,11 @@ async def _shutdown(ctx: dict) -> None:
 
 class WorkerSettings:
     functions = [dispatch_campaign_task]
-    cron_jobs = [cron(promote_scheduled, second={0, 30})]
+    cron_jobs = [
+        cron(promote_scheduled, second={0, 30}),
+        # Reconcile stuck payments every minute (webhooks are best-effort).
+        cron(reconcile_payments, second={15, 45}),
+    ]
     redis_settings = redis_settings()
     on_startup = _startup
     on_shutdown = _shutdown

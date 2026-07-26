@@ -120,6 +120,40 @@ class PaymentService:
                           provider_tx_id=verify.provider_tx_id)
         return payment
 
+    async def reconcile_stale(
+        self, db: AsyncSession, *, older_than_minutes: int = 2,
+        timeout_after_minutes: int = 30, limit: int = 100,
+    ) -> dict:
+        """Backstop for missed webhooks: re-verify PENDING payments, and mark ones
+        stuck past `timeout_after_minutes` as timed out. Run on a schedule."""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=older_than_minutes)
+        deadline = now - timedelta(minutes=timeout_after_minutes)
+        res = await db.execute(
+            select(Payment).where(Payment.status == PENDING, Payment.created_at <= cutoff).limit(limit)
+        )
+        pending = list(res.scalars())
+        reconciled = timed_out = 0
+        for p in pending:
+            try:
+                await self.reconcile(db, p)
+            except Exception:  # noqa: BLE001 — one bad row must not stall the sweep
+                log.exception("reconcile_stale failed tx=%s", p.tx_ref)
+                await db.rollback()
+                continue
+            await db.refresh(p)
+            if p.status != PENDING:
+                reconciled += 1
+            elif p.created_at <= deadline:
+                locked = (await db.execute(
+                    select(Payment).where(Payment.id == p.id).with_for_update()
+                )).scalar_one()
+                if locked.status == PENDING:
+                    locked.status = "timeout"
+                    await db.commit()
+                    timed_out += 1
+        return {"checked": len(pending), "reconciled": reconciled, "timed_out": timed_out}
+
     async def handle_webhook(
         self, db: AsyncSession, slug: str, *, headers, raw_body: bytes, payload: dict, source_ip: str | None,
     ) -> bool:
@@ -203,6 +237,49 @@ class PaymentService:
         else:
             payment.status = PENDING
         await db.commit()
+
+    async def refund_payment(
+        self, db: AsyncSession, payment: Payment, *, reason: str, actor_email: str | None = None,
+    ) -> Payment:
+        """Refund a successful payment. Idempotent + row-locked: only a `successful`
+        payment can be refunded, and a second attempt on an already-`refunded` row
+        is a no-op (never double-refunds)."""
+        locked = await db.execute(
+            select(Payment).where(Payment.id == payment.id).with_for_update()
+        )
+        payment = locked.scalar_one()
+        if payment.status == "refunded":
+            return payment  # already refunded — no-op
+        if payment.status != SUCCESSFUL:
+            raise ValueError("Only a successful payment can be refunded")
+
+        provider = await registry.load_provider_by_slug(db, payment.provider or "")
+        if provider is None:
+            raise ValueError("Payment provider unavailable")
+        result = await provider.refund(
+            tx_ref=payment.tx_ref, provider_tx_id=payment.provider_tx_id,
+            amount=float(payment.amount_ugx), currency=payment.currency, reason=reason,
+        )
+        if not result.ok:
+            log.warning("refund failed tx=%s err=%s", payment.tx_ref, result.error)
+            raise ValueError(result.error or "Refund failed at provider")
+
+        payment.status = "refunded"
+        payment.refunded_at = datetime.now(timezone.utc)
+        payment.refund_provider_id = result.provider_refund_id
+        payment.refund_reason = reason
+        payment.raw_response = {**(payment.raw_response or {}), "refund": result.raw}
+        # Reflect the downgrade: drop the account off the paid plan.
+        account = await db.get(Account, payment.account_id)
+        if account is not None and payment.purpose == "subscription":
+            account.plan = "trial"
+            res = await db.execute(select(Subscription).where(Subscription.account_id == account.id))
+            sub = res.scalar_one_or_none()
+            if sub is not None:
+                sub.status = "cancelled"
+        await db.commit()
+        log.info("refund ok tx=%s by=%s", payment.tx_ref, actor_email or "system")
+        return payment
 
     async def _on_success(self, db: AsyncSession, payment: Payment) -> None:
         """Grant what was paid for. Idempotent across payments via a UNIQUE

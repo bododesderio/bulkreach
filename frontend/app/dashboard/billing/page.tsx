@@ -332,10 +332,16 @@ export default function BillingPage() {
                     <li className="flex items-center gap-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                       <span>
-                        <span className="font-mono">
-                          {plan.messages_per_month.toLocaleString()}
-                        </span>{' '}
-                        messages / month
+                        {plan.messages_per_month < 0 ? (
+                          'Unlimited messages'
+                        ) : (
+                          <>
+                            <span className="font-mono">
+                              {plan.messages_per_month.toLocaleString()}
+                            </span>{' '}
+                            messages / month
+                          </>
+                        )}
                       </span>
                     </li>
                     <li className="flex items-center gap-1.5">

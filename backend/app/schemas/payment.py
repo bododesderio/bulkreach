@@ -92,3 +92,46 @@ class RoutingOut(BaseModel):
 class RoutingUpdate(BaseModel):
     routing: dict[str, str]
     default_currency: str = "UGX"
+
+
+# ---- Admin billing data ----
+class RefundRequest(BaseModel):
+    reason: str = Field("", max_length=255)
+
+
+class AdminPaymentOut(BaseModel):
+    id: UUID
+    tx_ref: str
+    account_id: UUID
+    account_name: str | None = None
+    account_email: str | None = None
+    amount_ugx: int
+    currency: str
+    method: str | None
+    status: str
+    provider: str | None
+    purpose: str
+    created_at: datetime
+    refunded_at: datetime | None = None
+
+
+class AdminPaymentsResponse(BaseModel):
+    items: list[AdminPaymentOut]
+    stats: dict
+
+
+class AdminSubscriptionOut(BaseModel):
+    id: UUID
+    account_id: UUID
+    account_name: str | None = None
+    account_email: str | None = None
+    plan_name: str | None = None
+    price_ugx: int | None = None
+    status: str
+    current_period_start: datetime | None = None
+    current_period_end: datetime | None = None
+
+
+class AdminSubscriptionsResponse(BaseModel):
+    items: list[AdminSubscriptionOut]
+    stats: dict

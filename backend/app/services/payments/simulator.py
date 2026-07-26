@@ -12,6 +12,7 @@ from app.services.payments.base import (
     ChargeResult,
     Customer,
     PaymentProvider,
+    RefundResult,
     VerifyResult,
     WebhookResult,
 )
@@ -33,6 +34,9 @@ class SimulatorProvider(PaymentProvider):
     async def verify(self, *, tx_ref, provider_tx_id) -> VerifyResult:
         # amount None → service skips the amount-match assertion for the simulator.
         return VerifyResult(status=SUCCESSFUL, amount=None, currency="UGX", provider_tx_id=tx_ref)
+
+    async def refund(self, *, tx_ref, provider_tx_id, amount, currency, reason) -> RefundResult:
+        return RefundResult(ok=True, provider_refund_id=f"sim-refund-{tx_ref[-8:]}")
 
     def verify_webhook_signature(self, *, headers, raw_body: bytes) -> bool:
         return True  # dev-only provider; never reachable in production

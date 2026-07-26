@@ -21,9 +21,11 @@ from app.services.payments.base import (
     CredentialField,
     Customer,
     PaymentProvider,
+    RefundResult,
     VerifyResult,
     WebhookResult,
 )
+from app.services.payments.http import request_with_retry
 
 _BASE = "https://api.flutterwave.com/v3"
 _TIMEOUT = httpx.Timeout(20.0)
@@ -79,7 +81,10 @@ class FlutterwaveProvider(PaymentProvider):
         }
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                resp = await client.post(f"{_BASE}/payments", json=payload, headers=self._auth())
+                resp = await request_with_retry(
+                    client, "POST", f"{_BASE}/payments", json=payload,
+                    headers=self._auth(), retry_on_5xx=False,
+                )
             data = resp.json()
         except (httpx.HTTPError, ValueError) as exc:
             return ChargeResult(ok=False, status=FAILED, error=f"flutterwave: {exc}")
@@ -92,12 +97,13 @@ class FlutterwaveProvider(PaymentProvider):
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 if provider_tx_id:
-                    resp = await client.get(
-                        f"{_BASE}/transactions/{provider_tx_id}/verify", headers=self._auth()
+                    resp = await request_with_retry(
+                        client, "GET", f"{_BASE}/transactions/{provider_tx_id}/verify",
+                        headers=self._auth(),
                     )
                 else:
-                    resp = await client.get(
-                        f"{_BASE}/transactions/verify_by_reference",
+                    resp = await request_with_retry(
+                        client, "GET", f"{_BASE}/transactions/verify_by_reference",
                         params={"tx_ref": tx_ref}, headers=self._auth(),
                     )
             data = resp.json()
@@ -111,6 +117,23 @@ class FlutterwaveProvider(PaymentProvider):
             provider_tx_id=str(d.get("id")) if d.get("id") is not None else provider_tx_id,
             raw=data,
         )
+
+    async def refund(self, *, tx_ref, provider_tx_id, amount, currency, reason) -> RefundResult:
+        if not provider_tx_id:
+            return RefundResult(ok=False, error="flutterwave: no transaction id")
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                resp = await request_with_retry(
+                    client, "POST", f"{_BASE}/transactions/{provider_tx_id}/refund",
+                    json={"amount": amount}, headers=self._auth(), retry_on_5xx=False,
+                )
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            return RefundResult(ok=False, error=f"flutterwave: {exc}")
+        ok = data.get("status") == "success"
+        rid = (data.get("data") or {}).get("id")
+        return RefundResult(ok=ok, provider_refund_id=str(rid) if rid else None,
+                            raw=data, error=None if ok else data.get("message"))
 
     def verify_webhook_signature(self, *, headers: Mapping[str, str], raw_body: bytes) -> bool:
         secret = self.cred("webhook_secret")

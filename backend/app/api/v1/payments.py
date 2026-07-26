@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser
+from app.core.redis import sliding_window_allow
 from app.models.account import Account
 from app.models.billing import Payment, Plan
 from app.schemas.payment import (
@@ -64,6 +65,8 @@ async def checkout(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CheckoutResponse:
+    if not await sliding_window_allow(f"pay:checkout:{user.account_id}", max_hits=10, window_seconds=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many checkout attempts, try again shortly")
     account = await db.get(Account, user.account_id)
     if account is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
@@ -125,6 +128,11 @@ async def webhook(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    source_ip_early = request.client.host if request.client else "unknown"
+    # Throttle the public webhook to blunt flooding / storage-exhaustion (the raw
+    # event is only persisted inside handle_webhook, after this gate).
+    if not await sliding_window_allow(f"pay:webhook:{source_ip_early}", max_hits=120, window_seconds=60):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Rate limited")
     raw = await request.body()
     if len(raw) > MAX_WEBHOOK_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Payload too large")

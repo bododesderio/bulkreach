@@ -1,10 +1,11 @@
 """MTN MoMo Collections (direct) adapter — request-to-pay (customer pays us).
 
-USSD-push flow: no redirect. We generate an X-Reference-Id UUID (our
+USSD-push flow (STK-style): no redirect. We generate an X-Reference-Id UUID (our
 provider_tx_id) BEFORE the call, POST request-to-pay, then reconcile with
-GET /requesttopay/{referenceId}. Requires a provisioned API user/key +
-subscription key; live needs KYC/go-live per the payments skill checklist, so
-this works only once real credentials are configured.
+GET /requesttopay/{referenceId}. The OAuth token is cached + auto-refreshed.
+Requires a provisioned API user/key + subscription key; live needs KYC/go-live.
+Refunds require the separate Disbursements product (+ payer MSISDN) and are not
+offered through this collections adapter.
 """
 from __future__ import annotations
 
@@ -24,12 +25,13 @@ from app.services.payments.base import (
     VerifyResult,
     WebhookResult,
 )
+from app.services.payments.http import DEFAULT_TIMEOUT, request_with_retry
+from app.services.payments.token_cache import get_token, make_key
 
 _HOSTS = {
     "test": "https://sandbox.momodeveloper.mtn.com",
     "live": "https://proxy.momoapi.mtn.com",
 }
-_TIMEOUT = httpx.Timeout(20.0)
 
 
 def _map_status(raw: str | None) -> str:
@@ -60,17 +62,22 @@ class MtnMomoProvider(PaymentProvider):
         return "mtnuganda" if self.is_live else "sandbox"
 
     async def _token(self, client: httpx.AsyncClient) -> str:
-        basic = base64.b64encode(
-            f"{self.cred('api_user')}:{self.cred('api_key')}".encode()
-        ).decode()
-        resp = await client.post(
-            f"{self._base}/collection/token/",
-            headers={
-                "Authorization": f"Basic {basic}",
-                "Ocp-Apim-Subscription-Key": self.cred("subscription_key"),
-            },
-        )
-        return (resp.json() or {}).get("access_token", "")
+        key = make_key(self.slug, self.mode, self.cred("api_user"), self.cred("api_key"),
+                       self.cred("subscription_key"))
+
+        async def fetch() -> tuple[str, float]:
+            basic = base64.b64encode(
+                f"{self.cred('api_user')}:{self.cred('api_key')}".encode()
+            ).decode()
+            resp = await request_with_retry(
+                client, "POST", f"{self._base}/collection/token/",
+                headers={"Authorization": f"Basic {basic}",
+                         "Ocp-Apim-Subscription-Key": self.cred("subscription_key")},
+            )
+            j = resp.json() or {}
+            return j.get("access_token", ""), float(j.get("expires_in", 3600) or 3600)
+
+        return await get_token(key, fetch)
 
     async def create_charge(
         self, *, tx_ref, amount, currency, method, customer, callback_url,
@@ -85,13 +92,13 @@ class MtnMomoProvider(PaymentProvider):
             "payeeNote": "BulkReach",
         }
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
                 if not token:
                     return ChargeResult(ok=False, status=FAILED, error="momo: auth failed")
-                resp = await client.post(
-                    f"{self._base}/collection/v1_0/requesttopay",
-                    json=body,
+                resp = await request_with_retry(
+                    client, "POST", f"{self._base}/collection/v1_0/requesttopay",
+                    json=body, retry_on_5xx=False,
                     headers={
                         "Authorization": f"Bearer {token}",
                         "X-Reference-Id": reference_id,
@@ -111,10 +118,10 @@ class MtnMomoProvider(PaymentProvider):
         if not provider_tx_id:
             return VerifyResult(status=PENDING)
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
                 token = await self._token(client)
-                resp = await client.get(
-                    f"{self._base}/collection/v1_0/requesttopay/{provider_tx_id}",
+                resp = await request_with_retry(
+                    client, "GET", f"{self._base}/collection/v1_0/requesttopay/{provider_tx_id}",
                     headers={
                         "Authorization": f"Bearer {token}",
                         "X-Target-Environment": self._target_env,
