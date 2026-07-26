@@ -47,7 +47,10 @@ async def plans(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[PlanOut]:
-    res = await db.execute(select(Plan).order_by(Plan.price_ugx.asc()))
+    res = await db.execute(
+        select(Plan).where(Plan.status == "active")
+        .order_by(Plan.display_order.asc(), Plan.price_ugx.asc())
+    )
     return [PlanOut.model_validate(p) for p in res.scalars()]
 
 

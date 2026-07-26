@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,7 +20,12 @@ class Plan(UUIDPk, Base):
     price_ugx: Mapped[int] = mapped_column(BigInteger, nullable=False)
     messages_per_month: Mapped[int] = mapped_column(Integer, nullable=False)  # -1 = unlimited
     batch_size: Mapped[int] = mapped_column(Integer, default=20_000)
-    features: Mapped[dict] = mapped_column(JSONB, default=dict)
+    features: Mapped[dict] = mapped_column(JSONB, default=dict)  # {bullets: [...], gates: {...}}
+    # Admin-managed presentation + lifecycle (Plan Manager).
+    period: Mapped[str] = mapped_column(String(10), default="month", nullable=False)  # month|quarter|year
+    status: Mapped[str] = mapped_column(String(10), default="active", nullable=False)  # active|hidden
+    featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # one across all plans
+    display_order: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
 
 
 class Subscription(UUIDPk, TimestampMixin, Base):

@@ -39,8 +39,54 @@ class PlanOut(BaseModel):
     messages_per_month: int
     batch_size: int
     features: dict
+    period: str = "month"
+    featured: bool = False
 
     model_config = {"from_attributes": True}
+
+
+Period = Literal["month", "quarter", "year"]
+PlanStatus = Literal["active", "hidden"]
+
+
+class AdminPlanOut(BaseModel):
+    id: UUID
+    name: str
+    price_ugx: int
+    messages_per_month: int
+    batch_size: int
+    features: dict
+    period: str
+    status: str
+    featured: bool
+    display_order: int
+    subscriber_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class PlanCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    price_ugx: int = Field(ge=0)
+    messages_per_month: int = Field(-1)  # -1 = unlimited
+    batch_size: int = Field(20_000, ge=1)
+    period: Period = "month"
+    status: PlanStatus = "active"
+    featured: bool = False
+    display_order: int = 100
+    features: dict = Field(default_factory=dict)  # {bullets: [...], gates: {...}}
+
+
+class PlanUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=50)
+    price_ugx: int | None = Field(None, ge=0)
+    messages_per_month: int | None = None
+    batch_size: int | None = Field(None, ge=1)
+    period: Period | None = None
+    status: PlanStatus | None = None
+    featured: bool | None = None
+    display_order: int | None = None
+    features: dict | None = None
 
 
 class PaymentOut(BaseModel):
