@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${process.env.API_PROXY_URL || "http://localhost:8000/api"}/:path*`,
+        destination: `${process.env.API_PROXY_URL || "http://localhost:3101/api"}/:path*`,
       },
     ];
   },

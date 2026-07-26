@@ -1,16 +1,18 @@
 # Project Context
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ## Current task
 Building BulkReach (bulk SMS & email SaaS) from System Documentation v2.0 (40pp).
 M0 + M1 complete & verified end-to-end. Next: M2 — Contacts + parsers + template engine.
 
-## Running locally (this session — leave up for user to view)
-- Backend API: http://localhost:8010  (port 8000 taken by another project's Django)
-- Frontend:    http://localhost:3100  (ports 3000-3003 taken by other projects)
-- Frontend proxies /api → backend 8010 (same-origin, no CORS).
-- Restart backend: `cd backend && source .venv/bin/activate` + env vars below + `uvicorn app.main:app --port 8010`
-- Restart frontend: `cd frontend && API_PROXY_URL=http://localhost:8010/api npx next dev -p 3100`
+## Running locally (port lane 3100 — one project, one lane; see ~/.claude/PORTS.md)
+- Frontend:    http://localhost:3100  (base+0)
+- Backend API: http://localhost:3101  (base+1, FastAPI as primary API)
+- Archive PG:  localhost:3110         (base+10, project-private Postgres)
+- Shared services stay on well-known ports: Postgres 5432 (DB=bulkreach), Redis 6379.
+- Frontend proxies /api → backend 3101 (same-origin, no CORS).
+- Restart backend: `cd backend && source .venv/bin/activate` + env vars below + `uvicorn app.main:app --port 3101`
+- Restart frontend: `cd frontend && API_PROXY_URL=http://localhost:3101/api npx next dev -p 3100`
 - [!] brtest-pg DB creds are **bulkreach / pw** (db bulkreach), NOT postgres/postgres.
       DATABASE_URL=postgresql+asyncpg://bulkreach:pw@localhost:55432/bulkreach
       ARCHIVE_DATABASE_URL=postgresql+asyncpg://bulkreach:pw@localhost:55432/bulkreach_archive
@@ -146,7 +148,7 @@ User asked: "continue wiring everything and make pages more lively esp admin." A
 5. Rebuild with NODE_ENV=production, browser-verify each new admin page (0 console errors), screenshot.
 
 ### Servers (may need restart tomorrow)
-- Frontend: `cd frontend && API_PROXY_URL=http://localhost:8010/api npx next dev -p 3100`
+- Frontend: `cd frontend && API_PROXY_URL=http://localhost:3101/api npx next dev -p 3100`
 - Backend: containers brtest-pg (55432) + brtest-redis (63799) — `docker start brtest-pg brtest-redis`;
   then from backend/ w/ .venv active + env (DATABASE_URL/ARCHIVE_DATABASE_URL/REDIS_URL/SECRET_KEY):
   `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8010`. Routes under /api/v1, health at /health.

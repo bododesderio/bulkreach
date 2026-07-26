@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "BulkReach"
     BASE_URL: str = "https://api.bulkreach.ug"
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:3100"
 
     # --- Auth ---
     JWT_ALGORITHM: str = "HS256"
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # --- Databases ---
     DATABASE_URL: str = "postgresql+asyncpg://bulkreach:pw@localhost:5432/bulkreach"
     ARCHIVE_DATABASE_URL: str = (
-        "postgresql+asyncpg://bulkreach:pw@localhost:5433/bulkreach_archive"
+        "postgresql+asyncpg://bulkreach:pw@localhost:3110/bulkreach_archive"
     )
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
@@ -43,9 +43,9 @@ class Settings(BaseSettings):
 
     # --- ClickHouse ---
     CLICKHOUSE_HOST: str = "localhost"
-    CLICKHOUSE_PORT: int = 8123
+    CLICKHOUSE_PORT: int = 3112  # lane 3100 host mapping → container 8123
     CLICKHOUSE_ARCHIVE_HOST: str = "localhost"
-    CLICKHOUSE_ARCHIVE_PORT: int = 8124
+    CLICKHOUSE_ARCHIVE_PORT: int = 3114  # lane 3100 host mapping → container 8123
     CLICKHOUSE_USER: str = "default"
     CLICKHOUSE_PASSWORD: str = ""
     CLICKHOUSE_DB: str = "bulkreach"
@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     FLUTTERWAVE_BASE_URL: str = "https://api.flutterwave.com/v3"
 
     # --- Object storage (S3 / MinIO) ---
-    S3_ENDPOINT_URL: str = "http://localhost:9010"  # blank for AWS S3
+    S3_ENDPOINT_URL: str = "http://localhost:3120"  # blank for AWS S3; lane 3100 → MinIO container 9000
     S3_REGION: str = "us-east-1"
     S3_ACCESS_KEY: str = "minio"
     S3_SECRET_KEY: str = "minio123"
