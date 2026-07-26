@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -39,6 +40,24 @@ def _new_tx_ref() -> str:
     return f"BR-{uuid.uuid4().hex[:24]}"
 
 
+@dataclass
+class CheckoutIntent:
+    """What the client needs to render the right custom checkout step.
+
+    mode drives the UI:
+      simulated  → dev: show a simulated-confirm panel, then poll verify
+      inline     → Flutterwave Inline: load the JS widget with `inline` params
+                   (card entry stays on our page, gateway-secured — SAQ-A)
+      ussd_push  → direct MoMo/Airtel: STK push fired; show "check your phone" + poll
+      redirect   → aggregator hosted page (Pesapal / FW non-card): send to redirect_url
+    """
+
+    payment: Payment
+    mode: str
+    redirect_url: str | None = None
+    inline: dict | None = None
+
+
 class PaymentService:
     async def start_checkout(
         self,
@@ -50,7 +69,7 @@ class PaymentService:
         customer: Customer,
         callback_url: str,
         purpose: str = "subscription",
-    ) -> Payment:
+    ) -> CheckoutIntent:
         # Server-authoritative amount: subscription price comes from the plan row.
         plan: Plan | None = None
         if plan_id is not None:
@@ -63,6 +82,7 @@ class PaymentService:
         currency = "UGX"
 
         provider = await registry.resolve_provider_for_method(db, method)
+        slug = provider.slug
         tx_ref = _new_tx_ref()
 
         payment = Payment(
@@ -72,13 +92,41 @@ class PaymentService:
             method=method,
             status="created",
             purpose=purpose,
-            provider=provider.slug,
+            provider=slug,
             tx_ref=tx_ref,
             plan_id=plan.id,
         )
         db.add(payment)
         await db.flush()  # persist CREATED before any provider call
 
+        # Simulator (dev only): no external call; the custom UI drives a simulated
+        # confirmation then polls verify (which the simulator reports successful).
+        if slug == "simulator":
+            payment.status = PENDING
+            await db.commit()
+            await db.refresh(payment)
+            return CheckoutIntent(payment=payment, mode="simulated")
+
+        # Flutterwave card → Inline: the secure card widget runs client-side on OUR
+        # page. We persist only the intent and return the PUBLIC key — never call the
+        # hosted-redirect charge, and no card data ever touches our server (SAQ-A).
+        if slug == "flutterwave" and method == "card":
+            payment.status = PENDING
+            await db.commit()
+            await db.refresh(payment)
+            return CheckoutIntent(payment=payment, mode="inline", inline={
+                "provider": "flutterwave",
+                "public_key": provider.cred("public_key"),
+                "tx_ref": tx_ref,
+                "amount": amount,
+                "currency": currency,
+                "email": customer.email,
+                "name": customer.name,
+                "phone": customer.phone,
+            })
+
+        # Everything else calls the provider: direct telco → STK push (no redirect →
+        # ussd_push); aggregator (Pesapal / FW non-card) → hosted redirect.
         result = await provider.create_charge(
             tx_ref=tx_ref, amount=amount, currency=currency, method=method,
             customer=customer, callback_url=callback_url,
@@ -92,11 +140,13 @@ class PaymentService:
 
         payment.status = PENDING
         payment.provider_tx_id = result.provider_tx_id
-        # Stash redirect URL on the raw blob so the router can return it.
         payment.raw_response = {**payment.raw_response, "_redirect_url": result.redirect_url}
         await db.commit()
         await db.refresh(payment)
-        return payment
+        mode = "redirect" if result.redirect_url else "ussd_push"
+        return CheckoutIntent(
+            payment=payment, mode=mode, redirect_url=result.redirect_url
+        )
 
     async def reconcile(self, db: AsyncSession, payment: Payment) -> Payment:
         """Poll the provider for authoritative status and apply it idempotently.

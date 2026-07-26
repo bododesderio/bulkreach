@@ -23,7 +23,10 @@ class CheckoutResponse(BaseModel):
     payment_id: UUID
     tx_ref: str
     status: str
-    redirect_url: str | None = None  # None → USSD push (check phone)
+    # How the client should complete payment: simulated | inline | ussd_push | redirect
+    mode: str = "redirect"
+    redirect_url: str | None = None  # for mode=redirect
+    inline: dict | None = None  # for mode=inline (Flutterwave public key + params)
 
 
 class PaymentMethodOut(BaseModel):

@@ -82,15 +82,15 @@ async def checkout(
     customer = Customer(email=account.email, name=account.name, phone=body.phone)
     callback_url = f"{_callback_base()}/dashboard/billing/callback"
     try:
-        payment = await payment_service.start_checkout(
+        intent = await payment_service.start_checkout(
             db, account, method=body.method, plan_id=body.plan_id,
             customer=customer, callback_url=callback_url, purpose=body.purpose,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-    redirect = (payment.raw_response or {}).get("_redirect_url")
     return CheckoutResponse(
-        payment_id=payment.id, tx_ref=payment.tx_ref, status=payment.status, redirect_url=redirect
+        payment_id=intent.payment.id, tx_ref=intent.payment.tx_ref, status=intent.payment.status,
+        mode=intent.mode, redirect_url=intent.redirect_url, inline=intent.inline,
     )
 
 
