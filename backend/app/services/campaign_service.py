@@ -182,17 +182,14 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
 
     message_count = sum(int(s) + int(e) for _, s, e in targets)
 
-    # Trial allowance (Section 13): a trial account can only spend its remaining
-    # free messages. Paid plans are billed via subscription (M4), not gated here.
+    # Subscription hard gate (Section K, Layer 2): active plan, feature gates,
+    # concurrent limit, monthly + daily quota. Trial accounts spend their free
+    # allowance here; paid plans meter in Redis as they dispatch.
     account = await db.get(Account, campaign.account_id)
-    if account and account.plan == "trial":
-        if account.trial_messages_remaining < message_count:
-            raise HTTPException(
-                status.HTTP_402_PAYMENT_REQUIRED,
-                f"Trial has {account.trial_messages_remaining} messages left; "
-                f"this campaign needs {message_count}. Upgrade to send.",
-            )
-        account.trial_messages_remaining -= message_count
+    if account is not None:
+        from app.services.subscription import enforce
+
+        await enforce.enforce_send(db, account, campaign, message_count)
 
     for contact, sms_ok, email_ok in targets:
         cc = CampaignContact(

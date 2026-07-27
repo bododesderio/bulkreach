@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import settings
 from app.core.database import LiveSessionLocal
+from app.models.account import Account
 from app.models.campaign import Campaign, CampaignContact, Message
 from app.services.template_engine import (
     TemplateError,
@@ -129,6 +130,20 @@ async def dispatch_campaign(
             ).scalars()
             merge_map = {r.id: (r.merge_data or {}) for r in rows}
 
+        # Layer 3 fail-safe: if the monthly quota ran out since this campaign was
+        # queued (a concurrent campaign consumed it), pause instead of overspending.
+        account = await db.get(Account, campaign.account_id)
+        if account is not None:
+            from app.services.subscription import enforce
+
+            if await enforce.monthly_exhausted(db, account):
+                campaign.status = "paused_quota_exceeded"
+                await db.commit()
+                await progress.write(campaign_id, status="paused_quota_exceeded",
+                                     total=total, sent=0, failed=0)
+                logger.info("dispatch: campaign %s paused — monthly quota exhausted", campaign_id)
+                return {"status": "paused_quota_exceeded", "total": total}
+
         campaign.status = "sending"
         await db.commit()
 
@@ -223,6 +238,16 @@ async def dispatch_campaign(
         campaign.email_failed = email_failed
         campaign.elapsed_seconds = round(time.monotonic() - started, 3)
         await db.commit()
+
+        # Meter dispatched messages against the paid monthly/daily quota (trial
+        # allowance is decremented up-front at queue time, not here).
+        if account is not None and (account.plan or "").lower() != "trial" and sent > 0:
+            from app.services.subscription import quota as quota_svc
+            try:
+                await quota_svc.consume(account.id, sent)
+            except Exception:  # noqa: BLE001 — metering must never fail a completed send
+                logger.warning("quota consume failed for account %s", account.id)
+
         await flush_progress(status="completed")
 
         logger.info(

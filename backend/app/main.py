@@ -51,10 +51,12 @@ from app.api.v1.campaigns import router as campaigns_router  # noqa: E402
 from app.api.v1.contacts import router as contacts_router  # noqa: E402
 from app.api.v1.payments import router as payments_router  # noqa: E402
 from app.api.v1.reports import router as reports_router  # noqa: E402
+from app.api.v1.subscription import router as subscription_router  # noqa: E402
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(contacts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
+app.include_router(subscription_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
