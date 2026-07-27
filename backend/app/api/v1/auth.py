@@ -13,6 +13,7 @@ from app.core.redis import sliding_window_allow
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.schemas.auth import (
     AccountOut,
+    ActivatePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MeResponse,
@@ -26,6 +27,7 @@ from app.schemas.auth import (
     UserOut,
     VerifyEmailRequest,
 )
+from app.core.security import hash_password
 from app.services import auth_service, otp
 from app.services.audit import record_audit
 from app.services.email import send_email
@@ -173,6 +175,23 @@ async def onboarding(
     if data.referral_source is not None:
         account.referral_source = data.referral_source
     return {"status": "ok"}
+
+
+@router.post("/activate-password")
+async def activate_password(
+    data: ActivatePasswordRequest,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Set a new password and clear the must-change-password flag (managed-portal
+    first login, Section 5.2)."""
+    user.hashed_password = hash_password(data.new_password)
+    user.must_change_password = False
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.password_changed",
+        resource_type="user", resource_id=str(user.id),
+    )
+    return {"status": "ok", "must_change_password": False}
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -69,8 +69,11 @@ class User(UUIDPk, TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     # owner | admin | member | superadmin
     role: Mapped[str] = mapped_column(String(20), default="owner", nullable=False)
+    # self_service (default) | managed_client — the latter uses the managed portal
+    user_type: Mapped[str] = mapped_column(String(20), default="self_service", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     account: Mapped[Account] = relationship(back_populates="users")

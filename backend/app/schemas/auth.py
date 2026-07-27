@@ -39,6 +39,10 @@ class VerifyEmailRequest(BaseModel):
     code: str = Field(min_length=4, max_length=8)
 
 
+class ActivatePasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ResendResponse(BaseModel):
     sent: bool
     dev_code: str | None = None
@@ -77,6 +81,8 @@ class UserOut(BaseModel):
     role: str
     account_id: uuid.UUID
     email_verified: bool = False
+    user_type: str = "self_service"
+    must_change_password: bool = False
     last_login_at: datetime | None = None
 
 

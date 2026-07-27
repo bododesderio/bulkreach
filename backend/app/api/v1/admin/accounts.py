@@ -198,3 +198,41 @@ async def activate_account(
         db, admin, account_id, new_status="active", is_active=True,
         action="account.activate",
     )
+
+
+@router.post("/{account_id}/portal-access")
+async def grant_portal_access(
+    account_id: UUID,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Turn an account's owner into a managed-portal client: mark user_type
+    managed_client, force a password change, and set a temporary password
+    (returned only in non-production so the portal login can be tested)."""
+    import secrets
+
+    from app.core.config import settings
+    from app.core.security import hash_password
+
+    account = await db.get(Account, account_id)
+    if account is None or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    owner = (await db.execute(
+        select(User).where(User.account_id == account_id, User.role == "owner").limit(1)
+    )).scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account has no owner user")
+
+    temp = secrets.token_urlsafe(9)
+    owner.user_type = "managed_client"
+    owner.must_change_password = True
+    owner.hashed_password = hash_password(temp)
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="account.portal_access",
+        resource_type="user", resource_id=str(owner.id), details={"account": account.name},
+    )
+    await db.commit()
+    return {
+        "email": owner.email,
+        "temp_password": None if settings.is_production else temp,
+    }
