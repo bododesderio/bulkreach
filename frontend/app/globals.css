@@ -21,6 +21,14 @@
     --error: #ef4444;
     --pricing-bg: #eef0fa;
 
+    /* --- Auth design system tokens --- */
+    --auth-card-radius: 20px;
+    --auth-card-shadow: 0 32px 80px rgba(0, 0, 0, 0.45);
+    --auth-overlay: rgba(13, 15, 46, 0.78);
+    --auth-panel-dark: #0d0f2e;
+    --input-height: 48px;
+    --input-radius: 10px;
+
     /* --- shadcn semantic tokens (client dashboard) mapped onto the palette --- */
     --background: 0 0% 100%;
     --foreground: 231 24% 14%;
@@ -80,6 +88,25 @@
   .btn-outline:hover {
     border-color: var(--teal);
     color: var(--navy);
+  }
+
+  /* Auth field input — used by InputField / PasswordField */
+  .auth-input {
+    @apply w-full bg-white px-3.5 text-[15px] outline-none transition
+      placeholder:text-[var(--text-muted)];
+    height: var(--input-height);
+    border-radius: var(--input-radius);
+    border: 1.5px solid var(--border);
+  }
+  .auth-input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.12);
+  }
+  .auth-input-error {
+    border-color: var(--error) !important;
+  }
+  .auth-input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
   }
 }
 
