@@ -1,9 +1,70 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import { Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/store/auth";
+
+interface Invite {
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  dev_link?: string | null;
+}
 
 export default function SettingsPage() {
   const { user, account } = useAuth();
+  const canInvite = !!user && (user.role === "owner" || user.role === "admin");
+
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"member" | "admin">("member");
+  const [sending, setSending] = useState(false);
+
+  const loadInvites = useCallback(async () => {
+    if (!canInvite) return;
+    try {
+      setInvites(await api<Invite[]>("/invitations", { auth: true }));
+    } catch {
+      /* keep empty */
+    }
+  }, [canInvite]);
+
+  useEffect(() => {
+    loadInvites();
+  }, [loadInvites]);
+
+  async function sendInvite() {
+    if (!email) return;
+    setSending(true);
+    try {
+      const inv = await api<Invite>("/invitations", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ email, role }),
+      });
+      toast.success(`Invitation sent to ${email}`);
+      if (inv.dev_link) toast.info(`Dev link: ${inv.dev_link}`);
+      setEmail("");
+      await loadInvites();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not send invite");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function revoke(id: string) {
+    try {
+      await api(`/invitations/${id}`, { method: "DELETE", auth: true });
+      setInvites((prev) => prev.filter((i) => i.id !== id));
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not revoke");
+    }
+  }
+
   if (!user || !account) return null;
 
   const rows: [string, string][] = [
@@ -18,8 +79,9 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <p className="text-muted-foreground">Your account and profile details.</p>
+      <p className="text-muted-foreground">Your account, team, and profile details.</p>
 
+      {/* Account */}
       <div className="mt-6 rounded-xl border bg-card">
         <div className="border-b px-6 py-4">
           <h3 className="font-semibold">Account</h3>
@@ -34,9 +96,85 @@ export default function SettingsPage() {
         </dl>
       </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">
-        Team members, API keys, and white-label branding are available on the Business plan.
-      </p>
+      {/* Team */}
+      {canInvite && (
+        <div className="mt-6 rounded-xl border bg-card">
+          <div className="border-b px-6 py-4">
+            <h3 className="font-semibold">Team</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Invite teammates to your account. They join with the role you choose.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2 px-6 py-4">
+            <div className="min-w-[220px] flex-1">
+              <label htmlFor="invite-email" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Email
+              </label>
+              <input
+                id="invite-email"
+                data-testid="invite-email"
+                type="email"
+                className="input"
+                placeholder="teammate@company.ug"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="invite-role" className="mb-1 block text-xs font-medium text-muted-foreground">
+                Role
+              </label>
+              <select
+                id="invite-role"
+                className="input"
+                value={role}
+                onChange={(e) => setRole(e.target.value as "member" | "admin")}
+              >
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={sendInvite}
+              disabled={sending || !email}
+              data-testid="send-invite"
+              className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <UserPlus className="h-4 w-4" /> {sending ? "Sending…" : "Send invite"}
+            </button>
+          </div>
+
+          {invites.length > 0 && (
+            <div className="border-t">
+              <div className="px-6 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Pending invitations
+              </div>
+              <ul className="divide-y">
+                {invites.map((i) => (
+                  <li key={i.id} className="flex items-center justify-between px-6 py-3">
+                    <div>
+                      <span className="text-sm font-medium">{i.email}</span>
+                      <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[11px] capitalize text-accent-foreground">
+                        {i.role}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => revoke(i.id)}
+                      aria-label={`Revoke invite for ${i.email}`}
+                      className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
