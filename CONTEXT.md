@@ -64,7 +64,10 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
 - [x] M5 Admin portal + managed service workflow — 7 live superadmin APIs (overview/accounts/campaigns/
       audit-log/managed/health/revenue) replacing seed data; managed lifecycle briefed→report_issued with
       forward-only guards; account suspend/activate; real health checks. Browser-verified, 34/34 build. (3c7066d, c4725a2)
-- [ ] M6 Data Archive subsystem (ingestion, retention, anonymiser, glacier, export, access log)
+- [x] M6 Data Archive subsystem — ingestion (live→archive, idempotent, contact dedup), retention/purge
+      (legal-hold aware), anonymiser (sha256), erasure workflow (DPA/GDPR), legal holds, append-only
+      access log, retention rules, real export (storage), ARQ cron. ClickHouse 7yr-TTL + AWS Glacier
+      infra-gated (honest no-ops). Live /admin/archive. Browser-verified, 34/34 build. (8487965, 8549ac8)
 - [x] M7 Frontend — design system + public marketing site + admin subsystem + auth restyle + admin liveliness DONE.
       `NODE_ENV=production npm run build` passes (29/29 routes prerender, TS zero-error). All 9 missing admin
       pages built (accounts/subscriptions/managed/revenue/payments/campaigns/audit-log/health/archive) + client
@@ -110,9 +113,14 @@ DONE & committed today (2026-07-26):
 account suspend/activate; real Postgres/Redis/provider health. All browser-verified, zero console errors.
 See [[bulkreach-m5-admin]] memory (incl. date_trunc GROUP-BY gotcha + admin auth-store hydration fix).
 
-NEXT: M6 Data Archive subsystem (/admin/archive still seed; ingestion/retention/anonymiser/glacier/export/
-access-log) OR M8 tests + Playwright E2E + hardening. Also open: managed "issue report" should generate/email
-the branded WeasyPrint PDF (ties to M4a); admin users-list endpoint for a manager picker.
+✅ M6 Data Archive DONE 2026-07-27 (8487965 backend, 8549ac8 frontend): ingestion/retention/anonymiser/
+erasure/legal-holds/access-log/export + live /admin/archive, browser-verified. ClickHouse 7yr-TTL + AWS
+Glacier are infra-gated honest no-ops (no CH/MinIO container locally). See [[bulkreach-m6-archive]].
+
+NEXT — only M8 remains: tests + Playwright E2E + hardening. Write functional/integration tests across
+auth/contacts/campaigns/payments/admin/archive; Playwright E2E for the key flows; a hardening pass.
+Also still open (small): managed "issue report" → generate/email WeasyPrint PDF (M4a tie-in); admin
+users-list endpoint for a manager picker; ClickHouse/Glacier need real infra to exercise.
 
 Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
 Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
