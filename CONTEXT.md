@@ -135,6 +135,13 @@ account suspend now truly blocks login/refresh/token use (was a no-op).
 WeasyPrint client PDF (reuses M4a renderer), stores it, records a client_success Report, and exposes
 GET /admin/managed/{id}/report/download + a UI Download button + campaign-link picker. 25/25 backend tests.
 
+GAP-CLOSING (post-build, vs Auth/Subscription/Payment mega-prompt — dependency order, see [[bulkreach-gap-closing]]):
+✅ Slice 1 DONE (73baefa): subscription quota enforcement — Redis monthly/daily counters, enforce_send 402
+   gate on campaign send, dispatch metering, Layer-3 pause, GET /subscription/quota. Suite 31/31.
+   NEXT slices: (2) auth design system + multi-step signup/OTP/onboarding/invites/managed-portal;
+   (3) invoices/proration/auto-renew/VAT. Also small: wire Layer-1 usage bar in dashboard/composer UI.
+✅ Deploy artifacts DONE (cb51154): prod Dockerfiles + docker-compose.prod + nginx + GO-LIVE; boot-verified.
+
 ✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
 (assign any staff, not just self). Seeded 2nd staff: ops@bulkreach.ug / OpsPass123! (superadmin) in brtest.
 
