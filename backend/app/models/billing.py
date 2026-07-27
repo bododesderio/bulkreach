@@ -43,6 +43,14 @@ class Subscription(UUIDPk, TimestampMixin, Base):
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     flutterwave_subscription_id: Mapped[str | None] = mapped_column(String(120))
 
+    # Auto-renewal + dunning (failed-payment day 0→30 ladder).
+    auto_renew: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # 0 = healthy; 1..N = position in DUNNING_STAGE_DAYS once past_due.
+    dunning_stage: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    past_due_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_dunning_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    grace_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
 class Payment(UUIDPk, Base):
     __tablename__ = "payments"

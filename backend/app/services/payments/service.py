@@ -78,8 +78,15 @@ class PaymentService:
                 raise ValueError("Unknown plan")
         if plan is None:
             raise ValueError("A plan is required to start checkout")
-        amount = int(plan.price_ugx)
         currency = "UGX"
+
+        # Server-authoritative amount, proration-aware: an upgrade mid-cycle credits
+        # the unused time on the current plan. The credit is stashed on the payment so
+        # the invoice can show it, and so verify() checks against the amount charged.
+        from app.services.billing.proration import compute_proration
+
+        proration = await compute_proration(db, account.id, plan)
+        amount = int(proration.amount_due_ugx)
 
         provider = await registry.resolve_provider_for_method(db, method)
         slug = provider.slug
@@ -95,6 +102,11 @@ class PaymentService:
             provider=slug,
             tx_ref=tx_ref,
             plan_id=plan.id,
+            raw_response={"_proration": {
+                "credit_ugx": proration.credit_ugx,
+                "base_price_ugx": proration.base_price_ugx,
+                "days_remaining": proration.days_remaining,
+            }} if proration.applies else {},
         )
         db.add(payment)
         await db.flush()  # persist CREATED before any provider call
@@ -334,7 +346,9 @@ class PaymentService:
     async def _on_success(self, db: AsyncSession, payment: Payment) -> None:
         """Grant what was paid for. Idempotent across payments via a UNIQUE
         constraint on subscriptions.account_id + an atomic upsert, so two
-        successful payments for one account can't create duplicate subscriptions."""
+        successful payments for one account can't create duplicate subscriptions.
+        Reactivates a past_due/suspended account (repayment clears dunning) and
+        issues the invoice/receipt."""
         if payment.purpose != "subscription" or payment.plan_id is None:
             return
         plan = await db.get(Plan, payment.plan_id)
@@ -342,18 +356,31 @@ class PaymentService:
         if plan is None or account is None:
             return
         account.plan = plan.name.lower()
+        if account.status == "suspended":
+            account.status = "active"  # repayment restores a dunning-suspended account
         now = datetime.now(timezone.utc)
-        period_end = now + timedelta(days=30)
-        stmt = pg_insert(Subscription).values(
-            account_id=account.id, plan_id=plan.id, status="active",
+        period_end = now + timedelta(days=settings.SUBSCRIPTION_PERIOD_DAYS)
+        reset = dict(
+            plan_id=plan.id, status="active",
             current_period_start=now, current_period_end=period_end,
+            dunning_stage=0, past_due_since=None, last_dunning_at=None, grace_until=None,
+        )
+        stmt = pg_insert(Subscription).values(
+            account_id=account.id, **reset,
         ).on_conflict_do_update(
-            index_elements=[Subscription.account_id],
-            set_=dict(plan_id=plan.id, status="active",
-                      current_period_start=now, current_period_end=period_end),
+            index_elements=[Subscription.account_id], set_=reset,
         )
         await db.execute(stmt)
         log.info("subscription activated acct=%s plan=%s tx=%s", account.id, plan.name, payment.tx_ref)
+
+        # Issue the invoice/receipt (idempotent). Best-effort: never fail settlement
+        # because a document couldn't be written.
+        try:
+            from app.services.billing.invoicing import create_invoice_for_payment
+
+            await create_invoice_for_payment(db, payment)
+        except Exception:  # noqa: BLE001
+            log.exception("invoice generation failed tx=%s (payment still settled)", payment.tx_ref)
 
 
 payment_service = PaymentService()

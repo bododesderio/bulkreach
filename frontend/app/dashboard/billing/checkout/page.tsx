@@ -62,6 +62,15 @@ interface CheckoutResponse {
   inline?: InlinePayload | null;
 }
 
+interface Proration {
+  plan_id: string;
+  base_price_ugx: number;
+  credit_ugx: number;
+  amount_due_ugx: number;
+  days_remaining: number;
+  applies: boolean;
+}
+
 type PayStatus = 'created' | 'pending' | 'successful' | 'failed' | 'timeout';
 
 interface VerifyResponse {
@@ -134,6 +143,7 @@ function CheckoutInner() {
   // Data
   const [plans, setPlans] = useState<Plan[]>([]);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [proration, setProration] = useState<Proration | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form
@@ -182,6 +192,11 @@ function CheckoutInner() {
       .finally(() => {
         if (mountedRef.current) setLoading(false);
       });
+
+    // Proration: if the account is upgrading mid-cycle, the server credits unused time.
+    api<Proration>(`/billing/proration-preview?plan_id=${planId}`, { auth: true })
+      .then((pr) => mountedRef.current && setProration(pr))
+      .catch(() => {});
 
     return () => {
       mountedRef.current = false;
@@ -633,6 +648,24 @@ function CheckoutInner() {
             </div>
           </div>
 
+          {/* Proration: credit for unused time on the current plan */}
+          {proration?.applies && (
+            <div className="rounded-lg border p-3 text-sm" style={{ borderColor: 'rgba(0,212,170,0.35)', background: 'rgba(0,212,170,0.06)' }}>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Plan price</span>
+                <span className="font-mono">UGX {proration.base_price_ugx.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between" style={{ color: '#00897a' }}>
+                <span>Upgrade credit ({proration.days_remaining}d left)</span>
+                <span className="font-mono">− UGX {proration.credit_ugx.toLocaleString()}</span>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between border-t pt-1.5 font-semibold" style={{ color: '#1B1F4A' }}>
+                <span>Due today</span>
+                <span className="font-mono">UGX {proration.amount_due_ugx.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+
           {/* Feature bullets */}
           <ul className="space-y-2 text-sm text-muted-foreground">
             {bullets.map((b, i) => (
@@ -802,7 +835,7 @@ function CheckoutInner() {
                     Processing&hellip;
                   </>
                 ) : (
-                  `Pay UGX ${plan.price_ugx.toLocaleString()}`
+                  `Pay UGX ${(proration?.applies ? proration.amount_due_ugx : plan.price_ugx).toLocaleString()}`
                 )}
               </button>
               <p className="text-center text-xs text-muted-foreground">

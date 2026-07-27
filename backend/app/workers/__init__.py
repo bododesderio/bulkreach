@@ -97,6 +97,30 @@ async def reconcile_payments(ctx: dict) -> dict:
     return result
 
 
+async def renew_subscriptions(ctx: dict) -> dict:
+    """Cron (daily): move ended subscriptions to past_due and open the dunning ladder."""
+    from app.services.billing.dunning import run_renewal_sweep
+
+    async with LiveSessionLocal() as db:
+        result = await run_renewal_sweep(db)
+        await db.commit()
+    if result.get("past_due_opened"):
+        logger.info("worker: renewal sweep %s", result)
+    return result
+
+
+async def run_dunning(ctx: dict) -> dict:
+    """Cron (daily): advance the failed-payment ladder; suspend at the grace deadline."""
+    from app.services.billing.dunning import run_dunning_sweep
+
+    async with LiveSessionLocal() as db:
+        result = await run_dunning_sweep(db)
+        await db.commit()
+    if result.get("advanced") or result.get("suspended"):
+        logger.info("worker: dunning sweep %s", result)
+    return result
+
+
 async def archive_ingest(ctx: dict) -> dict:
     """Cron (nightly): copy completed live campaigns/payments/reports into the
     archive DB and dedup master contacts."""
@@ -141,6 +165,9 @@ class WorkerSettings:
         cron(promote_scheduled, second={0, 30}),
         # Reconcile stuck payments every minute (webhooks are best-effort).
         cron(reconcile_payments, second={15, 45}),
+        # Auto-renewal + dunning ladder (daily, EAT ≈ UTC+3).
+        cron(renew_subscriptions, hour={settings.RENEWAL_SWEEP_HOUR}, minute={0}),
+        cron(run_dunning, hour={settings.DUNNING_SWEEP_HOUR}, minute={0}),
         # Archive ingestion + retention run nightly (EAT ≈ UTC+3).
         cron(archive_ingest, hour={settings.ARCHIVE_INGESTION_HOUR}, minute={0}),
         cron(archive_retention, hour={settings.ARCHIVE_RETENTION_HOUR}, minute={0}),

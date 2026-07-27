@@ -7,7 +7,13 @@ Building BulkReach (bulk SMS & email SaaS). Full project overview + run/deploy/t
 All screenshots + Playwright/test artifacts deleted (regenerated fresh by the final Playwright pass).
 ALL MILESTONES M0–M8 COMPLETE + prod deploy stack. Post-build gap-closing in progress (see
 [[bulkreach-gap-closing]]): ✅ quota enforcement, ✅ auth design system, ✅ client dashboard reorganised
-like the admin dashboard (stat cards + live quota usage bar + quick actions + recent campaigns).
+like the admin dashboard (stat cards + live quota usage bar + quick actions + recent campaigns),
+✅ multi-step signup (2b), ✅ team invites (2c), ✅ managed-portal (2d: separate login + forced
+password activation + guarded campaign portal). **Slice 2 complete.** ✅ Slice 3 billing:
+invoices/receipts (gapless BR-INV-YYYY-NNNNNN numbering + WeasyPrint PDF), Uganda 18% VAT
+(inclusive, backed out), mid-cycle proration on upgrade, auto-renewal + dunning ladder cron
+(day 0/3/7/14/30 → suspend at 30). Next = notifications system, then CMS / managed 15-state
+pipeline / cross-account admin composer.
 Post-launch follow-ups (not blockers): ClickHouse 7yr-TTL + AWS Glacier need real infra (code paths
 present, infra-gated); managed "issue report" → WeasyPrint PDF (M4a tie-in); admin users-list endpoint
 for a manager picker; consider an isolated per-test DB schema. Next real step = productionise (Docker

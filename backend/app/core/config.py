@@ -149,6 +149,22 @@ class Settings(BaseSettings):
     S3_ARCHIVE_BUCKET: str = "bulkreach-archive"
     S3_GLACIER_BUCKET: str = "bulkreach-glacier"
 
+    # --- Billing / invoicing (Section 14 + Uganda tax) ---
+    # Uganda standard VAT is 18%. Plan prices are quoted VAT-INCLUSIVE (gross),
+    # so an invoice backs the net + VAT out of the total.
+    VAT_RATE: float = 0.18
+    VAT_INCLUSIVE: bool = True
+    BILLING_COMPANY_NAME: str = "BulkReach (Kakebe Technologies)"
+    BILLING_COMPANY_ADDRESS: str = "Lira City, Northern Uganda"
+    BILLING_TAX_ID: str = ""  # TIN — shown on the invoice when set
+    BILLING_SUPPORT_EMAIL: str = "billing@bulkreach.ug"
+    SUBSCRIPTION_PERIOD_DAYS: int = 30
+    # Auto-renewal + dunning ladder (failed-payment day 0 → 30).
+    RENEWAL_SWEEP_HOUR: int = 1        # 01:00 EAT: expire + open dunning
+    DUNNING_SWEEP_HOUR: int = 9        # 09:00 EAT: advance the ladder + remind
+    DUNNING_GRACE_DAYS: int = 30       # suspend after this many days past due
+    DUNNING_STAGE_DAYS: tuple[int, ...] = (0, 3, 7, 14, 30)
+
     # --- Archive subsystem (Sections 20-21) ---
     ARCHIVE_INGESTION_HOUR: int = 2  # 02:00 EAT
     ARCHIVE_RETENTION_HOUR: int = 3  # 03:00 EAT

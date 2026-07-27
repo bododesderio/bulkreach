@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, CreditCard, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { AlertTriangle, CheckCircle2, CreditCard, Download, FileText, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { api, apiDownload } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,6 +32,30 @@ interface PaymentOut {
   provider: string;
   purpose: string;
   created_at: string;
+}
+
+interface InvoiceOut {
+  id: string;
+  number: string;
+  kind: string;
+  status: string;
+  currency: string;
+  subtotal_ugx: number;
+  vat_rate: number;
+  vat_ugx: number;
+  total_ugx: number;
+  proration_credit_ugx: number;
+  plan_name: string | null;
+  issued_at: string;
+}
+
+interface SubscriptionState {
+  status: string; // none|active|past_due|cancelled
+  plan: string;
+  auto_renew: boolean;
+  current_period_end: string | null;
+  dunning_stage: number;
+  grace_until: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,8 +94,13 @@ export default function BillingPage() {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [history, setHistory] = useState<PaymentOut[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceOut[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [savingRenew, setSavingRenew] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -82,10 +112,45 @@ export default function BillingPage() {
       .then((d) => active && setHistory(d))
       .catch(() => {})
       .finally(() => active && setLoadingHistory(false));
+    api<InvoiceOut[]>('/billing/invoices', { auth: true })
+      .then((d) => active && setInvoices(d))
+      .catch(() => {})
+      .finally(() => active && setLoadingInvoices(false));
+    api<SubscriptionState>('/billing/subscription', { auth: true })
+      .then((d) => active && setSubscription(d))
+      .catch(() => {});
     return () => {
       active = false;
     };
   }, []);
+
+  async function downloadInvoice(inv: InvoiceOut) {
+    setDownloading(inv.id);
+    try {
+      await apiDownload(`/billing/invoices/${inv.id}/pdf`, `${inv.number}.pdf`);
+    } catch {
+      toast.error('Could not download the invoice. Please try again.');
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function toggleAutoRenew(next: boolean) {
+    setSavingRenew(true);
+    try {
+      const s = await api<SubscriptionState>('/billing/auto-renew', {
+        method: 'PATCH',
+        auth: true,
+        body: JSON.stringify({ auto_renew: next }),
+      });
+      setSubscription(s);
+      toast.success(next ? 'Auto-renewal enabled' : 'Auto-renewal turned off');
+    } catch {
+      toast.error('Could not update auto-renewal.');
+    } finally {
+      setSavingRenew(false);
+    }
+  }
 
   const currentPlanName = account?.plan ?? '';
 
@@ -98,6 +163,26 @@ export default function BillingPage() {
           Manage your subscription plan and view payment history.
         </p>
       </div>
+
+      {/* Past-due / dunning banner */}
+      {subscription?.status === 'past_due' && (
+        <div
+          className="mt-6 flex items-start gap-3 rounded-xl border p-4 animate-fade-up"
+          style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)' }}
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" style={{ color: '#B45309' }} />
+          <div className="text-sm" style={{ color: '#92400E' }}>
+            <p className="font-semibold">Your subscription payment is overdue.</p>
+            <p className="mt-0.5">
+              Renew now to keep your account active
+              {subscription.grace_until
+                ? ` — access is suspended after ${fmtDate(subscription.grace_until)}.`
+                : '.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Current plan */}
       {account && (
@@ -127,6 +212,34 @@ export default function BillingPage() {
               </span>{' '}
               trial messages remaining
             </p>
+          )}
+          {/* Auto-renewal toggle (only for a real subscription) */}
+          {subscription && subscription.status !== 'none' && (
+            <div className="mt-4 flex items-center justify-between border-t pt-4">
+              <div>
+                <div className="text-sm font-medium">Auto-renewal</div>
+                <div className="text-xs text-muted-foreground">
+                  {subscription.current_period_end
+                    ? `Renews on ${fmtDate(subscription.current_period_end)}`
+                    : 'Renew your plan automatically each period'}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={subscription.auto_renew}
+                aria-label="Toggle auto-renewal"
+                disabled={savingRenew}
+                onClick={() => toggleAutoRenew(!subscription.auto_renew)}
+                className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
+                style={{ background: subscription.auto_renew ? '#00D4AA' : '#CBD5E1' }}
+              >
+                <span
+                  className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  style={{ transform: subscription.auto_renew ? 'translateX(24px)' : 'translateX(4px)' }}
+                />
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -217,6 +330,76 @@ export default function BillingPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Invoices & receipts */}
+      <div className="mt-10">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          Invoices &amp; receipts
+        </h3>
+
+        {loadingInvoices ? (
+          <div className="h-24 animate-pulse rounded-xl border bg-card" />
+        ) : invoices.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border bg-card p-10 text-center animate-fade-up">
+            <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              No invoices yet. They appear here after your first payment.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto overflow-hidden rounded-xl border bg-card animate-fade-up">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  {['Invoice', 'Date', 'Plan', 'VAT (UGX)', 'Total (UGX)', ''].map((h) => (
+                    <th
+                      key={h}
+                      className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="border-b last:border-0 hover:bg-accent/40 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-xs whitespace-nowrap">{inv.number}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
+                      {fmtDate(inv.issued_at)}
+                    </td>
+                    <td className="px-5 py-3.5 capitalize text-muted-foreground">
+                      {inv.plan_name ?? '—'}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-muted-foreground whitespace-nowrap">
+                      {inv.vat_ugx.toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono font-semibold whitespace-nowrap">
+                      {inv.total_ugx.toLocaleString()}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => downloadInvoice(inv)}
+                        disabled={downloading === inv.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                        aria-label={`Download invoice ${inv.number}`}
+                      >
+                        {downloading === inv.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                        PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

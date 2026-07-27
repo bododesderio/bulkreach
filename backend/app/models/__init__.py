@@ -9,6 +9,7 @@ from app.models.campaign import (
     Report,
 )
 from app.models.contact import Contact, ContactList
+from app.models.invoicing import Invoice, InvoiceSequence
 from app.models.payment_provider import (
     PaymentProviderConfig,
     PaymentSettings,
@@ -30,6 +31,8 @@ __all__ = [
     "Plan",
     "Subscription",
     "Payment",
+    "Invoice",
+    "InvoiceSequence",
     "PaymentProviderConfig",
     "PaymentSettings",
     "RawWebhookEvent",
