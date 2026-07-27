@@ -135,9 +135,12 @@ account suspend now truly blocks login/refresh/token use (was a no-op).
 WeasyPrint client PDF (reuses M4a renderer), stores it, records a client_success Report, and exposes
 GET /admin/managed/{id}/report/download + a UI Download button + campaign-link picker. 25/25 backend tests.
 
+✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
+(assign any staff, not just self). Seeded 2nd staff: ops@bulkreach.ug / OpsPass123! (superadmin) in brtest.
+
 NEXT (productionisation, post-build): bring up the full Docker stack (ClickHouse + MinIO so archive
-Glacier/analytics exercise for real); real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal);
-admin users-list endpoint for a manager picker (managed = assign-to-me only today); deploy.
+Glacier/analytics exercise for real); real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal); deploy
+(production Dockerfiles + compose + nginx/TLS + env/secrets checklist).
 
 Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
 Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
