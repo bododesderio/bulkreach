@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token, verify_api_key
-from app.models.account import ApiKey, User
+from app.models.account import Account, ApiKey, User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -26,6 +26,15 @@ CredentialsError = HTTPException(
 )
 
 
+async def _account_active(db: AsyncSession, account_id: UUID) -> bool:
+    """A user is only usable if their ACCOUNT is live — suspending an account
+    must revoke its users at auth, including already-issued access tokens."""
+    account = await db.get(Account, account_id)
+    if account is None:
+        return False
+    return account.is_active and account.status != "suspended" and account.deleted_at is None
+
+
 async def _user_from_jwt(token: str, db: AsyncSession) -> User | None:
     payload = decode_token(token)
     if not payload or payload.get("type") != "access":
@@ -34,7 +43,11 @@ async def _user_from_jwt(token: str, db: AsyncSession) -> User | None:
     if not user_id:
         return None
     user = await db.get(User, UUID(user_id))
-    return user if user and user.is_active else None
+    if not user or not user.is_active:
+        return None
+    if not await _account_active(db, user.account_id):
+        return None
+    return user
 
 
 async def _user_from_api_key(raw_key: str, db: AsyncSession) -> User | None:
@@ -42,6 +55,8 @@ async def _user_from_api_key(raw_key: str, db: AsyncSession) -> User | None:
     result = await db.execute(select(ApiKey).where(ApiKey.is_active.is_(True)))
     for api_key in result.scalars():
         if verify_api_key(raw_key, api_key.key_hash):
+            if not await _account_active(db, api_key.account_id):
+                return None
             owner = await db.execute(
                 select(User)
                 .where(User.account_id == api_key.account_id)

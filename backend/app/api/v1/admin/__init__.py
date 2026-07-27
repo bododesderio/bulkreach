@@ -1,5 +1,11 @@
-"""Admin (superadmin) API surface. Subrouters register here per subsystem."""
-from fastapi import APIRouter
+"""Admin (superadmin) API surface. Subrouters register here per subsystem.
+
+The superadmin guard is applied structurally at this router so a future handler
+added without the per-route `SuperadminUser` dependency still can't be reached
+unauthenticated (defense-in-depth against drift)."""
+from fastapi import APIRouter, Depends
+
+from app.core.dependencies import require_superadmin
 
 from app.api.v1.admin.accounts import router as accounts_router
 from app.api.v1.admin.archive import router as archive_router
@@ -13,7 +19,7 @@ from app.api.v1.admin.payments import router as payments_router
 from app.api.v1.admin.plans import router as plans_router
 from app.api.v1.admin.revenue import router as revenue_router
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_superadmin)])
 router.include_router(payments_router)
 router.include_router(billing_router)
 router.include_router(plans_router)

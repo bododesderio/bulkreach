@@ -69,6 +69,7 @@ async def list_managed(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = None,
+    limit: int = 200,
 ) -> ManagedResponse:
     stmt = (
         select(ManagedCampaign, Account.name, Campaign)
@@ -78,7 +79,7 @@ async def list_managed(
     )
     if status_filter:
         stmt = stmt.where(ManagedCampaign.status == status_filter)
-    rows = (await db.execute(stmt)).all()
+    rows = (await db.execute(stmt.limit(min(limit, 500)))).all()
 
     mgr_ids = {mc.account_manager_id for mc, _, _ in rows if mc.account_manager_id}
     mgr_emails = await _manager_emails(db, mgr_ids)

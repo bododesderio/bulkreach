@@ -82,7 +82,7 @@ async def retention_breakdown(admin: SuperadminUser, archive_db: ArchiveDB) -> l
 @router.get("/retention/rules", response_model=list[RetentionRuleOut])
 async def list_rules(admin: SuperadminUser, archive_db: ArchiveDB) -> list[RetentionRuleOut]:
     rows = (await archive_db.execute(
-        select(RetentionRule).order_by(RetentionRule.domain)
+        select(RetentionRule).order_by(RetentionRule.domain).limit(500)
     )).scalars().all()
     return [RetentionRuleOut.model_validate(r) for r in rows]
 
@@ -144,18 +144,24 @@ async def ingest(admin: SuperadminUser, live_db: LiveDB, archive_db: ArchiveDB) 
 @router.get("/contacts", response_model=list[MasterContactOut])
 async def search_contacts(
     admin: SuperadminUser, archive_db: ArchiveDB, request: Request,
-    q: str | None = None, limit: int = 100,
+    q: str | None = None, limit: int = 50,
 ) -> list[MasterContactOut]:
     stmt = select(MasterContact)
     if q:
-        like = f"%{q.lower()}%"
+        # Escape LIKE metacharacters so a query can't force a broad full-scan.
+        esc = q.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{esc}%"
         stmt = stmt.where(or_(
-            func.lower(MasterContact.phone).like(like),
-            func.lower(MasterContact.email).like(like),
-            func.lower(MasterContact.first_name).like(like),
-            func.lower(MasterContact.last_name).like(like),
+            func.lower(MasterContact.phone).like(like, escape="\\"),
+            func.lower(MasterContact.email).like(like, escape="\\"),
+            func.lower(MasterContact.first_name).like(like, escape="\\"),
+            func.lower(MasterContact.last_name).like(like, escape="\\"),
         ))
-    stmt = stmt.order_by(MasterContact.last_seen_at.desc()).limit(min(limit, 500))
+        capped = min(limit, 200)
+    else:
+        # No query → no bulk raw-PII dump; return a small recent sample only.
+        capped = min(limit, 25)
+    stmt = stmt.order_by(MasterContact.last_seen_at.desc()).limit(capped)
     rows = (await archive_db.execute(stmt)).scalars().all()
     await archive_service.record_access(
         archive_db, actor_id=admin.id, actor_email=admin.email, action="search",
@@ -186,7 +192,7 @@ async def anonymise_contact(
 @router.get("/legal-holds", response_model=list[LegalHoldOut])
 async def list_holds(admin: SuperadminUser, archive_db: ArchiveDB) -> list[LegalHoldOut]:
     rows = (await archive_db.execute(
-        select(LegalHold).order_by(LegalHold.placed_at.desc())
+        select(LegalHold).order_by(LegalHold.placed_at.desc()).limit(500)
     )).scalars().all()
     return [LegalHoldOut.model_validate(h) for h in rows]
 
@@ -230,7 +236,7 @@ async def lift_hold(
 @router.get("/erasures", response_model=list[ErasureRequestOut])
 async def list_erasures(admin: SuperadminUser, archive_db: ArchiveDB) -> list[ErasureRequestOut]:
     rows = (await archive_db.execute(
-        select(ErasureRequest).order_by(ErasureRequest.created_at.desc())
+        select(ErasureRequest).order_by(ErasureRequest.created_at.desc()).limit(500)
     )).scalars().all()
     return [ErasureRequestOut.model_validate(e) for e in rows]
 
@@ -293,7 +299,7 @@ async def access_log(
 async def list_exports(admin: SuperadminUser, archive_db: ArchiveDB) -> list[ExportOut]:
     rows = (await archive_db.execute(
         select(ArchivedSourceFile).where(ArchivedSourceFile.format == "export")
-        .order_by(ArchivedSourceFile.archived_at.desc())
+        .order_by(ArchivedSourceFile.archived_at.desc()).limit(500)
     )).scalars().all()
     return [ExportOut.model_validate(r) for r in rows]
 

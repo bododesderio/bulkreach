@@ -99,11 +99,25 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(request: Request) -> TokenResponse:
+async def refresh(
+    request: Request, db: Annotated[AsyncSession, Depends(get_db)]
+) -> TokenResponse:
     token = request.cookies.get(REFRESH_COOKIE)
     payload = decode_token(token) if token else None
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token.")
+    # Re-validate against the DB — a refresh cookie must not outlive a
+    # suspended/deleted user or account.
+    from uuid import UUID
+
+    from app.models.account import User
+
+    user = await db.get(User, UUID(payload["sub"]))
+    if user is None or not user.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token.")
+    account = await db.get(Account, user.account_id)
+    if account is None or not account.is_active or account.status == "suspended" or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is suspended.")
     return _tokens(payload["sub"])
 
 

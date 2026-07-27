@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -36,6 +37,14 @@ def _now() -> datetime:
 
 def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _anon_hash(value: str) -> str:
+    """Keyed HMAC-SHA256 for anonymising identifiers. The pepper is held only in
+    app config (never in the archive DB), so an attacker with archive rows cannot
+    brute-force the small MSISDN space offline. Deterministic → still dedups."""
+    pepper = (settings.ANON_PEPPER or settings.SECRET_KEY).encode("utf-8")
+    return hmac.new(pepper, value.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 class ArchiveService:
@@ -171,11 +180,33 @@ class ArchiveService:
         return True
 
     # ── Retention / purge ────────────────────────────────────────────────────
+    async def _domain_rule(self, archive_db: AsyncSession, domain: str) -> RetentionRule | None:
+        """Global (account_id IS NULL) retention rule for a data domain, if any."""
+        return (await archive_db.execute(
+            select(RetentionRule).where(
+                RetentionRule.domain == domain, RetentionRule.account_id.is_(None)
+            )
+        )).scalar_one_or_none()
+
+    def _cutoff_for(self, rule: RetentionRule | None) -> datetime | None:
+        """None => never delete (rule says so). Otherwise the age cutoff."""
+        if rule is not None:
+            if rule.never_delete or rule.retention_months is None:
+                return None
+            months = rule.retention_months
+        else:
+            months = settings.ARCHIVE_LIVE_RETENTION_MONTHS
+        return _now() - timedelta(days=30 * months)
+
     async def run_retention(
         self, live_db: AsyncSession, archive_db: AsyncSession, *, dry_run: bool = True,
     ) -> dict:
-        months = settings.ARCHIVE_LIVE_RETENTION_MONTHS
-        cutoff = _now() - timedelta(days=30 * months)
+        # Per-domain retention rules override the global policy; a never_delete /
+        # null-months rule disables purge/anonymise for that domain entirely.
+        camp_rule = await self._domain_rule(archive_db, "campaigns")
+        contact_rule = await self._domain_rule(archive_db, "contacts")
+        camp_cutoff = self._cutoff_for(camp_rule)
+        contact_cutoff = self._cutoff_for(contact_rule)
 
         # Campaigns under an active legal hold must never be purged.
         held = (await archive_db.execute(
@@ -186,24 +217,28 @@ class ArchiveService:
         )).scalars().all()
         held_ids = {str(h) for h in held}
 
-        purge_candidates = (await live_db.execute(
-            select(Campaign).where(
-                Campaign.status == "completed",
-                Campaign.archived.is_(True),
-                Campaign.completed_at.is_not(None),
-                Campaign.completed_at < cutoff,
-            )
-        )).scalars().all()
-        purge_candidates = [c for c in purge_candidates if str(c.id) not in held_ids]
+        purge_candidates: list[Campaign] = []
+        if camp_cutoff is not None:
+            purge_candidates = (await live_db.execute(
+                select(Campaign).where(
+                    Campaign.status == "completed",
+                    Campaign.archived.is_(True),
+                    Campaign.completed_at.is_not(None),
+                    Campaign.completed_at < camp_cutoff,
+                )
+            )).scalars().all()
+            purge_candidates = [c for c in purge_candidates if str(c.id) not in held_ids]
 
-        anon_candidates = (await archive_db.execute(
-            select(MasterContact).where(
-                MasterContact.anonymised_at.is_(None),
-                MasterContact.legal_hold.is_(False),
-                MasterContact.never_delete.is_(False),
-                MasterContact.last_seen_at < cutoff,
-            )
-        )).scalars().all()
+        anon_candidates: list[MasterContact] = []
+        if contact_cutoff is not None:
+            anon_candidates = (await archive_db.execute(
+                select(MasterContact).where(
+                    MasterContact.anonymised_at.is_(None),
+                    MasterContact.legal_hold.is_(False),
+                    MasterContact.never_delete.is_(False),
+                    MasterContact.last_seen_at < contact_cutoff,
+                )
+            )).scalars().all()
 
         result = {
             "dry_run": dry_run,
@@ -228,9 +263,9 @@ class ArchiveService:
 
     def _anonymise(self, mc: MasterContact) -> None:
         if mc.phone:
-            mc.phone = _sha256(mc.phone)
+            mc.phone = _anon_hash(mc.phone)
         if mc.email:
-            mc.email = _sha256(mc.email)
+            mc.email = _anon_hash(mc.email)
         mc.first_name = None
         mc.last_name = None
         mc.raw_data = {}
@@ -278,12 +313,33 @@ class ArchiveService:
             raise ValueError("Erasure request not found")
         if req.status == "completed":
             return req
+
+        # Re-resolve the target if it wasn't linked at creation time — a contact
+        # matching the request may have been ingested since.
+        mc = None
         if req.master_contact_id:
             mc = await archive_db.get(MasterContact, req.master_contact_id)
-            if mc is not None and mc.anonymised_at is None:
-                if mc.legal_hold or mc.never_delete:
-                    raise ValueError("Target contact is under legal hold")
-                self._anonymise(mc)
+        if mc is None and req.contact_phone:
+            mc = (await archive_db.execute(
+                select(MasterContact).where(MasterContact.phone == req.contact_phone)
+            )).scalar_one_or_none()
+        if mc is None and req.contact_email:
+            mc = (await archive_db.execute(
+                select(MasterContact).where(MasterContact.email == req.contact_email)
+            )).scalar_one_or_none()
+
+        if mc is not None and mc.anonymised_at is None:
+            if mc.legal_hold or mc.never_delete:
+                raise ValueError("Target contact is under legal hold")
+            self._anonymise(mc)
+            req.master_contact_id = mc.id
+
+        # The erasure record itself must not retain the subject's plaintext PII —
+        # keep only a keyed hash for dedup/audit.
+        if req.contact_phone:
+            req.contact_phone = _anon_hash(req.contact_phone)[:32]
+        if req.contact_email:
+            req.contact_email = _anon_hash(req.contact_email)[:32]
         req.status = "completed"
         req.executed_by = actor_id
         req.executed_at = _now()

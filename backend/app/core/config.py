@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     ARCHIVE_BATCH_SIZE: int = 100
     ARCHIVE_CLICKHOUSE_TTL_YEARS: int = 7
     ARCHIVE_GLACIER_TRANSITION_DAYS: int = 365
+    # Keyed pepper for contact anonymisation (HMAC) so hashes aren't offline-
+    # reversible over the low-entropy MSISDN space. Blank → derived from SECRET_KEY.
+    ANON_PEPPER: str = ""
 
     # --- Dispatch tuning (Section 3.3) ---
     EMAIL_BATCH_SIZE: int = 500

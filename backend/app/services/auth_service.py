@@ -65,6 +65,10 @@ async def authenticate(db: AsyncSession, email: str, password: str) -> User:
     user = await db.scalar(select(User).where(User.email == email))
     if not user or not verify_password(password, user.hashed_password) or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
+    # A suspended/deleted account blocks all of its users at login.
+    account = await db.get(Account, user.account_id)
+    if account is None or not account.is_active or account.status == "suspended" or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is suspended. Contact support.")
     user.last_login_at = datetime.now(timezone.utc)
     await db.flush()
     return user

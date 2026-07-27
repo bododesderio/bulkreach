@@ -70,8 +70,12 @@ async def list_accounts(
     if status_filter:
         stmt = stmt.where(Account.status == status_filter)
     if q:
-        like = f"%{q.lower()}%"
-        stmt = stmt.where(func.lower(Account.name).like(like) | func.lower(Account.email).like(like))
+        esc = q.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{esc}%"
+        stmt = stmt.where(
+            func.lower(Account.name).like(like, escape="\\")
+            | func.lower(Account.email).like(like, escape="\\")
+        )
     stmt = stmt.order_by(Account.created_at.desc()).limit(min(limit, 500))
     accounts = (await db.execute(stmt)).scalars().all()
 
