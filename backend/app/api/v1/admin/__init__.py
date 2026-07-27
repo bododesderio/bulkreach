@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.admin.accounts import router as accounts_router
+from app.api.v1.admin.archive import router as archive_router
 from app.api.v1.admin.audit import router as audit_router
 from app.api.v1.admin.billing import router as billing_router
 from app.api.v1.admin.campaigns import router as campaigns_router
@@ -23,5 +24,6 @@ router.include_router(audit_router)
 router.include_router(managed_router)
 router.include_router(health_router)
 router.include_router(revenue_router)
+router.include_router(archive_router)
 
 __all__ = ["router"]

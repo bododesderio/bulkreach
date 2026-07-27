@@ -14,7 +14,7 @@ from arq import cron
 from arq.connections import RedisSettings
 
 from app.core.config import settings
-from app.core.database import LiveSessionLocal
+from app.core.database import ArchiveSessionLocal, LiveSessionLocal
 from app.services import campaign_service
 from app.services.dispatch import close_http, dispatch_campaign
 
@@ -97,6 +97,36 @@ async def reconcile_payments(ctx: dict) -> dict:
     return result
 
 
+async def archive_ingest(ctx: dict) -> dict:
+    """Cron (nightly): copy completed live campaigns/payments/reports into the
+    archive DB and dedup master contacts."""
+    from app.services.archive import archive_service
+
+    async with LiveSessionLocal() as live_db, ArchiveSessionLocal() as archive_db:
+        counts = await archive_service.ingest(live_db, archive_db)
+        await live_db.commit()
+        await archive_db.commit()
+    if any(counts.values()):
+        logger.info("worker: archive ingest %s", counts)
+    return counts
+
+
+async def archive_retention(ctx: dict) -> dict:
+    """Cron (nightly): purge live data past retention (legal-hold aware) and
+    anonymise archived contacts past retention. Also runs the infra-gated
+    Glacier transition check."""
+    from app.services.archive import archive_service
+
+    async with LiveSessionLocal() as live_db, ArchiveSessionLocal() as archive_db:
+        result = await archive_service.run_retention(live_db, archive_db, dry_run=False)
+        await archive_service.glacier_transition(archive_db)
+        await live_db.commit()
+        await archive_db.commit()
+    if result.get("campaigns_purged") or result.get("contacts_anonymised"):
+        logger.info("worker: archive retention %s", result)
+    return result
+
+
 async def _startup(ctx: dict) -> None:
     logger.info("BulkReach dispatch worker online.")
 
@@ -111,6 +141,9 @@ class WorkerSettings:
         cron(promote_scheduled, second={0, 30}),
         # Reconcile stuck payments every minute (webhooks are best-effort).
         cron(reconcile_payments, second={15, 45}),
+        # Archive ingestion + retention run nightly (EAT ≈ UTC+3).
+        cron(archive_ingest, hour={settings.ARCHIVE_INGESTION_HOUR}, minute={0}),
+        cron(archive_retention, hour={settings.ARCHIVE_RETENTION_HOUR}, minute={0}),
     ]
     redis_settings = redis_settings()
     on_startup = _startup
