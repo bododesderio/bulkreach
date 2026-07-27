@@ -138,9 +138,14 @@ GET /admin/managed/{id}/report/download + a UI Download button + campaign-link p
 ✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
 (assign any staff, not just self). Seeded 2nd staff: ops@bulkreach.ug / OpsPass123! (superadmin) in brtest.
 
-NEXT (productionisation, post-build): bring up the full Docker stack (ClickHouse + MinIO so archive
-Glacier/analytics exercise for real); real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal); deploy
-(production Dockerfiles + compose + nginx/TLS + env/secrets checklist).
+✅ Full Docker stack DONE 2026-07-27 (95f9c1b): docker-compose.dev.yml (pg/redis/clickhouse/minio).
+ClickHouse analytics (delivery_events, real 7yr TTL) + MinIO exports now RUN FOR REAL — ingest pushes
+events (verified 14), exports write real S3 objects, /admin/health lights both up, glacier_transition
+flips storage_class. Start infra: `docker compose -f docker-compose.dev.yml up -d`. See [[bulkreach-m6-archive]].
+
+NEXT (productionisation): deploy — production Dockerfiles (api/worker/web) + docker-compose.prod +
+nginx/TLS + env/secrets checklist; real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal); then
+ship to a VPS. True AWS Glacier object-tiering needs an AWS S3 lifecycle policy (MinIO has no Glacier tier).
 
 Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
 Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
