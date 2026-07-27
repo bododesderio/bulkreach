@@ -138,10 +138,11 @@ WeasyPrint client PDF (reuses M4a renderer), stores it, records a client_success
 GET /admin/managed/{id}/report/download + a UI Download button + campaign-link picker. 25/25 backend tests.
 
 GAP-CLOSING (post-build, vs Auth/Subscription/Payment mega-prompt — dependency order, see [[bulkreach-gap-closing]]):
-✅ Slice 1 DONE (73baefa): subscription quota enforcement — Redis monthly/daily counters, enforce_send 402
-   gate on campaign send, dispatch metering, Layer-3 pause, GET /subscription/quota. Suite 31/31.
-   NEXT slices: (2) auth design system + multi-step signup/OTP/onboarding/invites/managed-portal;
-   (3) invoices/proration/auto-renew/VAT. Also small: wire Layer-1 usage bar in dashboard/composer UI.
+✅ Slice 1 (quota enforcement, 73baefa), 2a (auth design system, 27e7b3e), 2b (multi-step signup +
+   email OTP + onboarding — backend 34a186c, frontend a91d705) all DONE. Client dashboard reorganised
+   like admin + usage bar. Suite 34/34, build 37 routes. Full Playwright pass green (public+client+admin).
+   NEXT slices: 2c team invites; 2d managed-portal; 3 invoices/proration/auto-renew/VAT; then notifications,
+   CMS, managed 15-state pipeline. See [[bulkreach-gap-closing]].
 ✅ Deploy artifacts DONE (cb51154): prod Dockerfiles + docker-compose.prod + nginx + GO-LIVE; boot-verified.
 
 ✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
