@@ -1,0 +1,79 @@
+# BulkReach — full local infra stack (dev), on the project's 3100 port lane.
+# Brings up the datastores the app expects; run the API/worker/web from the host
+# (or add app services later for a full container deploy). See CONTEXT.md.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Ports (host → container):
+#   Postgres live     55432 → 5432   (DB bulkreach, also hosts bulkreach_archive)
+#   Redis             63799 → 6379
+#   ClickHouse HTTP    3112 → 8123   (analytics; 7-yr TTL delivery_events)
+#   ClickHouse native  3113 → 9000
+#   MinIO S3 API       3120 → 9000   (creds minio / minio123)
+#   MinIO console      3121 → 9001
+services:
+  postgres:
+    image: postgres:16
+    container_name: brtest-pg
+    environment:
+      POSTGRES_USER: bulkreach
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: bulkreach
+    ports: ["55432:5432"]
+    volumes:
+      - br_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulkreach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: brtest-redis
+    ports: ["63799:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: brtest-clickhouse
+    environment:
+      CLICKHOUSE_DB: bulkreach
+    ports: ["3112:8123", "3113:9000"]
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    # The stock image restricts the `default` user to localhost; allow the
+    # Docker-mapped port so the host-run API can reach it in dev.
+    volumes:
+      - ./infra/clickhouse-open-networks.xml:/etc/clickhouse-server/users.d/z-open-networks.xml:ro
+      - br_ch:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  minio:
+    image: minio/minio:latest
+    container_name: brtest-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports: ["3120:9000", "3121:9001"]
+    volumes:
+      - br_minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  br_pg:
+  br_ch:
+  br_minio:

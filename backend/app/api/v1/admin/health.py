@@ -10,12 +10,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import clickhouse
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
 from app.core.redis import redis
 from app.models.payment_provider import PaymentProviderConfig
 from app.schemas.admin import HealthResponse, HealthService
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/admin/health", tags=["admin:health"])
 
@@ -67,6 +69,34 @@ async def health(
             name="Redis / ARQ queue", category="Queue", status="down",
             latency_ms=None, detail=f"Unreachable: {type(exc).__name__}",
         ))
+
+    # ── ClickHouse (analytics store) ──
+    t0 = time.perf_counter()
+    if await clickhouse.ping():
+        latency = int((time.perf_counter() - t0) * 1000)
+        events = await clickhouse.count_events()
+        services.append(HealthService(
+            name="ClickHouse (analytics)", category="Datastore", status="operational",
+            latency_ms=latency,
+            detail=f"{events:,} delivery events · {settings.ARCHIVE_CLICKHOUSE_TTL_YEARS}yr TTL"
+            if events is not None else "reachable",
+        ))
+    else:
+        services.append(HealthService(
+            name="ClickHouse (analytics)", category="Datastore", status="degraded",
+            latency_ms=None, detail="Unreachable — analytics ingestion is infra-gated",
+        ))
+
+    # ── Object storage (S3 / MinIO) ──
+    try:
+        using_s3 = get_storage()._s3 is not None
+    except Exception:  # noqa: BLE001
+        using_s3 = False
+    services.append(HealthService(
+        name="Object storage (S3/MinIO)", category="Storage",
+        status="operational" if using_s3 else "degraded", latency_ms=None,
+        detail="MinIO/S3 backend" if using_s3 else "Local-filesystem fallback (no S3)",
+    ))
 
     # ── Payment providers (configured & enabled) ──
     try:

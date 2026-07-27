@@ -20,6 +20,9 @@ async def test_ingest_and_overview(client, super_headers):
     body = ov.json()
     assert body["live_retention_months"] >= 1
     assert body["archived_campaigns"] >= 0
+    # ClickHouse analytics count is present (int when CH is up, null when infra-gated)
+    assert "clickhouse_events" in body
+    assert body["clickhouse_events"] is None or body["clickhouse_events"] >= 0
 
 
 async def test_retention_dry_run_is_nondestructive(client, super_headers):

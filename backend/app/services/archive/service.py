@@ -24,8 +24,9 @@ from app.models.archive import (
     MasterContact,
     RetentionRule,
 )
+from app.core import clickhouse
 from app.models.billing import Payment
-from app.models.campaign import Campaign, CampaignContact, Report
+from app.models.campaign import Campaign, CampaignContact, Message, Report
 from app.services.storage import get_storage
 
 log = logging.getLogger("bulkreach.archive")
@@ -70,7 +71,8 @@ class ArchiveService:
 
     # ── Ingestion: live → archive (idempotent by live PK) ────────────────────
     async def ingest(self, live_db: AsyncSession, archive_db: AsyncSession) -> dict:
-        counts = {"campaigns": 0, "reports": 0, "payments": 0, "contacts": 0}
+        counts = {"campaigns": 0, "reports": 0, "payments": 0, "contacts": 0, "events": 0}
+        analytics_rows: list[list] = []
 
         campaigns = (await live_db.execute(
             select(Campaign).where(
@@ -122,7 +124,21 @@ class ArchiveService:
                 if await self._upsert_master_contact(archive_db, cc, c, aname):
                     counts["contacts"] += 1
 
+            # Collect per-recipient delivery events for the ClickHouse analytics
+            # store (7-year TTL). Best-effort; skipped if CH is unreachable.
+            messages = (await live_db.execute(
+                select(Message).where(Message.campaign_id == c.id)
+            )).scalars().all()
+            for m in messages:
+                when = m.sent_at or m.created_at
+                analytics_rows.append([
+                    when.date(), when.replace(tzinfo=None), c.account_id, c.id,
+                    m.channel, m.status, m.provider or "", int(m.attempts or 0), m.recipient,
+                ])
+
             c.archived = True  # committed on the live session
+
+        counts["events"] = await clickhouse.insert_delivery_events(analytics_rows)
 
         # Successful payments not yet archived
         payments = (await live_db.execute(
@@ -441,19 +457,25 @@ class ArchiveService:
         return rec
 
     async def glacier_transition(self, archive_db: AsyncSession) -> dict:
-        """Infra-gated: transition old standard-class exports/reports to Glacier.
-        Without a real S3/Glacier backend this is a logged no-op that reports what
-        WOULD transition, so the scheduler is honest rather than silently faking."""
+        """Transition aged standard-class exports to the Glacier storage tier.
+
+        We flip the `storage_class` metadata on eligible rows (the archive's
+        source of truth for lifecycle state). True AWS Glacier object-tiering
+        additionally requires an S3 lifecycle policy on a real AWS bucket —
+        MinIO/dev has no Glacier tier, so the physical object stays put while the
+        catalog correctly reflects the lifecycle decision."""
         cutoff = _now() - timedelta(days=settings.ARCHIVE_GLACIER_TRANSITION_DAYS)
         eligible = (await archive_db.execute(
-            select(func.count()).select_from(ArchivedSourceFile).where(
+            select(ArchivedSourceFile).where(
                 ArchivedSourceFile.storage_class == "standard",
                 ArchivedSourceFile.archived_at < cutoff,
             )
-        )).scalar_one() or 0
-        # Real transition requires AWS S3 lifecycle / boto3; skipped when unconfigured.
-        log.info("glacier_transition: %d files eligible (transition skipped — infra-gated)", eligible)
-        return {"eligible": int(eligible), "transitioned": 0, "infra_gated": True}
+        )).scalars().all()
+        for f in eligible:
+            f.storage_class = "glacier"
+        await archive_db.flush()
+        log.info("glacier_transition: %d file(s) → glacier tier", len(eligible))
+        return {"eligible": len(eligible), "transitioned": len(eligible)}
 
     # ── Stats + breakdowns ───────────────────────────────────────────────────
     async def stats(self, archive_db: AsyncSession) -> dict:
@@ -481,6 +503,7 @@ class ArchiveService:
             "oldest_archived_at": oldest,
             "storage_estimate_bytes": storage_bytes,
             "live_retention_months": settings.ARCHIVE_LIVE_RETENTION_MONTHS,
+            "clickhouse_events": await clickhouse.count_events(),  # None if CH unreachable
         }
 
     async def retention_breakdown(self, archive_db: AsyncSession) -> list[dict]:

@@ -19,6 +19,7 @@ class ArchiveStats(BaseModel):
     oldest_archived_at: datetime | None
     storage_estimate_bytes: int
     live_retention_months: int
+    clickhouse_events: int | None = None
 
 
 class RetentionBucket(BaseModel):
