@@ -131,9 +131,13 @@ activate && python -m pytest tests/test_m8_*.py` (clear rl:login first if login 
 servers up, then `cd frontend && npm run test:e2e` (4 tests). Security audit hardening applied — biggest:
 account suspend now truly blocks login/refresh/token use (was a no-op).
 
+✅ Follow-up done 2026-07-27 (9be302b): managed "Issue report" now generates + emails the branded
+WeasyPrint client PDF (reuses M4a renderer), stores it, records a client_success Report, and exposes
+GET /admin/managed/{id}/report/download + a UI Download button + campaign-link picker. 25/25 backend tests.
+
 NEXT (productionisation, post-build): bring up the full Docker stack (ClickHouse + MinIO so archive
 Glacier/analytics exercise for real); real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal);
-managed "issue report" → WeasyPrint PDF; admin users-list endpoint for a manager picker; deploy.
+admin users-list endpoint for a manager picker (managed = assign-to-me only today); deploy.
 
 Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
 Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
