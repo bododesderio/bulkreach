@@ -49,6 +49,7 @@ from app.api.v1.admin import router as admin_router  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.campaigns import router as campaigns_router  # noqa: E402
 from app.api.v1.contacts import router as contacts_router  # noqa: E402
+from app.api.v1.invitations import router as invitations_router  # noqa: E402
 from app.api.v1.payments import router as payments_router  # noqa: E402
 from app.api.v1.reports import router as reports_router  # noqa: E402
 from app.api.v1.subscription import router as subscription_router  # noqa: E402
@@ -59,4 +60,5 @@ app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(payments_router, prefix=settings.API_V1_PREFIX)
 app.include_router(subscription_router, prefix=settings.API_V1_PREFIX)
+app.include_router(invitations_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)

@@ -94,6 +94,29 @@ class EmailVerificationToken(UUIDPk, Base):
     )
 
 
+class InvitationToken(UUIDPk, Base):
+    """Team-member invite (Section 5.2). token_hash = sha256 of a 256-bit random
+    token (high entropy → sha256 lookup is safe + indexable); 72-hour expiry;
+    single-use (accepted flips true)."""
+
+    __tablename__ = "invitation_tokens"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    email: Mapped[str] = mapped_column(String(320), index=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="member", nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True))
+    invited_by_email: Mapped[str | None] = mapped_column(String(320))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ApiKey(UUIDPk, TimestampMixin, Base):
     __tablename__ = "api_keys"
 
