@@ -2,10 +2,12 @@
 Last updated: 2026-07-27
 
 ## Current task
-Building BulkReach (bulk SMS & email SaaS) from System Documentation v2.0 (40pp).
-ALL MILESTONES M0–M8 COMPLETE (2026-07-27). Whole platform built & verified: auth, contacts,
-campaigns (multi-provider dispatch), reports, multi-provider payments + custom checkout, admin portal
-+ managed-service workflow, data-archive subsystem, and the M8 test/hardening pass.
+Building BulkReach (bulk SMS & email SaaS). Full project overview + run/deploy/test/secrets now live in
+**[README.md](./README.md)** (single consolidated doc; GO-LIVE.md + SECRETS.md folded in and removed).
+All screenshots + Playwright/test artifacts deleted (regenerated fresh by the final Playwright pass).
+ALL MILESTONES M0–M8 COMPLETE + prod deploy stack. Post-build gap-closing in progress (see
+[[bulkreach-gap-closing]]): ✅ quota enforcement, ✅ auth design system, ✅ client dashboard reorganised
+like the admin dashboard (stat cards + live quota usage bar + quick actions + recent campaigns).
 Post-launch follow-ups (not blockers): ClickHouse 7yr-TTL + AWS Glacier need real infra (code paths
 present, infra-gated); managed "issue report" → WeasyPrint PDF (M4a tie-in); admin users-list endpoint
 for a manager picker; consider an isolated per-test DB schema. Next real step = productionise (Docker
