@@ -39,7 +39,9 @@ export default function LoginPage() {
       });
       await afterAuth(res.access_token);
       toast.success("Welcome back!");
-      router.push("/dashboard");
+      // Role-based landing: superadmins go to the admin portal.
+      const role = useAuth.getState().user?.role;
+      router.push(role === "superadmin" ? "/admin" : "/dashboard");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Login failed");
     }
