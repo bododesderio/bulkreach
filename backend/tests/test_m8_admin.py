@@ -117,6 +117,32 @@ async def test_managed_workflow_forward_only(client, super_headers):
     assert rep.status_code == 409
 
 
+async def test_admin_users_lists_staff(client, super_headers):
+    r = await client.get("/api/v1/admin/users", headers=super_headers)
+    assert r.status_code == 200
+    users = r.json()
+    assert len(users) >= 1
+    # default listing returns only internal staff roles
+    assert all(u["role"] in ("superadmin", "admin") for u in users)
+    assert any(u["email"] == "super@bulkreach.ug" for u in users)
+
+
+async def test_managed_assign_manager_from_staff(client, super_headers):
+    staff = (await client.get("/api/v1/admin/users", headers=super_headers)).json()
+    account_id = (await client.get(
+        "/api/v1/admin/accounts?limit=1", headers=super_headers
+    )).json()["items"][0]["id"]
+    created = await client.post("/api/v1/admin/managed", headers=super_headers, json={
+        "account_id": account_id, "brief_text": "assign-manager test",
+    })
+    mid = created.json()["id"]
+    r = await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
+                           json={"account_manager_id": staff[0]["id"]})
+    assert r.status_code == 200
+    assert r.json()["account_manager_id"] == staff[0]["id"]
+    assert r.json()["account_manager_email"] == staff[0]["email"]
+
+
 async def test_managed_issue_report_generates_pdf(client, super_headers):
     """Link a completed campaign to a managed job, issue the report, and confirm
     a downloadable branded PDF is produced."""

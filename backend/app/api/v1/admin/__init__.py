@@ -18,6 +18,7 @@ from app.api.v1.admin.overview import router as overview_router
 from app.api.v1.admin.payments import router as payments_router
 from app.api.v1.admin.plans import router as plans_router
 from app.api.v1.admin.revenue import router as revenue_router
+from app.api.v1.admin.users import router as users_router
 
 router = APIRouter(dependencies=[Depends(require_superadmin)])
 router.include_router(payments_router)
@@ -31,5 +32,6 @@ router.include_router(managed_router)
 router.include_router(health_router)
 router.include_router(revenue_router)
 router.include_router(archive_router)
+router.include_router(users_router)
 
 __all__ = ["router"]

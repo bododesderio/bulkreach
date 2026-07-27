@@ -78,6 +78,12 @@ interface CampaignLite {
   status: string;
 }
 
+interface StaffUser {
+  id: string;
+  email: string;
+  role: string;
+}
+
 const CHANNEL_CFG: Record<string, { label: string; color: string; bg: string }> = {
   sms:   { label: 'SMS',         color: '#1B1F4A', bg: 'rgba(27,31,74,0.08)' },
   email: { label: 'Email',       color: '#009980', bg: 'rgba(0,212,170,0.12)' },
@@ -106,21 +112,40 @@ export default function ManagedPage() {
   const [saving, setSaving] = useState(false);
 
   const [campaigns, setCampaigns] = useState<CampaignLite[]>([]);
+  const [staff, setStaff] = useState<StaffUser[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const [res, camps] = await Promise.all([
+      const [res, camps, users] = await Promise.all([
         api<ManagedResponse>('/admin/managed', { auth: true }),
         api<{ items: CampaignLite[] }>('/admin/campaigns?limit=500', { auth: true }),
+        api<StaffUser[]>('/admin/users', { auth: true }),
       ]);
       setData(res);
       setCampaigns(camps.items);
+      setStaff(users);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to load managed queue');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function assignManager(m: Managed, userId: string) {
+    if (!userId) return;
+    setBusyId(m.id);
+    try {
+      await api(`/admin/managed/${m.id}`, {
+        method: 'PATCH', auth: true, body: JSON.stringify({ account_manager_id: userId }),
+      });
+      toast.success('Manager assigned');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Assign failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function linkCampaign(m: Managed, campaignId: string) {
     if (!campaignId) return;
@@ -379,14 +404,31 @@ export default function ManagedPage() {
 
                                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                   {!item.account_manager_id && (
-                                    <button
-                                      type="button"
-                                      disabled={busy}
-                                      onClick={() => assignToMe(item)}
-                                      className="inline-flex items-center gap-1 text-[10.5px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors disabled:opacity-50"
-                                    >
-                                      <UserPlus size={11} /> Assign to me
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => assignToMe(item)}
+                                        className="inline-flex items-center gap-1 text-[10.5px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors disabled:opacity-50"
+                                      >
+                                        <UserPlus size={11} /> Me
+                                      </button>
+                                      {staff.length > 0 && (
+                                        <select
+                                          aria-label="Assign manager"
+                                          disabled={busy}
+                                          defaultValue=""
+                                          onChange={(e) => assignManager(item, e.target.value)}
+                                          className="input text-[10.5px]"
+                                          style={{ maxWidth: 150, padding: '3px 5px' }}
+                                        >
+                                          <option value="">Assign…</option>
+                                          {staff.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.email}</option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </div>
                                   )}
                                   {step && (
                                     <button

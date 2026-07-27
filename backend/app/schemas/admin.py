@@ -41,6 +41,15 @@ class OverviewResponse(BaseModel):
     activity: list[ActivityItem]
 
 
+# ── Staff / users (for manager assignment) ──────────────────────────────────
+class AdminUserOut(BaseModel):
+    id: UUID
+    email: str
+    role: str
+    account_name: str | None = None
+    last_login_at: datetime | None = None
+
+
 # ── Accounts ────────────────────────────────────────────────────────────────
 class AdminAccountOut(BaseModel):
     id: UUID
