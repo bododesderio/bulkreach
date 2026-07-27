@@ -1,0 +1,38 @@
+# BulkReach API + worker — production image. One image, two commands:
+#   api    → uvicorn app.main:app        (default CMD)
+#   worker → arq app.workers.WorkerSettings   (compose overrides the command)
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Runtime native libs: WeasyPrint (cairo/pango/gdk-pixbuf) for report PDFs,
+# libpq for asyncpg, ghostscript for table extraction, curl for healthcheck.
+# build-essential + libpq-dev are added for the pip stage then removed to slim.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+      libffi8 libpq5 ghostscript shared-mime-info fonts-dejavu-core curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && pip install -r requirements.txt \
+    && apt-get purge -y build-essential libpq-dev && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+RUN chmod +x entrypoint.prod.sh && useradd -m -u 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 3101
+
+# entrypoint runs DB migrations (live + archive) once, then execs the command.
+ENTRYPOINT ["./entrypoint.prod.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3101", "--workers", "2"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=5 \
+  CMD curl -fsS http://localhost:3101/health || exit 1

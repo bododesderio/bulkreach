@@ -37,3 +37,4 @@ playwright-report/
 # Local dev artifacts (verification screenshots, session memory)
 /*.png
 .claude/
+.env.production
