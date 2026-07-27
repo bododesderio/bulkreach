@@ -141,8 +141,10 @@ GAP-CLOSING (post-build, vs Auth/Subscription/Payment mega-prompt — dependency
 ✅ Slice 1 (quota enforcement, 73baefa), 2a (auth design system, 27e7b3e), 2b (multi-step signup +
    email OTP + onboarding — backend 34a186c, frontend a91d705) all DONE. Client dashboard reorganised
    like admin + usage bar. Suite 34/34, build 37 routes. Full Playwright pass green (public+client+admin).
-   NEXT slices: 2c team invites; 2d managed-portal; 3 invoices/proration/auto-renew/VAT; then notifications,
-   CMS, managed 15-state pipeline. See [[bulkreach-gap-closing]].
+   ✅ 2c team invites DONE (backend 16a9a5d, frontend e149dd2): invitation_tokens + invite/preview/accept
+   endpoints + /invite/[token] page + team settings UI. Browser-verified. Suite 38/38.
+   NEXT slices: 2d managed-portal; 3 invoices/proration/auto-renew/VAT; then notifications, CMS,
+   managed 15-state pipeline. See [[bulkreach-gap-closing]].
 ✅ Deploy artifacts DONE (cb51154): prod Dockerfiles + docker-compose.prod + nginx + GO-LIVE; boot-verified.
 
 ✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
