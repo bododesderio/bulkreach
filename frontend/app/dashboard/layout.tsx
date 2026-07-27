@@ -50,6 +50,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
+  // Managed clients live in the managed portal, not the self-service dashboard.
+  useEffect(() => {
+    if (user && user.user_type === "managed_client") router.replace("/managed-portal");
+  }, [user, router]);
   useEffect(() => setMobileOpen(false), [pathname]);
 
   if (loading || !user || !account) {

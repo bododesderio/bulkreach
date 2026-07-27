@@ -8,6 +8,9 @@ export interface User {
   email: string;
   role: string;
   account_id: string;
+  user_type?: string;
+  must_change_password?: boolean;
+  email_verified?: boolean;
 }
 export interface Account {
   id: string;
