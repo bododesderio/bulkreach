@@ -3,7 +3,13 @@ Last updated: 2026-07-27
 
 ## Current task
 Building BulkReach (bulk SMS & email SaaS) from System Documentation v2.0 (40pp).
-M0 + M1 complete & verified end-to-end. Next: M2 — Contacts + parsers + template engine.
+ALL MILESTONES M0–M8 COMPLETE (2026-07-27). Whole platform built & verified: auth, contacts,
+campaigns (multi-provider dispatch), reports, multi-provider payments + custom checkout, admin portal
++ managed-service workflow, data-archive subsystem, and the M8 test/hardening pass.
+Post-launch follow-ups (not blockers): ClickHouse 7yr-TTL + AWS Glacier need real infra (code paths
+present, infra-gated); managed "issue report" → WeasyPrint PDF (M4a tie-in); admin users-list endpoint
+for a manager picker; consider an isolated per-test DB schema. Next real step = productionise (Docker
+stack up, real provider creds/KYC, deploy).
 
 ## Running locally (port lane 3100 — one project, one lane; see ~/.claude/PORTS.md)
 - Frontend:    http://localhost:3100  (base+0)
@@ -74,7 +80,9 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
       campaign composer. ALL browser-verified, zero console errors. Screenshots in repo root: admin-revenue.png,
       admin-health.png, admin-payments.png, admin-accounts.png, admin-managed.png, admin-archive.png, composer-verify.png.
       Working period toggle confirmed (Quarter→UGX 23.9M). Client composer wired to LIVE contacts backend.
-- [ ] M8 Tests + Playwright E2E + hardening
+- [x] M8 Tests + Playwright E2E + hardening — 23-test pytest suite (in-process ASGI vs brtest) across
+      auth/payments/admin/archive; 4 Playwright E2E (checkout + admin); full security-audit hardening pass
+      incl. CRITICAL fix (account suspend now blocks login/refresh/token use). All green. (e011caa, af25fe7)
 
 ## Recent decisions
 - 2026-07-24: `next build` MUST run with NODE_ENV=production. The shell exports NODE_ENV=development globally,
@@ -117,10 +125,15 @@ See [[bulkreach-m5-admin]] memory (incl. date_trunc GROUP-BY gotcha + admin auth
 erasure/legal-holds/access-log/export + live /admin/archive, browser-verified. ClickHouse 7yr-TTL + AWS
 Glacier are infra-gated honest no-ops (no CH/MinIO container locally). See [[bulkreach-m6-archive]].
 
-NEXT — only M8 remains: tests + Playwright E2E + hardening. Write functional/integration tests across
-auth/contacts/campaigns/payments/admin/archive; Playwright E2E for the key flows; a hardening pass.
-Also still open (small): managed "issue report" → generate/email WeasyPrint PDF (M4a tie-in); admin
-users-list endpoint for a manager picker; ClickHouse/Glacier need real infra to exercise.
+✅ M8 DONE 2026-07-27 (e011caa tests+hardening, af25fe7 E2E) — ALL milestones complete. See
+[[bulkreach-m8-tests]]. Backend: 23 pytest (in-process ASGI vs brtest) — `cd backend && source .venv/bin/
+activate && python -m pytest tests/test_m8_*.py` (clear rl:login first if login 429s). Frontend E2E: both
+servers up, then `cd frontend && npm run test:e2e` (4 tests). Security audit hardening applied — biggest:
+account suspend now truly blocks login/refresh/token use (was a no-op).
+
+NEXT (productionisation, post-build): bring up the full Docker stack (ClickHouse + MinIO so archive
+Glacier/analytics exercise for real); real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal);
+managed "issue report" → WeasyPrint PDF; admin users-list endpoint for a manager picker; deploy.
 
 Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
 Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
