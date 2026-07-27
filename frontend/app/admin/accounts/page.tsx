@@ -1,26 +1,47 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Users, CheckCircle, Clock, AlertTriangle, Search } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Users, CheckCircle, Clock, Ban, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { api, ApiError } from '@/lib/api';
 import Topbar from '@/components/admin/Topbar';
-import DemoBadge from '@/components/admin/DemoBadge';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
-import { seedAccounts, type AccountStatus, type PlanKey } from '@/lib/seed-data';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
-const PLAN_CFG: Record<PlanKey, { label: string; color: string; bg: string }> = {
-  starter:  { label: 'Starter',  color: '#6B7280', bg: 'rgba(107,114,128,0.10)' },
-  growth:   { label: 'Growth',   color: '#009980', bg: 'rgba(0,212,170,0.12)'   },
-  business: { label: 'Business', color: '#1B1F4A', bg: 'rgba(27,31,74,0.09)'    },
-  managed:  { label: 'Managed',  color: '#B45309', bg: 'rgba(245,158,11,0.10)'  },
-};
+// ── types ─────────────────────────────────────────────────────────────────────
+type AccountStatus = 'active' | 'trial' | 'past_due' | 'suspended';
 
-const STATUS_CFG: Record<AccountStatus, { label: string; color: string; pulse: boolean }> = {
+interface AdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  status: AccountStatus;
+  is_active: boolean;
+  joined: string;
+  messages_month: number;
+  mrr_ugx: number;
+}
+
+interface AccountStats {
+  total: number;
+  active: number;
+  trial: number;
+  suspended: number;
+  mrr_ugx: number;
+}
+
+interface AccountsResponse {
+  items: AdminAccount[];
+  stats: AccountStats;
+}
+
+// ── config ────────────────────────────────────────────────────────────────────
+const STATUS_CFG: Record<string, { label: string; color: string; pulse: boolean }> = {
   active:    { label: 'Active',    color: '#10B981', pulse: true  },
   trial:     { label: 'Trial',     color: '#00D4AA', pulse: false },
   past_due:  { label: 'Past due',  color: '#F59E0B', pulse: false },
@@ -33,234 +54,347 @@ const CHIPS: { label: string; value: FilterStatus }[] = [
   { label: 'All',       value: 'all'       },
   { label: 'Active',    value: 'active'    },
   { label: 'Trial',     value: 'trial'     },
-  { label: 'Past due',  value: 'past_due'  },
   { label: 'Suspended', value: 'suspended' },
 ];
 
-// Pre-computed counts (seed has 16 sample rows; headline figure is 127)
-const totalActive  = seedAccounts.filter((a) => a.status === 'active').length;
-const totalTrials  = seedAccounts.filter((a) => a.status === 'trial').length;
-const totalPastDue = seedAccounts.filter((a) => a.status === 'past_due').length;
+const fmtDate = (iso: string) => {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+};
 
-const TABLE_COLUMNS: Column<(typeof seedAccounts)[number]>[] = [
-  {
-    key: 'name',
-    label: 'Account',
-    render: (row) => (
-      <div>
-        <div className="font-semibold text-[12px]" style={{ color: '#1B1F4A' }}>
-          {row.name}
-        </div>
-        <div className="text-[10.5px] text-text-muted mt-[1px]">
-          {row.contact} &middot; {row.email}
-        </div>
-      </div>
-    ),
-  },
-  { key: 'region', label: 'Region' },
-  {
-    key: 'plan',
-    label: 'Plan',
-    render: (row) => {
-      const c = PLAN_CFG[row.plan];
-      return (
-        <span
-          style={{
-            background: c.bg,
-            color: c.color,
-            padding: '2px 9px',
-            fontSize: '9.5px',
-            fontWeight: 700,
-            borderRadius: '9999px',
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
-            letterSpacing: '0.03em',
-          }}
-        >
-          {c.label}
-        </span>
-      );
-    },
-  },
-  {
-    key: 'messages_month',
-    label: 'Messages/mo',
-    align: 'right',
-    render: (row) => (
-      <span className="font-mono">{row.messages_month.toLocaleString()}</span>
-    ),
-  },
-  {
-    key: 'mrr_ugx',
-    label: 'MRR',
-    align: 'right',
-    render: (row) => (
-      <span className="font-mono">
-        {row.mrr_ugx > 0 ? `UGX ${row.mrr_ugx.toLocaleString()}` : '—'}
-      </span>
-    ),
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    render: (row) => {
-      const c = STATUS_CFG[row.status];
-      return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-    },
-  },
-  {
-    key: 'actions',
-    label: '',
-    align: 'right',
-    render: (row) => (
-      <button
-        type="button"
-        className="text-[11px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors"
-        onClick={() => toast.info(`Viewing ${row.name}`)}
-      >
-        View
-      </button>
-    ),
-  },
-];
-
+// ── page ──────────────────────────────────────────────────────────────────────
 export default function AccountsPage() {
+  const [items, setItems]               = useState<AdminAccount[]>([]);
+  const [stats, setStats]               = useState<AccountStats | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [actionPending, setActionPending] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch]             = useState('');
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api<AccountsResponse>('/admin/accounts?limit=200', { auth: true });
+      setItems(data.items);
+      setStats(data.stats);
+    } catch {
+      toast.error('Failed to load accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSuspend = useCallback(async (row: AdminAccount) => {
+    if (!window.confirm(`Suspend "${row.name}"? They will lose access immediately.`)) return;
+    setActionPending(row.id);
+    try {
+      const updated = await api<AdminAccount>(`/admin/accounts/${row.id}/suspend`, {
+        method: 'POST',
+        auth: true,
+      });
+      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      toast.success(`${row.name} suspended`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to suspend account');
+    } finally {
+      setActionPending(null);
+    }
+  }, []);
+
+  const handleActivate = useCallback(async (row: AdminAccount) => {
+    setActionPending(row.id);
+    try {
+      const updated = await api<AdminAccount>(`/admin/accounts/${row.id}/activate`, {
+        method: 'POST',
+        auth: true,
+      });
+      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      toast.success(`${row.name} activated`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to activate account');
+    } finally {
+      setActionPending(null);
+    }
+  }, []);
 
   const rows = useMemo(() => {
-    let out = [...seedAccounts];
+    let out = [...items];
     if (statusFilter !== 'all') out = out.filter((a) => a.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       out = out.filter(
         (a) =>
           a.name.toLowerCase().includes(q) ||
-          a.contact.toLowerCase().includes(q) ||
-          a.region.toLowerCase().includes(q),
+          a.email.toLowerCase().includes(q) ||
+          a.plan.toLowerCase().includes(q),
       );
     }
     return out;
-  }, [statusFilter, search]);
+  }, [items, statusFilter, search]);
+
+  const columns: Column<AdminAccount>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'Account',
+        render: (row) => (
+          <div>
+            <div className="font-semibold text-[12px]" style={{ color: '#1B1F4A' }}>
+              {row.name}
+            </div>
+            <div className="text-[10.5px] text-text-muted mt-[1px]">{row.email}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'plan',
+        label: 'Plan',
+        render: (row) => (
+          <span
+            style={{
+              background: 'rgba(27,31,74,0.09)',
+              color: '#1B1F4A',
+              padding: '2px 9px',
+              fontSize: '9.5px',
+              fontWeight: 700,
+              borderRadius: '9999px',
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.03em',
+            }}
+          >
+            {row.plan || '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'joined',
+        label: 'Joined',
+        render: (row) => (
+          <span className="text-[11px] text-text-muted whitespace-nowrap">
+            {fmtDate(row.joined)}
+          </span>
+        ),
+      },
+      {
+        key: 'messages_month',
+        label: 'Messages/mo',
+        align: 'right',
+        render: (row) => (
+          <span className="font-mono text-[12px]">{row.messages_month.toLocaleString()}</span>
+        ),
+      },
+      {
+        key: 'mrr_ugx',
+        label: 'MRR',
+        align: 'right',
+        render: (row) => (
+          <span className="font-mono text-[12px]">
+            {row.mrr_ugx > 0 ? `UGX ${row.mrr_ugx.toLocaleString()}` : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (row) => {
+          const c = STATUS_CFG[row.status] ?? {
+            label: row.status,
+            color: '#9CA3AF',
+            pulse: false,
+          };
+          return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
+        },
+      },
+      {
+        key: 'actions',
+        label: '',
+        align: 'right',
+        render: (row) => {
+          const busy = actionPending === row.id;
+          if (row.status === 'active') {
+            return (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => handleSuspend(row)}
+                className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: '#EF4444', borderColor: '#EF4444', background: 'transparent' }}
+                aria-label={`Suspend ${row.name}`}
+              >
+                {busy ? '…' : 'Suspend'}
+              </button>
+            );
+          }
+          if (row.status === 'suspended') {
+            return (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => handleActivate(row)}
+                className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: '#10B981', borderColor: '#10B981', background: 'transparent' }}
+                aria-label={`Activate ${row.name}`}
+              >
+                {busy ? '…' : 'Activate'}
+              </button>
+            );
+          }
+          return null;
+        },
+      },
+    ],
+    [actionPending, handleSuspend, handleActivate],
+  );
 
   return (
     <>
-      <Topbar title="Accounts" subtitle="127 client organisations" showPeriod={false} />
+      <Topbar
+        title="Accounts"
+        subtitle={
+          stats ? `${stats.total} client organisation${stats.total !== 1 ? 's' : ''}` : 'Client organisations'
+        }
+        showPeriod={false}
+      />
 
       <div className="p-[18px]">
-        <div className="flex items-center gap-2 mb-4">
-          <DemoBadge />
-        </div>
-
-        {/* KPI row */}
-        <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
-          <RevealItem lift>
-            <StatCard
-              label="TOTAL CLIENTS"
-              value={127}
-              icon={Users}
-              sparklineKey="clients"
-              change="+8 this month"
-              changeType="up"
-            />
-          </RevealItem>
-          <RevealItem lift>
-            <StatCard
-              label="ACTIVE"
-              value={totalActive}
-              icon={CheckCircle}
-              change="Subscribed"
-              changeType="up"
-            />
-          </RevealItem>
-          <RevealItem lift>
-            <StatCard
-              label="TRIALS"
-              value={totalTrials}
-              icon={Clock}
-              change="14-day window"
-              changeType="up"
-            />
-          </RevealItem>
-          <RevealItem lift>
-            <StatCard
-              label="PAST DUE"
-              value={totalPastDue}
-              icon={AlertTriangle}
-              warn
-              changeType="warn"
-              change="Needs attention"
-            />
-          </RevealItem>
-        </RevealGroup>
-
-        {/* Accounts table card */}
-        <Reveal delay={0.2} lift className={cardBase}>
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
-                Client accounts
-              </div>
-              <div className="text-[11px] text-text-muted">
-                Showing {rows.length} of 127 clients
-              </div>
-            </div>
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+            Loading accounts…
           </div>
+        )}
 
-          {/* Search + status filter chips */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <div className="relative">
-              <Search
-                size={13}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                placeholder="Search accounts…"
-                className="input pl-7 h-[32px] text-[12px] w-[220px]"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search accounts"
-              />
-            </div>
+        {!loading && stats && (
+          <>
+            {/* KPI row */}
+            <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
+              <RevealItem lift>
+                <StatCard
+                  label="TOTAL CLIENTS"
+                  value={stats.total}
+                  icon={Users}
+                  sparklineKey="clients"
+                  change="All organisations"
+                  changeType="up"
+                />
+              </RevealItem>
+              <RevealItem lift>
+                <StatCard
+                  label="ACTIVE"
+                  value={stats.active}
+                  icon={CheckCircle}
+                  change="Subscribed"
+                  changeType="up"
+                />
+              </RevealItem>
+              <RevealItem lift>
+                <StatCard
+                  label="TRIALS"
+                  value={stats.trial}
+                  icon={Clock}
+                  change="14-day window"
+                  changeType="up"
+                />
+              </RevealItem>
+              <RevealItem lift>
+                <StatCard
+                  label="SUSPENDED"
+                  value={stats.suspended}
+                  icon={Ban}
+                  warn={stats.suspended > 0}
+                  changeType={stats.suspended > 0 ? 'warn' : 'up'}
+                  change="Access revoked"
+                />
+              </RevealItem>
+            </RevealGroup>
 
-            <div
-              className="flex items-center gap-1.5 flex-wrap"
-              role="group"
-              aria-label="Filter by status"
-            >
-              {CHIPS.map((chip) => {
-                const active = statusFilter === chip.value;
-                return (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    onClick={() => setStatusFilter(chip.value)}
-                    aria-pressed={active}
-                    className="text-[11px] rounded-full px-3 py-[4px] font-semibold border transition-colors"
-                    style={
-                      active
-                        ? { background: '#1B1F4A', color: '#fff',     borderColor: '#1B1F4A'      }
-                        : { background: 'transparent', color: '#9CA3AF', borderColor: 'var(--border)' }
-                    }
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Accounts table card */}
+            <Reveal delay={0.2} lift className={cardBase}>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                    Client accounts
+                  </div>
+                  <div className="text-[11px] text-text-muted">
+                    Showing {rows.length} of {stats.total} client{stats.total !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </div>
+
+              {/* Search + status filter chips */}
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <div className="relative">
+                  <Search
+                    size={13}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    placeholder="Search accounts…"
+                    className="input pl-7 h-[32px] text-[12px] w-[220px]"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    aria-label="Search accounts"
+                  />
+                </div>
+
+                <div
+                  className="flex items-center gap-1.5 flex-wrap"
+                  role="group"
+                  aria-label="Filter by status"
+                >
+                  {CHIPS.map((chip) => {
+                    const active = statusFilter === chip.value;
+                    return (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => setStatusFilter(chip.value)}
+                        aria-pressed={active}
+                        className="text-[11px] rounded-full px-3 py-[4px] font-semibold border transition-colors"
+                        style={
+                          active
+                            ? { background: '#1B1F4A', color: '#fff', borderColor: '#1B1F4A' }
+                            : { background: 'transparent', color: '#9CA3AF', borderColor: 'var(--border)' }
+                        }
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <DataTable<AdminAccount>
+                columns={columns}
+                rows={rows}
+                rowKey={(row) => row.id}
+                stagger={0.03}
+                baseDelay={0.08}
+                empty={
+                  <span className="text-text-muted">No accounts match your filter.</span>
+                }
+              />
+            </Reveal>
+          </>
+        )}
+
+        {!loading && !stats && (
+          <div className="py-16 text-center text-[12px] text-text-muted">
+            No account data available.
           </div>
-
-          <DataTable
-            columns={TABLE_COLUMNS}
-            rows={rows}
-            rowKey={(row) => row.id}
-            empty={
-              <span className="text-text-muted">No accounts match your filter.</span>
-            }
-          />
-        </Reveal>
+        )}
       </div>
     </>
   );
