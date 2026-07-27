@@ -16,6 +16,7 @@ import {
   Activity,
   Settings,
   Database,
+  Package,
   ArrowRight,
 } from 'lucide-react';
 
@@ -67,6 +68,7 @@ const sections: NavSection[] = [
     items: [
       { icon: Activity, label: 'Health', href: '/admin/health' },
       { icon: Settings, label: 'Settings', href: '/admin/settings' },
+      { icon: Package, label: 'Plans', href: '/admin/settings/plans' },
       { icon: CreditCard, label: 'Payment providers', href: '/admin/settings/payments' },
     ],
   },
