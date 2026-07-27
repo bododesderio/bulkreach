@@ -130,6 +130,8 @@ class ManagedOut(BaseModel):
     approved_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    report_ready: bool = False
+    report_url: str | None = None
 
 
 class ManagedResponse(BaseModel):
@@ -147,6 +149,7 @@ class ManagedUpdate(BaseModel):
     status: str | None = None  # must be a valid forward transition
     account_manager_id: UUID | None = None
     brief_text: str | None = None
+    campaign_id: UUID | None = None  # link the campaign this managed job ran
 
 
 # ── Health ───────────────────────────────────────────────────────────────────

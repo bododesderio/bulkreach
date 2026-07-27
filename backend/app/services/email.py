@@ -21,11 +21,14 @@ async def send_email(
     plain: str | None = None,
     from_email: str | None = None,
     from_name: str | None = None,
+    attachment: tuple[str, bytes, str] | None = None,
 ) -> bool:
     """Send a single transactional email. Returns True on success.
 
-    If SMTP is not configured (dev without Mailgun), logs and returns False rather
-    than raising — callers treat delivery as best-effort.
+    `attachment` is an optional (filename, data, mime_type) tuple — e.g. a
+    client-success report PDF. If SMTP is not configured (dev without Mailgun),
+    logs and returns False rather than raising — callers treat delivery as
+    best-effort.
     """
     if not settings.MAILGUN_SMTP_USER or not settings.MAILGUN_SMTP_PASSWORD:
         logger.warning("SMTP not configured; skipping email to %s (subject=%s)", to, subject)
@@ -39,6 +42,11 @@ async def send_email(
     msg["Subject"] = subject
     msg.set_content(plain or "Please view this message in an HTML-capable client.")
     msg.add_alternative(html, subtype="html")
+    if attachment is not None:
+        filename, data, mime = attachment
+        maintype, _, subtype = mime.partition("/")
+        msg.add_attachment(data, maintype=maintype or "application",
+                           subtype=subtype or "octet-stream", filename=filename)
 
     try:
         await aiosmtplib.send(

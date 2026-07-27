@@ -5,20 +5,28 @@ Transitions are forward-only (no going back a stage); each is audited. Assigning
 an account manager and issuing the final report are first-class actions."""
 from __future__ import annotations
 
+import io
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
 from app.models.account import Account, User
-from app.models.campaign import Campaign, ManagedCampaign
+from app.models.campaign import Campaign, ManagedCampaign, Report
 from app.schemas.admin import ManagedCreate, ManagedOut, ManagedResponse, ManagedUpdate
 from app.services.audit import record_audit
+from app.services.email import send_email
+from app.services.reports import pdf
+from app.services.storage import get_storage
+
+log = logging.getLogger("bulkreach.managed")
 
 router = APIRouter(prefix="/admin/managed", tags=["admin:managed"])
 
@@ -43,9 +51,21 @@ async def _manager_emails(db: AsyncSession, ids: set[UUID]) -> dict[UUID, str]:
     return {uid: email for uid, email in rows}
 
 
-async def _to_out(
-    db: AsyncSession, mc: ManagedCampaign, account_name: str | None,
-    campaign: Campaign | None, mgr_emails: dict[UUID, str],
+async def _report_ready_ids(db: AsyncSession, campaign_ids: set[UUID]) -> set[UUID]:
+    """Campaign ids that already have a client-success report."""
+    if not campaign_ids:
+        return set()
+    rows = (await db.execute(
+        select(Report.campaign_id).where(
+            Report.campaign_id.in_(campaign_ids), Report.type == "client_success"
+        )
+    )).scalars().all()
+    return set(rows)
+
+
+def _to_out(
+    mc: ManagedCampaign, account_name: str | None, campaign: Campaign | None,
+    mgr_emails: dict[UUID, str], report_ready: bool,
 ) -> ManagedOut:
     audience = None
     channel = None
@@ -61,6 +81,8 @@ async def _to_out(
         account_manager_id=mc.account_manager_id,
         account_manager_email=mgr_emails.get(mc.account_manager_id) if mc.account_manager_id else None,
         approved_at=mc.approved_at, created_at=mc.created_at, updated_at=mc.updated_at,
+        report_ready=report_ready,
+        report_url=f"/admin/managed/{mc.id}/report/download" if report_ready else None,
     )
 
 
@@ -83,9 +105,12 @@ async def list_managed(
 
     mgr_ids = {mc.account_manager_id for mc, _, _ in rows if mc.account_manager_id}
     mgr_emails = await _manager_emails(db, mgr_ids)
+    ready = await _report_ready_ids(
+        db, {mc.campaign_id for mc, _, _ in rows if mc.campaign_id}
+    )
 
     items = [
-        await _to_out(db, mc, aname, camp, mgr_emails)
+        _to_out(mc, aname, camp, mgr_emails, mc.campaign_id in ready)
         for mc, aname, camp in rows
     ]
     stats = {
@@ -103,7 +128,8 @@ async def _load_one(db: AsyncSession, mc: ManagedCampaign) -> ManagedOut:
     mgr_emails = await _manager_emails(
         db, {mc.account_manager_id} if mc.account_manager_id else set()
     )
-    return await _to_out(db, mc, account.name if account else None, campaign, mgr_emails)
+    ready = bool(await _report_ready_ids(db, {mc.campaign_id} if mc.campaign_id else set()))
+    return _to_out(mc, account.name if account else None, campaign, mgr_emails, ready)
 
 
 @router.post("", response_model=ManagedOut, status_code=status.HTTP_201_CREATED)
@@ -152,6 +178,15 @@ async def update_managed(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Manager user not found")
         mc.account_manager_id = body.account_manager_id
         details["account_manager"] = mgr.email
+    if body.campaign_id is not None:
+        campaign = await db.get(Campaign, body.campaign_id)
+        if campaign is None or campaign.account_id != mc.account_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Campaign not found or belongs to a different account",
+            )
+        mc.campaign_id = body.campaign_id
+        details["campaign_id"] = str(body.campaign_id)
     if body.status is not None:
         target = _stage_index(body.status)
         current = _stage_index(mc.status)
@@ -192,12 +227,99 @@ async def issue_report(
             status.HTTP_409_CONFLICT,
             "Campaign must be complete before a report can be issued",
         )
+    if mc.campaign_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Link the campaign this job ran before issuing its client report",
+        )
+    campaign = await db.get(Campaign, mc.campaign_id)
+    account = await db.get(Account, mc.account_id)
+    if campaign is None or account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked campaign or account not found")
+
+    # Render the branded client-success PDF (reuses the M4a report renderer).
+    try:
+        data = await pdf.campaign_report_pdf(db, campaign, account)
+    except ImportError as exc:  # WeasyPrint native libs missing on this host
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "PDF rendering is unavailable on this server.",
+        ) from exc
+
+    filename = pdf.report_filename(campaign.id, campaign.name)
+    try:
+        file_url = get_storage().put(
+            f"managed-reports/{mc.id}.pdf", data, content_type="application/pdf"
+        )
+    except Exception as exc:  # noqa: BLE001 — storage is best-effort; report still issues
+        log.warning("managed report storage failed mc=%s: %s", mc.id, exc)
+        file_url = None
+
+    # Email the client (best-effort — no-op in dev without SMTP), PDF attached.
+    emailed_at = None
+    sent = await send_email(
+        to=account.email,
+        subject=f"Your BulkReach campaign report — {campaign.name}",
+        html=(
+            f"<p>Hello {account.name},</p>"
+            f"<p>Your managed campaign <strong>{campaign.name}</strong> is complete. "
+            f"The delivery report is attached.</p>"
+            f"<p>— The BulkReach team</p>"
+        ),
+        attachment=(filename, data, "application/pdf"),
+    )
+    if sent:
+        emailed_at = datetime.now(timezone.utc)
+
+    # Record (or refresh) the client-success report for this campaign.
+    report = (await db.execute(
+        select(Report).where(
+            Report.campaign_id == mc.campaign_id, Report.type == "client_success"
+        )
+    )).scalar_one_or_none()
+    if report is None:
+        report = Report(campaign_id=mc.campaign_id, type="client_success")
+        db.add(report)
+    report.file_url = file_url
+    report.emailed_to = account.email
+    report.emailed_at = emailed_at
+
     mc.status = "report_issued"
     await record_audit(
         db, actor_id=admin.id, actor_email=admin.email, action="managed.report_issued",
         resource_type="managed_campaign", resource_id=str(mc.id),
-        details={"campaign_id": str(mc.campaign_id) if mc.campaign_id else None},
+        details={"campaign_id": str(mc.campaign_id), "emailed": bool(emailed_at),
+                 "size_bytes": len(data)},
     )
     await db.commit()
     await db.refresh(mc)
     return await _load_one(db, mc)
+
+
+@router.get("/{managed_id}/report/download")
+async def download_report(
+    managed_id: UUID,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """Stream the managed campaign's branded client-success PDF (re-rendered from
+    the immutable completed-campaign data)."""
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None or mc.campaign_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No report for this managed campaign")
+    campaign = await db.get(Campaign, mc.campaign_id)
+    account = await db.get(Account, mc.account_id)
+    if campaign is None or account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked campaign or account not found")
+    try:
+        data = await pdf.campaign_report_pdf(db, campaign, account)
+    except ImportError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "PDF rendering is unavailable."
+        ) from exc
+    filename = pdf.report_filename(campaign.id, campaign.name)
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

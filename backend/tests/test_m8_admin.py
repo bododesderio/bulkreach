@@ -111,9 +111,66 @@ async def test_managed_workflow_forward_only(client, super_headers):
                              json={"status": "briefed"})
     assert bad.status_code == 409
 
-    # issue report from complete
+    # issuing a report with no linked campaign is refused (report flow is
+    # covered end-to-end in test_managed_issue_report_generates_pdf)
     rep = await client.post(f"/api/v1/admin/managed/{mid}/report", headers=super_headers)
-    assert rep.status_code == 200 and rep.json()["status"] == "report_issued"
+    assert rep.status_code == 409
+
+
+async def test_managed_issue_report_generates_pdf(client, super_headers):
+    """Link a completed campaign to a managed job, issue the report, and confirm
+    a downloadable branded PDF is produced."""
+    campaigns = (await client.get(
+        "/api/v1/admin/campaigns?limit=200", headers=super_headers
+    )).json()["items"]
+    completed = next((c for c in campaigns if c["status"] == "completed"), None)
+    if completed is None:
+        return  # no completed campaign in this dev DB — skip gracefully
+
+    created = await client.post("/api/v1/admin/managed", headers=super_headers, json={
+        "account_id": completed["account_id"], "brief_text": "M8 report brief",
+    })
+    mid = created.json()["id"]
+
+    # Link the campaign, then drive to complete.
+    link = await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
+                              json={"campaign_id": completed["id"]})
+    assert link.status_code == 200 and link.json()["campaign_id"] == completed["id"]
+
+    # Issuing before complete is refused.
+    early = await client.post(f"/api/v1/admin/managed/{mid}/report", headers=super_headers)
+    assert early.status_code == 409
+
+    for stage in ("copy_approved", "scheduled", "sending", "complete"):
+        await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
+                           json={"status": stage})
+
+    issued = await client.post(f"/api/v1/admin/managed/{mid}/report", headers=super_headers)
+    assert issued.status_code == 200, issued.text
+    assert issued.json()["status"] == "report_issued"
+    assert issued.json()["report_ready"] is True
+    assert issued.json()["report_url"]
+
+    dl = await client.get(f"/api/v1/admin/managed/{mid}/report/download", headers=super_headers)
+    assert dl.status_code == 200
+    assert dl.headers["content-type"] == "application/pdf"
+    assert dl.content[:5] == b"%PDF-"
+
+
+async def test_managed_report_requires_linked_campaign(client, super_headers):
+    account_id = (await client.get(
+        "/api/v1/admin/accounts?limit=1", headers=super_headers
+    )).json()["items"][0]["id"]
+    created = await client.post("/api/v1/admin/managed", headers=super_headers, json={
+        "account_id": account_id, "brief_text": "no campaign linked",
+    })
+    mid = created.json()["id"]
+    for stage in ("copy_approved", "scheduled", "sending", "complete"):
+        await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
+                           json={"status": stage})
+    # complete but no linked campaign → cannot issue report
+    r = await client.post(f"/api/v1/admin/managed/{mid}/report", headers=super_headers)
+    assert r.status_code == 409
 
 
 async def test_plan_crud(client, super_headers):

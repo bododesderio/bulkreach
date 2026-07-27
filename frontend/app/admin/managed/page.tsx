@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FileText, Zap, CheckCircle2, Layers, Plus, X, UserPlus } from 'lucide-react';
+import { FileText, Zap, CheckCircle2, Layers, Plus, X, UserPlus, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import { StatusPill } from '@/components/admin/StatusPill';
-import { api, ApiError } from '@/lib/api';
+import { api, apiDownload, ApiError } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
@@ -57,6 +57,8 @@ interface Managed {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
+  report_ready: boolean;
+  report_url: string | null;
 }
 
 interface ManagedResponse {
@@ -67,6 +69,13 @@ interface ManagedResponse {
 interface AccountLite {
   id: string;
   name: string;
+}
+
+interface CampaignLite {
+  id: string;
+  account_id: string;
+  name: string;
+  status: string;
 }
 
 const CHANNEL_CFG: Record<string, { label: string; color: string; bg: string }> = {
@@ -96,16 +105,49 @@ export default function ManagedPage() {
   const [formBrief, setFormBrief] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [campaigns, setCampaigns] = useState<CampaignLite[]>([]);
+
   const load = useCallback(async () => {
     try {
-      const res = await api<ManagedResponse>('/admin/managed', { auth: true });
+      const [res, camps] = await Promise.all([
+        api<ManagedResponse>('/admin/managed', { auth: true }),
+        api<{ items: CampaignLite[] }>('/admin/campaigns?limit=500', { auth: true }),
+      ]);
       setData(res);
+      setCampaigns(camps.items);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to load managed queue');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function linkCampaign(m: Managed, campaignId: string) {
+    if (!campaignId) return;
+    setBusyId(m.id);
+    try {
+      await api(`/admin/managed/${m.id}`, {
+        method: 'PATCH', auth: true, body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      toast.success('Campaign linked');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Link failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function downloadReport(m: Managed) {
+    setBusyId(m.id);
+    try {
+      await apiDownload(`/admin/managed/${m.id}/report/download`, 'campaign-report.pdf');
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Download failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -357,7 +399,25 @@ export default function ManagedPage() {
                                       {busy ? '…' : step.label}
                                     </button>
                                   )}
-                                  {item.status === 'complete' && (
+                                  {/* Complete but no campaign linked → pick the campaign that ran */}
+                                  {item.status === 'complete' && !item.campaign_id && (
+                                    <select
+                                      aria-label="Link campaign"
+                                      disabled={busy}
+                                      defaultValue=""
+                                      onChange={(e) => linkCampaign(item, e.target.value)}
+                                      className="input text-[11px]"
+                                      style={{ maxWidth: 180, padding: '4px 6px' }}
+                                    >
+                                      <option value="">Link campaign…</option>
+                                      {campaigns
+                                        .filter((c) => c.account_id === item.account_id)
+                                        .map((c) => (
+                                          <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                  )}
+                                  {item.status === 'complete' && item.campaign_id && (
                                     <button
                                       type="button"
                                       disabled={busy}
@@ -372,6 +432,16 @@ export default function ManagedPage() {
                                     <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold" style={{ color: '#00897a' }}>
                                       <CheckCircle2 size={12} /> Delivered
                                     </span>
+                                  )}
+                                  {item.report_ready && (
+                                    <button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={() => downloadReport(item)}
+                                      className="inline-flex items-center gap-1 text-[10.5px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors disabled:opacity-50"
+                                    >
+                                      <Download size={11} /> Download report
+                                    </button>
                                   )}
                                 </div>
                               </div>
