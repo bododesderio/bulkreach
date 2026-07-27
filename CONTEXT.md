@@ -1,5 +1,5 @@
 # Project Context
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## Current task
 Building BulkReach (bulk SMS & email SaaS) from System Documentation v2.0 (40pp).
@@ -61,7 +61,9 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
       webhooks, fail-closed signature+amount). Security-audited & fixed. Logos in public/logos/payments.
       REMAINING M4: wire /admin/payments + /admin/subscriptions LISTS to real Payment/Subscription data
       (currently seed); rate-limit webhook/checkout routes; managed-service billing (invoices/receipts = M5/H).
-- [ ] M5 Admin portal + managed service workflow
+- [x] M5 Admin portal + managed service workflow — 7 live superadmin APIs (overview/accounts/campaigns/
+      audit-log/managed/health/revenue) replacing seed data; managed lifecycle briefed→report_issued with
+      forward-only guards; account suspend/activate; real health checks. Browser-verified, 34/34 build. (3c7066d, c4725a2)
 - [ ] M6 Data Archive subsystem (ingestion, retention, anonymiser, glacier, export, access log)
 - [x] M7 Frontend — design system + public marketing site + admin subsystem + auth restyle + admin liveliness DONE.
       `NODE_ENV=production npm run build` passes (29/29 routes prerender, TS zero-error). All 9 missing admin
@@ -84,7 +86,38 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
 - Full requirements (weasyprint/camelot/pandas) not yet installed in venv — only core web deps for M0 import check.
 - Docker stack not yet brought up (no daemon verification this session).
 
-## Next steps — RESUME HERE (2026-07-25)
+## Next steps — RESUME HERE (2026-07-26 end of day)
+Branch feat/m4a-reports. All payments work committed & pushed EXCEPT the custom checkout FRONTEND.
+
+DONE & committed today (2026-07-26):
+- Multi-provider payments (Flutterwave/Pesapal/MTN MoMo/Airtel) + admin config UI + client checkout (4aaf42f)
+- Production hardening: token refresh cache, retry/backoff, refunds, stale reconciler (ARQ cron),
+  webhook+checkout rate limits, admin /payments + /subscriptions lists + refund (2f2c087)
+- Superadmin Plan Manager API — CRUD plans, drives pricing/checkout live (42b5aaa)
+- Mode-driven checkout backend: CheckoutIntent mode = inline|ussd_push|redirect|simulated (2e4c147)
+- Pesapal proven against REAL API (auth ok; user's creds are PRODUCTION not sandbox — rotate them).
+  Browser-verified: admin payments config, client checkout (simulated), refund flow, admin lists.
+
+✅ DONE & committed 2026-07-27 (M4 payments frontend fully complete):
+- Custom checkout FRONTEND (7c74778): /dashboard/billing/checkout branches on CheckoutIntent mode
+  (simulated poll / ussd_push STK / Flutterwave Inline card overlay / redirect); billing dashboard
+  wired to live plans+history. Browser-verified simulated MTN MoMo E2E (checkout→success, sub activated).
+- Plan Manager UI (0797838): /admin/settings/plans full CRUD wired to /admin/plans superadmin API +
+  sidebar "Plans" link. Browser-verified create/edit/delete (subs-guard). Prod build 34/34 routes, tsc clean.
+
+✅ M5 admin portal + managed-service workflow DONE 2026-07-27 (3c7066d backend, c4725a2 frontend):
+7 live superadmin APIs replaced admin seed data; interactive managed workflow (briefed→report_issued);
+account suspend/activate; real Postgres/Redis/provider health. All browser-verified, zero console errors.
+See [[bulkreach-m5-admin]] memory (incl. date_trunc GROUP-BY gotcha + admin auth-store hydration fix).
+
+NEXT: M6 Data Archive subsystem (/admin/archive still seed; ingestion/retention/anonymiser/glacier/export/
+access-log) OR M8 tests + Playwright E2E + hardening. Also open: managed "issue report" should generate/email
+the branded WeasyPrint PDF (ties to M4a); admin users-list endpoint for a manager picker.
+
+Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
+Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
+
+## Older next steps (M3, superseded — kept for reference)
 M3 Campaigns BACKEND complete & verified. Frontend campaign lifecycle DONE:
 1. ✅ DONE (PR #1, branch feat/campaigns-list-detail): composer Send wired to POST /campaigns → /send
    with live SSE progress (fetch-reader, not EventSource — Bearer auth); campaigns list (GET /campaigns,
