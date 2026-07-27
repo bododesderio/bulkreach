@@ -270,18 +270,30 @@ class ArchiveService:
             await live_db.delete(c)  # messages/recipients cascade
             result["campaigns_purged"] += 1
         for mc in anon_candidates:
-            self._anonymise(mc)
+            await self._anonymise(archive_db, mc)
             result["contacts_anonymised"] += 1
 
         await live_db.flush()
         await archive_db.flush()
         return result
 
-    def _anonymise(self, mc: MasterContact) -> None:
+    async def _hash_taken(self, db: AsyncSession, column, value: str, exclude_id: UUID) -> bool:
+        return bool((await db.execute(
+            select(func.count()).select_from(MasterContact).where(
+                column == value, MasterContact.id != exclude_id
+            )
+        )).scalar_one())
+
+    async def _anonymise(self, db: AsyncSession, mc: MasterContact) -> None:
+        # Deterministic HMAC keeps duplicates deduped — but if a prior anonymised
+        # duplicate already holds this hash (phone/email are unique), fully erase
+        # the field (NULL) instead of colliding on the unique index.
         if mc.phone:
-            mc.phone = _anon_hash(mc.phone)
+            h = _anon_hash(mc.phone)
+            mc.phone = None if await self._hash_taken(db, MasterContact.phone, h, mc.id) else h
         if mc.email:
-            mc.email = _anon_hash(mc.email)
+            h = _anon_hash(mc.email)
+            mc.email = None if await self._hash_taken(db, MasterContact.email, h, mc.id) else h
         mc.first_name = None
         mc.last_name = None
         mc.raw_data = {}
@@ -293,7 +305,7 @@ class ArchiveService:
             return mc
         if mc.legal_hold or mc.never_delete:
             raise ValueError("Contact is under legal hold and cannot be anonymised")
-        self._anonymise(mc)
+        await self._anonymise(archive_db, mc)
         await archive_db.flush()
         return mc
 
@@ -347,7 +359,7 @@ class ArchiveService:
         if mc is not None and mc.anonymised_at is None:
             if mc.legal_hold or mc.never_delete:
                 raise ValueError("Target contact is under legal hold")
-            self._anonymise(mc)
+            await self._anonymise(archive_db, mc)
             req.master_contact_id = mc.id
 
         # The erasure record itself must not retain the subject's plaintext PII —

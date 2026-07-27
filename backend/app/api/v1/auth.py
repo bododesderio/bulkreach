@@ -16,12 +16,17 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
     MeResponse,
+    OnboardingRequest,
     RegisterRequest,
+    ResendResponse,
     ResetPasswordRequest,
+    SignupCompleteRequest,
+    SignupCompleteResponse,
     TokenResponse,
     UserOut,
+    VerifyEmailRequest,
 )
-from app.services import auth_service
+from app.services import auth_service, otp
 from app.services.audit import record_audit
 from app.services.email import send_email
 from app.models.account import Account
@@ -72,6 +77,102 @@ async def register(
     )
     _set_refresh_cookie(response, str(user.id))
     return _tokens(str(user.id))
+
+
+# ── Multi-step signup (Section 5.2): complete → verify email → onboarding ─────
+@router.post("/signup/complete", response_model=SignupCompleteResponse,
+             status_code=status.HTTP_201_CREATED)
+async def signup_complete(
+    data: SignupCompleteRequest,
+    request: Request,
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SignupCompleteResponse:
+    ip = _client_ip(request)
+    account, user = await auth_service.register_account(
+        db, data, ip=ip, user_agent=request.headers.get("user-agent", "unknown")
+    )
+    account.contact_name = data.contact_name
+    account.phone = data.phone
+    account.marketing_opt_in = data.accept_marketing
+
+    code = await otp.issue(db, user.id)
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.register",
+        resource_type="account", resource_id=str(account.id), ip_address=ip,
+    )
+    await send_email(
+        to=user.email,
+        subject="Verify your BulkReach email",
+        html=(
+            f"<p>Welcome to BulkReach!</p><p>Your verification code is "
+            f"<strong style='font-size:20px;letter-spacing:2px'>{code}</strong>. "
+            f"It expires in 15 minutes.</p>"
+        ),
+    )
+    _set_refresh_cookie(response, str(user.id))
+    return SignupCompleteResponse(
+        access_token=create_access_token(str(user.id)),
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        email=user.email,
+        dev_code=None if settings.is_production else code,
+    )
+
+
+@router.post("/verify-email")
+async def verify_email(
+    data: VerifyEmailRequest,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    ok, reason = await otp.verify(db, user.id, data.code)
+    if not ok:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, {
+            "expired": "This code has expired. Request a new one.",
+            "too_many": "Too many incorrect attempts. Request a new code.",
+            "no_code": "No active code — request a new one.",
+            "invalid": "Incorrect code.",
+        }.get(reason, "Verification failed."))
+    user.email_verified = True
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.email_verified",
+        resource_type="user", resource_id=str(user.id),
+    )
+    return {"email_verified": True}
+
+
+@router.post("/resend-verification", response_model=ResendResponse)
+async def resend_verification(
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ResendResponse:
+    if not await sliding_window_allow(f"rl:otp:{user.id}", 3, 3600):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many code requests. Try again later.")
+    code = await otp.issue(db, user.id)
+    sent = await send_email(
+        to=user.email, subject="Your BulkReach verification code",
+        html=f"<p>Your new verification code is <strong>{code}</strong> (expires in 15 minutes).</p>",
+    )
+    return ResendResponse(sent=bool(sent), dev_code=None if settings.is_production else code)
+
+
+@router.patch("/onboarding")
+async def onboarding(
+    data: OnboardingRequest,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    account = await db.get(Account, user.account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    if data.industry is not None:
+        account.industry = data.industry
+    if data.use_case is not None:
+        account.use_case = data.use_case
+    if data.referral_source is not None:
+        account.referral_source = data.referral_source
+    return {"status": "ok"}
 
 
 @router.post("/login", response_model=TokenResponse)

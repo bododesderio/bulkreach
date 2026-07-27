@@ -17,6 +17,39 @@ class RegisterRequest(BaseModel):
     accept_data_retention: bool
 
 
+class SignupCompleteRequest(RegisterRequest):
+    """Step 2 of multi-step signup — account details (carried from step 1) plus
+    consent. Creates the account and triggers email verification."""
+    contact_name: str | None = Field(None, max_length=255)
+    phone: str | None = Field(None, max_length=32)
+    accept_marketing: bool = False
+
+
+class SignupCompleteResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    email: EmailStr
+    # Non-production convenience: the OTP so dev/tests can complete the flow
+    # without a mail server. Always null in production.
+    dev_code: str | None = None
+
+
+class VerifyEmailRequest(BaseModel):
+    code: str = Field(min_length=4, max_length=8)
+
+
+class ResendResponse(BaseModel):
+    sent: bool
+    dev_code: str | None = None
+
+
+class OnboardingRequest(BaseModel):
+    industry: str | None = Field(None, max_length=60)
+    use_case: list[str] | None = None
+    referral_source: str | None = Field(None, max_length=60)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -43,6 +76,7 @@ class UserOut(BaseModel):
     email: EmailStr
     role: str
     account_id: uuid.UUID
+    email_verified: bool = False
     last_login_at: datetime | None = None
 
 

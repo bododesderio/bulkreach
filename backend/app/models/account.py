@@ -48,6 +48,14 @@ class Account(UUIDPk, TimestampMixin, Base):
     trial_messages_remaining: Mapped[int] = mapped_column(default=500, nullable=False)
     trial_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Profile + onboarding (multi-step signup, Section 5.2)
+    contact_name: Mapped[str | None] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(32))
+    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    industry: Mapped[str | None] = mapped_column(String(60))
+    use_case: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    referral_source: Mapped[str | None] = mapped_column(String(60))
+
     users: Mapped[list["User"]] = relationship(back_populates="account")
 
 
@@ -62,9 +70,28 @@ class User(UUIDPk, TimestampMixin, Base):
     # owner | admin | member | superadmin
     role: Mapped[str] = mapped_column(String(20), default="owner", nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     account: Mapped[Account] = relationship(back_populates="users")
+
+
+class EmailVerificationToken(UUIDPk, Base):
+    """One-time 6-digit email OTP (Section 5.2). Code stored bcrypt-hashed;
+    15-minute expiry; a resend invalidates prior codes for the user."""
+
+    __tablename__ = "email_verification_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempts: Mapped[int] = mapped_column(default=0, nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class ApiKey(UUIDPk, TimestampMixin, Base):
