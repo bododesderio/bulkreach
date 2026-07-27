@@ -20,11 +20,20 @@ import {
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+// Render shape (mapped from the API's monthly_* fields below).
 interface QuotaResponse {
   used: number;
   limit: number | null; // null = unlimited
   is_trial: boolean;
   trial_limit: number;
+  monthly_resets_at: string | null;
+}
+
+// Exactly what GET /subscription/quota returns.
+interface QuotaApi {
+  monthly_used: number;
+  monthly_limit: number | null;
+  is_trial?: boolean;
   monthly_resets_at: string | null;
 }
 
@@ -117,8 +126,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
-    api<QuotaResponse>('/subscription/quota', { auth: true })
-      .then(setQuota)
+    api<QuotaApi>('/subscription/quota', { auth: true })
+      .then((q) =>
+        setQuota({
+          used: q.monthly_used ?? 0,
+          limit: q.monthly_limit ?? null,
+          is_trial: !!q.is_trial,
+          trial_limit: q.monthly_limit ?? 0,
+          monthly_resets_at: q.monthly_resets_at ?? null,
+        }),
+      )
       .catch(() => setQuotaError(true));
 
     api<ContactList[]>('/contacts/lists', { auth: true })
