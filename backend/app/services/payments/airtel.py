@@ -47,6 +47,8 @@ class AirtelProvider(PaymentProvider):
         CredentialField("client_id", "Client ID", secret=True),
         CredentialField("client_secret", "Client Secret", secret=True),
         CredentialField("country", "Country Code", secret=False, required=False, placeholder="UG"),
+        CredentialField("webhook_secret", "Callback HMAC Secret (optional)", secret=True,
+                        required=False, placeholder="enables x-signature enforcement"),
     )
 
     @property
@@ -156,10 +158,15 @@ class AirtelProvider(PaymentProvider):
                             error=None if ok else str(status.get("message")))
 
     def verify_webhook_signature(self, *, headers, raw_body: bytes) -> bool:
-        # Airtel callbacks are reconciled via the payment status poll (verify),
-        # keyed on our stored reference, so a forged callback only triggers a
-        # harmless re-verify. TODO: validate Airtel's signed callback once configured.
-        return True
+        # Airtel callbacks are always reconciled via the payment status poll (verify),
+        # keyed on our stored reference, so an unsigned callback can at most trigger a
+        # harmless re-verify — it can never credit an account. When a `webhook_secret`
+        # is configured, Airtel's signed-callback HMAC becomes mandatory and is enforced
+        # fail-closed on top of that guarantee.
+        return self._verify_configured_hmac(
+            headers=headers, raw_body=raw_body,
+            header_names=("x-signature", "X-Auth-Signature"),
+        )
 
     def parse_webhook(self, payload: dict) -> WebhookResult:
         tx = (payload.get("transaction") or {})

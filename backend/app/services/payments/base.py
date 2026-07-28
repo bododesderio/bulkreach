@@ -15,9 +15,22 @@ so the service can assert they match the stored intent before crediting anything
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import Iterable, Mapping
+
+def _first_header(headers: Mapping[str, str], names: Iterable[str]) -> str:
+    """First present value among ``names``, case-insensitively. Starlette's Headers
+    is already case-insensitive; for a plain dict (tests) we try common casings."""
+    for name in names:
+        for variant in (name, name.lower(), name.title(), name.upper()):
+            val = headers.get(variant)
+            if val:
+                return val
+    return ""
+
 
 # Uniform statuses across every provider.
 PENDING = "pending"
@@ -123,6 +136,36 @@ class PaymentProvider(ABC):
         # because the service re-verifies authoritatively via verify()) override this
         # explicitly with a documented rationale.
         return False
+
+    def _verify_configured_hmac(
+        self, *, headers: Mapping[str, str], raw_body: bytes,
+        header_names: Iterable[str], secret_key: str = "webhook_secret",
+    ) -> bool:
+        """Shared HMAC-SHA256 callback check for providers whose signed callback is
+        opt-in per deployment (MoMo, Airtel).
+
+        Policy:
+          • No secret configured → return True and rely on the mandatory server-side
+            re-verify (WebhookResult.needs_verify): the service credits nothing off the
+            callback body, so an unsigned callback can at most trigger a re-poll.
+          • Secret configured → the signature becomes MANDATORY. A missing or
+            mismatched signature fails closed (False → 401), per the payments skill.
+
+        The signature is HMAC-SHA256(raw_body, secret) as lowercase hex; an optional
+        ``scheme=`` prefix (e.g. ``sha256=…``) on the header value is tolerated.
+        """
+        secret = self.cred(secret_key).strip()
+        if not secret:
+            # Empty / whitespace-only == not configured (no silent broken enforcement).
+            return True
+        received = _first_header(headers, header_names).strip()
+        if not received:
+            return False
+        received = received.rsplit("=", 1)[-1].strip()  # tolerate a `scheme=` prefix
+        expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+        # Compare as bytes: hmac.compare_digest raises TypeError on a non-ASCII str, so a
+        # hostile header value would otherwise surface as a 500 instead of a fail-closed 401.
+        return hmac.compare_digest(received.lower().encode("utf-8"), expected.encode("ascii"))
 
     async def refund(
         self, *, tx_ref: str, provider_tx_id: str | None, amount: float,

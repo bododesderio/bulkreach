@@ -51,6 +51,8 @@ class MtnMomoProvider(PaymentProvider):
         CredentialField("subscription_key", "Collections Subscription Key", secret=True),
         CredentialField("api_user", "API User (UUID)", secret=False),
         CredentialField("api_key", "API Key", secret=True),
+        CredentialField("webhook_secret", "Callback HMAC Secret (optional)", secret=True,
+                        required=False, placeholder="enables X-Callback-Signature enforcement"),
     )
 
     @property
@@ -140,10 +142,14 @@ class MtnMomoProvider(PaymentProvider):
         )
 
     def verify_webhook_signature(self, *, headers, raw_body: bytes) -> bool:
-        # MoMo callbacks are reconciled via the request-to-pay status poll (verify),
-        # keyed on our stored X-Reference-Id, so a forged callback only triggers a
-        # harmless re-verify. TODO: validate X-Callback-Signature once configured.
-        return True
+        # MoMo Collections callbacks are unsigned by default and are always reconciled
+        # via the request-to-pay status poll (verify) keyed on our stored X-Reference-Id,
+        # so an unsigned callback can at most trigger a harmless re-verify — it can never
+        # credit an account. When a `webhook_secret` is configured, an X-Callback-Signature
+        # HMAC becomes mandatory and is enforced fail-closed on top of that guarantee.
+        return self._verify_configured_hmac(
+            headers=headers, raw_body=raw_body, header_names=("X-Callback-Signature",),
+        )
 
     def parse_webhook(self, payload: dict) -> WebhookResult:
         return WebhookResult(
