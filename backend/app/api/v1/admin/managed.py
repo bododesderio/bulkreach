@@ -1,21 +1,22 @@
-"""Managed-service workflow (superadmin): take a client brief through the
-lifecycle briefed → copy_approved → scheduled → sending → complete → report_issued.
-
-Transitions are forward-only (no going back a stage); each is audited. Assigning
-an account manager and issuing the final report are first-class actions."""
+"""Managed-service workflow (superadmin): drive a client brief through the
+15-state pipeline (see services/managed/pipeline.py). Transitions follow the state
+graph (forward jumps + the copy-approval loop); each is audited. Assigning a
+manager, sending copy for client approval, holding/cancelling, and issuing the
+final report are first-class actions."""
 from __future__ import annotations
 
 import io
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
 from app.models.account import Account, User
@@ -23,6 +24,7 @@ from app.models.campaign import Campaign, ManagedCampaign, Report
 from app.schemas.admin import ManagedCreate, ManagedOut, ManagedResponse, ManagedUpdate
 from app.services.audit import record_audit
 from app.services.email import send_email
+from app.services.managed import pipeline
 from app.services.reports import pdf
 from app.services.storage import get_storage
 
@@ -30,16 +32,11 @@ log = logging.getLogger("bulkreach.managed")
 
 router = APIRouter(prefix="/admin/managed", tags=["admin:managed"])
 
-# Lifecycle order — index defines "forward". report_issued is terminal.
-STAGES = ["briefed", "copy_approved", "scheduled", "sending", "complete", "report_issued"]
-_TERMINAL = ("complete", "report_issued")
+_TERMINAL = pipeline.TERMINAL
 
 
-def _stage_index(stage: str) -> int:
-    try:
-        return STAGES.index(stage)
-    except ValueError:
-        return -1
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 async def _manager_emails(db: AsyncSession, ids: set[UUID]) -> dict[UUID, str]:
@@ -83,6 +80,11 @@ def _to_out(
         approved_at=mc.approved_at, created_at=mc.created_at, updated_at=mc.updated_at,
         report_ready=report_ready,
         report_url=f"/admin/managed/{mc.id}/report/download" if report_ready else None,
+        copy_sms=mc.copy_sms, copy_email_subject=mc.copy_email_subject,
+        copy_email_body=mc.copy_email_body,
+        approval_sent_at=mc.approval_sent_at, approval_expires_at=mc.approval_expires_at,
+        change_request_note=mc.change_request_note,
+        on_hold=mc.on_hold, cancelled=mc.cancelled,
     )
 
 
@@ -187,21 +189,23 @@ async def update_managed(
             )
         mc.campaign_id = body.campaign_id
         details["campaign_id"] = str(body.campaign_id)
-    if body.status is not None:
-        target = _stage_index(body.status)
-        current = _stage_index(mc.status)
-        if target < 0:
+    for field in ("copy_sms", "copy_email_subject", "copy_email_body"):
+        value = getattr(body, field)
+        if value is not None:
+            setattr(mc, field, value)
+            details[field] = "updated"
+    if body.status is not None and body.status != mc.status:
+        if not pipeline.is_valid(body.status):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unknown status '{body.status}'")
-        if target < current:
+        if not pipeline.can_transition(mc.status, body.status):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"Cannot move backward from '{mc.status}' to '{body.status}'",
+                f"'{mc.status}' → '{body.status}' is not a permitted transition",
             )
-        if target != current:
-            mc.status = body.status
-            details["status"] = body.status
-            if body.status == "copy_approved" and mc.approved_at is None:
-                mc.approved_at = datetime.now(timezone.utc)
+        mc.status = body.status
+        details["status"] = body.status
+        if body.status == "approved" and mc.approved_at is None:
+            mc.approved_at = _now()
 
     if details:
         await record_audit(
@@ -213,6 +217,103 @@ async def update_managed(
     return await _load_one(db, mc)
 
 
+@router.post("/{managed_id}/request-approval", response_model=ManagedOut)
+async def request_approval(
+    managed_id: UUID,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ManagedOut:
+    """Snapshot the draft copy, mint a client copy-approval token, email the client a
+    no-login review link, and move the job to `awaiting_approval`."""
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
+    if not (mc.copy_sms or mc.copy_email_body):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Add draft SMS or email copy before sending it to the client for approval",
+        )
+    if mc.status != pipeline.APPROVAL_OPEN and not pipeline.can_transition(mc.status, pipeline.APPROVAL_OPEN):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Cannot send for approval from '{mc.status}'",
+        )
+    account = await db.get(Account, mc.account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+
+    token, token_hash = pipeline.new_token()
+    mc.approval_token_hash = token_hash
+    mc.approval_sent_at = _now()
+    mc.approval_expires_at = _now() + timedelta(days=pipeline.APPROVAL_TTL_DAYS)
+    mc.change_request_note = None
+    mc.status = pipeline.APPROVAL_OPEN
+
+    link = f"{settings.FRONTEND_URL}/managed-approve/{token}"
+    await send_email(
+        to=account.email,
+        subject="Please review your campaign copy — BulkReach",
+        html=(
+            f"<p>Hello {account.name},</p>"
+            f"<p>Your account manager has prepared the copy for your upcoming campaign. "
+            f"Please review and approve it so we can proceed.</p>"
+            f'<p><a href="{link}">Review &amp; approve your campaign copy</a></p>'
+            f"<p>This link expires in {pipeline.APPROVAL_TTL_DAYS} days.</p>"
+        ),
+    )
+    try:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=mc.account_id, type="managed.copy_review",
+            title="Your campaign copy is ready to review",
+            body="Your account manager sent your managed-campaign copy for approval.",
+            level="info", meta={"managed_id": str(mc.id)},
+        )
+    except Exception:  # noqa: BLE001 — a notice must not fail the action
+        pass
+
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="managed.request_approval",
+        resource_type="managed_campaign", resource_id=str(mc.id),
+        details={"expires_at": mc.approval_expires_at.isoformat()},
+    )
+    await db.commit()
+    await db.refresh(mc)
+    return await _load_one(db, mc)
+
+
+async def _toggle_flag(
+    db: AsyncSession, admin: User, managed_id: UUID, *, field: str, value: bool, action: str,
+) -> ManagedOut:
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
+    setattr(mc, field, value)
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action=action,
+        resource_type="managed_campaign", resource_id=str(mc.id),
+    )
+    await db.commit()
+    await db.refresh(mc)
+    return await _load_one(db, mc)
+
+
+@router.post("/{managed_id}/hold", response_model=ManagedOut)
+async def hold_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await _toggle_flag(db, admin, managed_id, field="on_hold", value=True, action="managed.hold")
+
+
+@router.post("/{managed_id}/unhold", response_model=ManagedOut)
+async def unhold_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await _toggle_flag(db, admin, managed_id, field="on_hold", value=False, action="managed.unhold")
+
+
+@router.post("/{managed_id}/cancel", response_model=ManagedOut)
+async def cancel_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await _toggle_flag(db, admin, managed_id, field="cancelled", value=True, action="managed.cancel")
+
+
 @router.post("/{managed_id}/report", response_model=ManagedOut)
 async def issue_report(
     managed_id: UUID,
@@ -222,10 +323,10 @@ async def issue_report(
     mc = await db.get(ManagedCampaign, managed_id)
     if mc is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
-    if _stage_index(mc.status) < _stage_index("complete"):
+    if not pipeline.reached(mc.status, pipeline.DISPATCH_DONE):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Campaign must be complete before a report can be issued",
+            "Campaign must be sent before a report can be issued",
         )
     if mc.campaign_id is None:
         raise HTTPException(

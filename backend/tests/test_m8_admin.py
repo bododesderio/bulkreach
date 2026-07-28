@@ -100,7 +100,7 @@ async def test_managed_workflow_forward_only(client, super_headers):
     assert back.status_code == 200
 
     # advance forward through the lifecycle
-    for stage in ("copy_approved", "scheduled", "sending", "complete"):
+    for stage in ("approved", "scheduled", "sending", "sent"):
         r = await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
                                json={"status": stage})
         assert r.status_code == 200, r.text
@@ -167,7 +167,7 @@ async def test_managed_issue_report_generates_pdf(client, super_headers):
     early = await client.post(f"/api/v1/admin/managed/{mid}/report", headers=super_headers)
     assert early.status_code == 409
 
-    for stage in ("copy_approved", "scheduled", "sending", "complete"):
+    for stage in ("approved", "scheduled", "sending", "sent"):
         await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
                            json={"status": stage})
 
@@ -191,7 +191,7 @@ async def test_managed_report_requires_linked_campaign(client, super_headers):
         "account_id": account_id, "brief_text": "no campaign linked",
     })
     mid = created.json()["id"]
-    for stage in ("copy_approved", "scheduled", "sending", "complete"):
+    for stage in ("approved", "scheduled", "sending", "sent"):
         await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
                            json={"status": stage})
     # complete but no linked campaign → cannot issue report

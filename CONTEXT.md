@@ -2,6 +2,19 @@
 Last updated: 2026-07-28
 
 ## Current task
+Managed 15-state pipeline — Phase 1 (backend) DONE (77 tests). Next: Phase 2 (admin kanban rebuild +
+public /managed-approve/[token] page), then browser-verify.
+
+## Queued deployment task (NOT started) — Traefik/VPS routing
+Route web-facing services onto the shared-Traefik VPS, one subdomain per service (landing/api/admin/
+django-admin/docs), per-host HTTPS, optional Basic Auth on staff hosts, Django admin relocated off
+/admin/. USE THE `traefik-routing` skill. STEP 0 first: read docker-compose*.yml (prod overlay) +
+nginx edge conf + Django settings/urls/MIDDLEWARE; report shared Traefik `web` network name + ACME
+resolver, Host→service→port map, DNS state. Fill in: TLD, VPS_IP, DNS_PROVIDER (Hostinger MCP?),
+GATED_HOSTS. Deliver prod-overlay labels, DNS A-records, htpasswd gates (gitignored), .env.example
+host vars, and a copy-paste VPS runbook. (BulkReach is FastAPI-only — no Django admin — verify during
+STEP 0.) Honor skill gotchas: force-recreate edge on bind-mount change, htpasswd 644, etc.
+
 Building BulkReach (bulk SMS & email SaaS). Full project overview + run/deploy/test/secrets now live in
 **[README.md](./README.md)** (single consolidated doc; GO-LIVE.md + SECRETS.md folded in and removed).
 All screenshots + Playwright/test artifacts deleted (regenerated fresh by the final Playwright pass).

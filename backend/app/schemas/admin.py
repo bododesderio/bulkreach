@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Overview / dashboard ────────────────────────────────────────────────────
@@ -141,6 +141,15 @@ class ManagedOut(BaseModel):
     updated_at: datetime
     report_ready: bool = False
     report_url: str | None = None
+    # Draft copy + approval loop
+    copy_sms: str | None = None
+    copy_email_subject: str | None = None
+    copy_email_body: str | None = None
+    approval_sent_at: datetime | None = None
+    approval_expires_at: datetime | None = None
+    change_request_note: str | None = None
+    on_hold: bool = False
+    cancelled: bool = False
 
 
 class ManagedResponse(BaseModel):
@@ -155,10 +164,30 @@ class ManagedCreate(BaseModel):
 
 
 class ManagedUpdate(BaseModel):
-    status: str | None = None  # must be a valid forward transition
+    status: str | None = None  # must be a valid pipeline transition
     account_manager_id: UUID | None = None
     brief_text: str | None = None
     campaign_id: UUID | None = None  # link the campaign this managed job ran
+    # Draft copy the client will approve
+    copy_sms: str | None = None
+    copy_email_subject: str | None = None
+    copy_email_body: str | None = None
+
+
+class ManagedApprovalView(BaseModel):
+    """Public, token-scoped view of the copy a client is asked to approve."""
+    managed_id: UUID
+    account_name: str | None
+    status: str
+    brief_text: str
+    copy_sms: str | None = None
+    copy_email_subject: str | None = None
+    copy_email_body: str | None = None
+    expires_at: datetime | None = None
+
+
+class ChangeRequestBody(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
 
 
 # ── Health ───────────────────────────────────────────────────────────────────

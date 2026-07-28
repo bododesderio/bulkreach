@@ -102,10 +102,28 @@ class ManagedCampaign(UUIDPk, TimestampMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), index=True
     )
     brief_text: Mapped[str] = mapped_column(Text, nullable=False)
-    # briefed|copy_approved|scheduled|sending|complete|report_issued
-    status: Mapped[str] = mapped_column(String(20), default="briefed", nullable=False, index=True)
+    # 15-state pipeline (see services/managed/pipeline.py): requested → briefed →
+    # assigned → audience_pending → audience_ready → drafting → internal_review →
+    # awaiting_approval → approved → scheduled → sending → sent → report_issued →
+    # closed, plus the loop state changes_requested.
+    status: Mapped[str] = mapped_column(String(30), default="briefed", nullable=False, index=True)
     account_manager_id: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Draft campaign copy the client reviews & approves (before a Campaign exists).
+    copy_sms: Mapped[str | None] = mapped_column(Text)
+    copy_email_subject: Mapped[str | None] = mapped_column(String(500))
+    copy_email_body: Mapped[str | None] = mapped_column(Text)
+
+    # Client copy-approval token (sha256 of a 256-bit secret; no login required).
+    approval_token_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    approval_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approval_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    change_request_note: Mapped[str | None] = mapped_column(Text)
+
+    # Orthogonal lifecycle flags (do not consume a pipeline stage).
+    on_hold: Mapped[bool] = mapped_column(default=False, nullable=False)
+    cancelled: Mapped[bool] = mapped_column(default=False, nullable=False)
 
 
 class Report(UUIDPk, Base):
