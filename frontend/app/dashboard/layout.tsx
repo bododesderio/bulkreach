@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/store/auth";
+import NotificationBell from "@/components/NotificationBell";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -143,6 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Profile */}
           <div className="flex items-center gap-3" data-testid="topbar-profile">
+            <NotificationBell />
             <div className="hidden text-right sm:block">
               <div className="text-sm font-medium leading-tight">{account.name}</div>
               <div className="text-xs capitalize text-muted-foreground">{account.plan} plan</div>

@@ -187,6 +187,15 @@ async def accept_invite(
             subject=f"{invite.email} joined {account.name}",
             html=f"<p>{invite.email} accepted your invitation and joined {account.name} on BulkReach.</p>",
         )
+    if account:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=account.id, type="team.member_joined", level="info",
+            title="A teammate joined your account",
+            body=f"{invite.email} accepted their invitation and joined as {invite.role}.",
+            link="/dashboard/settings", meta={"email": invite.email, "role": invite.role},
+        )
     await record_audit(
         db, actor_id=user.id, actor_email=user.email, action="invite.accepted",
         resource_type="invitation", resource_id=str(invite.id),

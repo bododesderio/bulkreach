@@ -242,11 +242,35 @@ async def dispatch_campaign(
         # Meter dispatched messages against the paid monthly/daily quota (trial
         # allowance is decremented up-front at queue time, not here).
         if account is not None and (account.plan or "").lower() != "trial" and sent > 0:
-            from app.services.subscription import quota as quota_svc
+            from app.services.subscription import enforce, quota as quota_svc
             try:
                 await quota_svc.consume(account.id, sent)
+                # Warn once/month when monthly usage crosses 80/90/100%.
+                limits = await enforce.resolve_limits(db, account)
+                if limits and not limits.is_trial and limits.monthly_limit:
+                    from app.services.notifications import notify_quota_threshold
+
+                    used = await quota_svc.get_monthly_used(account.id)
+                    await notify_quota_threshold(db, account, used, limits.monthly_limit)
+                    await db.commit()
             except Exception:  # noqa: BLE001 — metering must never fail a completed send
                 logger.warning("quota consume failed for account %s", account.id)
+
+        # Notify the account that their campaign finished.
+        if account is not None:
+            try:
+                from app.services.notifications import notify
+
+                await notify(
+                    db, account_id=account.id, type="campaign.completed", level="success",
+                    title=f"Campaign “{campaign.name}” finished",
+                    body=f"{sent:,} delivered · {failed:,} failed.",
+                    link=f"/dashboard/campaigns/{campaign_id}",
+                    meta={"campaign_id": str(campaign_id), "sent": sent, "failed": failed},
+                )
+                await db.commit()
+            except Exception:  # noqa: BLE001 — never fail a completed send on a notice
+                logger.warning("campaign-complete notification failed %s", campaign_id)
 
         await flush_progress(status="completed")
 

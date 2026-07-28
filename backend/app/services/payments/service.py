@@ -378,9 +378,24 @@ class PaymentService:
         try:
             from app.services.billing.invoicing import create_invoice_for_payment
 
-            await create_invoice_for_payment(db, payment)
+            invoice = await create_invoice_for_payment(db, payment)
         except Exception:  # noqa: BLE001
+            invoice = None
             log.exception("invoice generation failed tx=%s (payment still settled)", payment.tx_ref)
+
+        try:
+            from app.services.notifications import notify
+
+            await notify(
+                db, account_id=account.id, type="payment.succeeded", level="success",
+                title=f"Payment received — {plan.name} plan active",
+                body=f"Your payment of UGX {payment.amount_ugx:,} was successful.",
+                link="/dashboard/billing",
+                meta={"tx_ref": payment.tx_ref, "amount_ugx": payment.amount_ugx,
+                      "invoice_number": invoice.number if invoice else None},
+            )
+        except Exception:  # noqa: BLE001 — a notice must never fail settlement
+            log.warning("payment notification failed tx=%s", payment.tx_ref)
 
 
 payment_service = PaymentService()

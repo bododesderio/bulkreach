@@ -1,5 +1,5 @@
 # Project Context
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## Current task
 Building BulkReach (bulk SMS & email SaaS). Full project overview + run/deploy/test/secrets now live in

@@ -20,7 +20,6 @@ from app.core.config import settings
 from app.models.account import Account
 from app.models.billing import Plan, Subscription
 from app.services.audit import record_audit
-from app.services.email import send_email
 
 log = logging.getLogger("bulkreach.billing")
 
@@ -34,25 +33,27 @@ def _stage_for_days(days: int) -> int:
     return stage
 
 
-async def _reminder_email(account: Account, *, days_past_due: int, final: bool) -> None:
+async def _notify_dunning(db, account: Account, *, days_past_due: int, final: bool) -> None:
+    """Deliver a dunning notice through the notification service (in-app + email
+    per the account's billing preferences)."""
+    from app.services.notifications import notify
+
     if final:
-        subject = "Your BulkReach subscription has been suspended"
-        body = (
-            "Your subscription payment is overdue and your account has been suspended. "
-            "Log in and settle your invoice to restore access."
-        )
+        title = "Your subscription has been suspended"
+        body = ("Your subscription payment is overdue and your account has been suspended. "
+                "Settle your invoice to restore access.")
+        type_, level = "billing.suspended", "error"
     else:
-        subject = "Action needed: your BulkReach payment is overdue"
-        body = (
-            f"Your subscription renewal is {days_past_due} day(s) overdue. "
-            "Please log in to your billing page to keep your account active."
-        )
-    await send_email(
-        to=account.email,
-        subject=subject,
-        html=f"<p>Hi {account.name},</p><p>{body}</p>"
-             f'<p><a href="{settings.FRONTEND_URL}/dashboard/billing">Go to billing</a></p>',
-        plain=f"Hi {account.name}, {body} {settings.FRONTEND_URL}/dashboard/billing",
+        title = "Action needed: your payment is overdue"
+        body = (f"Your subscription renewal is {days_past_due} day(s) overdue. "
+                "Please settle it to keep your account active.")
+        type_, level = "billing.past_due", "warning"
+    await notify(
+        db, account_id=account.id, type=type_, level=level, title=title, body=body,
+        link="/dashboard/billing", meta={"days_past_due": days_past_due},
+        email_subject=f"BulkReach — {title}",
+        email_html=(f"<p>Hi {account.name},</p><p>{body}</p>"
+                    f'<p><a href="{settings.FRONTEND_URL}/dashboard/billing">Go to billing</a></p>'),
     )
 
 
@@ -86,7 +87,7 @@ async def run_renewal_sweep(db: AsyncSession, *, now: datetime | None = None) ->
             details={"auto_renew": sub.auto_renew, "grace_until": sub.grace_until.isoformat()},
         )
         if account is not None:
-            await _reminder_email(account, days_past_due=0, final=False)
+            await _notify_dunning(db, account, days_past_due=0, final=False)
         opened += 1
     await db.flush()
     if opened:
@@ -124,7 +125,7 @@ async def run_dunning_sweep(db: AsyncSession, *, now: datetime | None = None) ->
                 resource_id=str(sub.id), details={"days_past_due": days},
             )
             if account is not None:
-                await _reminder_email(account, days_past_due=days, final=True)
+                await _notify_dunning(db, account, days_past_due=days, final=True)
             suspended += 1
             continue
 
@@ -138,7 +139,7 @@ async def run_dunning_sweep(db: AsyncSession, *, now: datetime | None = None) ->
                 resource_id=str(sub.id), details={"stage": target, "days_past_due": days},
             )
             if account is not None:
-                await _reminder_email(account, days_past_due=days, final=False)
+                await _notify_dunning(db, account, days_past_due=days, final=False)
             advanced += 1
     await db.flush()
     if advanced or suspended:

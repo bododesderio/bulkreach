@@ -10,6 +10,7 @@ from app.models.campaign import (
 )
 from app.models.contact import Contact, ContactList
 from app.models.invoicing import Invoice, InvoiceSequence
+from app.models.notification import Notification, NotificationPreference
 from app.models.payment_provider import (
     PaymentProviderConfig,
     PaymentSettings,
@@ -33,6 +34,8 @@ __all__ = [
     "Payment",
     "Invoice",
     "InvoiceSequence",
+    "Notification",
+    "NotificationPreference",
     "PaymentProviderConfig",
     "PaymentSettings",
     "RawWebhookEvent",
