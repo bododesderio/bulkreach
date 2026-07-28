@@ -8,6 +8,7 @@ from app.models.campaign import (
     Message,
     Report,
 )
+from app.models.cms import CmsFaq, CmsFeature, CmsPageSection, CmsTestimonial
 from app.models.contact import Contact, ContactList
 from app.models.invoicing import Invoice, InvoiceSequence
 from app.models.notification import Notification, NotificationPreference
@@ -36,6 +37,10 @@ __all__ = [
     "InvoiceSequence",
     "Notification",
     "NotificationPreference",
+    "CmsFaq",
+    "CmsFeature",
+    "CmsTestimonial",
+    "CmsPageSection",
     "PaymentProviderConfig",
     "PaymentSettings",
     "RawWebhookEvent",

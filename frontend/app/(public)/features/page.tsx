@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Upload, Code, LayoutGrid, BarChart2, Award, Clock, Check } from 'lucide-react'
-import { seedFeatures } from '@/lib/seed-data'
 import FeatureCard from '@/components/public/FeatureCard'
+import { getFeatures, getSections } from '@/lib/public-content'
 
 export const metadata: Metadata = {
   title: 'Features — BulkReach',
@@ -10,6 +10,18 @@ export const metadata: Metadata = {
 }
 
 const iconMap = { Upload, Code, LayoutGrid, BarChart2, Award, Clock }
+
+// Decorative chips are keyed by feature title (not stored in the CMS).
+const CHIPS: Record<string, string[]> = {
+  'Any contact format': ['CSV', 'Excel', 'Word', 'PDF', 'Paste'],
+}
+
+const HERO_FALLBACK = {
+  hero_eyebrow: 'PLATFORM FEATURES',
+  hero_title: 'Every tool to send campaigns that actually land.',
+  hero_subtitle:
+    'BulkReach handles contact import, personalisation, dispatch, reporting, and compliance — so you can focus on the message.',
+}
 
 const fileFormats = [
   {
@@ -77,27 +89,31 @@ const managedItems = [
   'Branded client success report emailed on completion',
 ]
 
-export default function FeaturesPage() {
+export default async function FeaturesPage() {
+  const [features, hero] = await Promise.all([
+    getFeatures(),
+    getSections('features', HERO_FALLBACK),
+  ])
+
   return (
     <>
       {/* ── HERO ── */}
       <section className="bg-navy-dark py-16 px-4 md:px-10 text-center">
         <div className="max-w-[1100px] mx-auto">
           <p className="text-teal text-[11px] font-bold uppercase tracking-[0.1em] mb-3">
-            PLATFORM FEATURES
+            {hero.hero_eyebrow}
           </p>
           <h1
             className="font-display font-extrabold text-white mb-4"
             style={{ fontSize: 'clamp(32px, 3.5vw, 52px)' }}
           >
-            Every tool to send campaigns that actually land.
+            {hero.hero_title}
           </h1>
           <p
             className="text-[16px] max-w-[560px] mx-auto"
             style={{ color: 'rgba(255,255,255,0.52)' }}
           >
-            BulkReach handles contact import, personalisation, dispatch, reporting, and compliance
-            — so you can focus on the message.
+            {hero.hero_subtitle}
           </p>
         </div>
       </section>
@@ -105,13 +121,13 @@ export default function FeaturesPage() {
       {/* ── ALL FEATURE CARDS ── */}
       <section className="py-20 px-4 md:px-10 bg-white">
         <div className="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {seedFeatures.map((f) => (
+          {features.map((f) => (
             <FeatureCard
               key={f.title}
               icon={iconMap[f.icon as keyof typeof iconMap]}
               title={f.title}
               desc={f.desc}
-              chips={f.chips}
+              chips={CHIPS[f.title]}
             />
           ))}
         </div>

@@ -17,6 +17,7 @@ import {
   Settings,
   Database,
   Package,
+  Newspaper,
   ArrowRight,
 } from 'lucide-react';
 
@@ -70,6 +71,7 @@ const sections: NavSection[] = [
       { icon: Settings, label: 'Settings', href: '/admin/settings' },
       { icon: Package, label: 'Plans', href: '/admin/settings/plans' },
       { icon: CreditCard, label: 'Payment providers', href: '/admin/settings/payments' },
+      { icon: Newspaper, label: 'Content', href: '/admin/settings/content' },
     ],
   },
   {

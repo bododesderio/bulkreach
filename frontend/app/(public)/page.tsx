@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Users, Check, FileText, Upload, Code, LayoutGrid, BarChart2, Award, Clock, ArrowRight } from 'lucide-react'
-import { seedFeatures, seedPlans, seedTestimonials } from '@/lib/seed-data'
+import { seedPlans } from '@/lib/seed-data'
+import { getFeatures, getTestimonials } from '@/lib/public-content'
 import BroadcastAnimation from '@/components/public/BroadcastAnimation'
 import FeatureCard from '@/components/public/FeatureCard'
 import PlanCard from '@/components/public/PlanCard'
@@ -15,6 +16,11 @@ export const metadata: Metadata = {
 }
 
 const iconMap = { Upload, Code, LayoutGrid, BarChart2, Award, Clock }
+
+// Decorative chips are keyed by feature title (not stored in the CMS).
+const CHIPS: Record<string, string[]> = {
+  'Any contact format': ['CSV', 'Excel', 'Word', 'PDF', 'Paste'],
+}
 
 const steps = [
   {
@@ -39,7 +45,8 @@ const steps = [
   },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [features, testimonials] = await Promise.all([getFeatures(), getTestimonials()])
   return (
     <>
       {/* ── HERO ── */}
@@ -181,13 +188,13 @@ export default function HomePage() {
             From a CSV upload to 20,000 personalised messages — all in the browser in minutes.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            {seedFeatures.map((f) => (
+            {features.map((f) => (
               <FeatureCard
                 key={f.title}
                 icon={iconMap[f.icon as keyof typeof iconMap]}
                 title={f.title}
                 desc={f.desc}
-                chips={f.chips}
+                chips={CHIPS[f.title]}
               />
             ))}
           </div>
@@ -300,7 +307,7 @@ export default function HomePage() {
             Real results from Ugandan businesses.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-[18px]">
-            {seedTestimonials.map((t) => (
+            {testimonials.map((t) => (
               <TestimonialCard key={t.name} {...t} />
             ))}
           </div>

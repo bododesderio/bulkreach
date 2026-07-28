@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { seedPlans, seedFAQ } from '@/lib/seed-data'
+import { seedPlans } from '@/lib/seed-data'
+import { getFaqs, getSections } from '@/lib/public-content'
 import PlanCard from '@/components/public/PlanCard'
 import FaqAccordion from '@/components/public/FaqAccordion'
 
@@ -11,26 +12,33 @@ export const metadata: Metadata = {
 
 const paymentMethods = ['MTN Mobile Money', 'Airtel Money', 'Visa', 'Mastercard']
 
-export default function PricingPage() {
+const HERO_FALLBACK = {
+  hero_eyebrow: 'PRICING',
+  hero_title: 'Simple, Ugandan pricing.',
+  hero_subtitle: 'All prices in UGX. No hidden fees. Cancel anytime.',
+}
+
+export default async function PricingPage() {
+  const [faqs, hero] = await Promise.all([getFaqs(), getSections('pricing', HERO_FALLBACK)])
   return (
     <>
       {/* ── HERO ── */}
       <section className="bg-navy-dark py-16 px-4 md:px-10 text-center">
         <div className="max-w-[1100px] mx-auto">
           <p className="text-teal text-[11px] font-bold uppercase tracking-[0.1em] mb-3">
-            PRICING
+            {hero.hero_eyebrow}
           </p>
           <h1
             className="font-display font-extrabold text-white mb-4"
             style={{ fontSize: 'clamp(32px, 3.5vw, 52px)' }}
           >
-            Simple, Ugandan pricing.
+            {hero.hero_title}
           </h1>
           <p
             className="text-[16px] max-w-[480px] mx-auto"
             style={{ color: 'rgba(255,255,255,0.52)' }}
           >
-            All prices in UGX. No hidden fees. Cancel anytime.
+            {hero.hero_subtitle}
           </p>
         </div>
       </section>
@@ -107,7 +115,7 @@ export default function PricingPage() {
           >
             Common questions about pricing.
           </h2>
-          <FaqAccordion items={seedFAQ} />
+          <FaqAccordion items={faqs} />
         </div>
       </section>
     </>

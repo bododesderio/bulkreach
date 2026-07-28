@@ -12,6 +12,7 @@ from app.api.v1.admin.archive import router as archive_router
 from app.api.v1.admin.audit import router as audit_router
 from app.api.v1.admin.billing import router as billing_router
 from app.api.v1.admin.campaigns import router as campaigns_router
+from app.api.v1.admin.content import router as content_router
 from app.api.v1.admin.health import router as health_router
 from app.api.v1.admin.managed import router as managed_router
 from app.api.v1.admin.overview import router as overview_router
@@ -33,5 +34,6 @@ router.include_router(health_router)
 router.include_router(revenue_router)
 router.include_router(archive_router)
 router.include_router(users_router)
+router.include_router(content_router)
 
 __all__ = ["router"]
