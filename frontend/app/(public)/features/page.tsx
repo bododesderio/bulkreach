@@ -1,12 +1,16 @@
 import type { Metadata } from 'next'
 import { Upload, Code, LayoutGrid, BarChart2, Award, Clock, Check } from 'lucide-react'
 import FeatureCard from '@/components/public/FeatureCard'
-import { getFeatures, getSections } from '@/lib/public-content'
+import { getFeatures, getSections, getSeo } from '@/lib/public-content'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'Features — BulkReach',
-  description:
-    'BulkReach handles contact import, personalisation, dispatch, reporting, and compliance — so you can focus on the message.',
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('features', {
+    title: 'Features',
+    description:
+      'BulkReach handles contact import, personalisation, dispatch, reporting, and compliance — so you can focus on the message.',
+  })
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/features' })
 }
 
 const iconMap = { Upload, Code, LayoutGrid, BarChart2, Award, Clock }

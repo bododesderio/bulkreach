@@ -1,11 +1,18 @@
 import type { Metadata } from 'next'
 import FaqAccordion from '@/components/public/FaqAccordion'
-import { getFaqs, getSections } from '@/lib/public-content'
+import { getFaqs, getSections, getSeo } from '@/lib/public-content'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { faqSchema, pageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'FAQ — BulkReach',
+const SEO_FALLBACK = {
+  title: 'FAQ',
   description:
     'Answers to common questions about BulkReach — contact formats, pricing, compliance, SMS limits, scheduling, and data retention.',
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('faq', SEO_FALLBACK)
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/faq' })
 }
 
 const HERO_FALLBACK = {
@@ -19,6 +26,7 @@ export default async function FaqPage() {
 
   return (
     <>
+      {faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
       {/* ── HERO ── */}
       <section className="bg-navy-dark py-16 px-4 md:px-10 text-center">
         <div className="max-w-[1100px] mx-auto">

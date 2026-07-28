@@ -3,11 +3,16 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { seedTestimonials } from '@/lib/seed-data'
 import TestimonialCard from '@/components/public/TestimonialCard'
+import { getSeo } from '@/lib/public-content'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'Managed Service — BulkReach',
-  description:
-    'Brief us, approve the copy, and receive a branded report. BulkReach handles contact import, message copywriting, dispatch, and analytics — end to end.',
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('managed', {
+    title: 'Managed Service',
+    description:
+      'Brief us, approve the copy, and receive a branded report. BulkReach handles contact import, message copywriting, dispatch, and analytics — end to end.',
+  })
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/managed' })
 }
 
 const included = [

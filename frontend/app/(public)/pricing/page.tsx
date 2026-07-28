@@ -1,13 +1,20 @@
 import type { Metadata } from 'next'
 import { seedPlans } from '@/lib/seed-data'
-import { getFaqs, getSections } from '@/lib/public-content'
+import { getFaqs, getSections, getSeo } from '@/lib/public-content'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { faqSchema, pageMetadata } from '@/lib/seo'
 import PlanCard from '@/components/public/PlanCard'
 import FaqAccordion from '@/components/public/FaqAccordion'
 
-export const metadata: Metadata = {
-  title: 'Pricing — BulkReach',
+const SEO_FALLBACK = {
+  title: 'Pricing',
   description:
     'Simple Ugandan pricing in UGX. Pay via MTN Mobile Money, Airtel Money, Visa, or Mastercard. 500 messages free on trial.',
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('pricing', SEO_FALLBACK)
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/pricing' })
 }
 
 const paymentMethods = ['MTN Mobile Money', 'Airtel Money', 'Visa', 'Mastercard']
@@ -22,6 +29,7 @@ export default async function PricingPage() {
   const [faqs, hero] = await Promise.all([getFaqs(), getSections('pricing', HERO_FALLBACK)])
   return (
     <>
+      {faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
       {/* ── HERO ── */}
       <section className="bg-navy-dark py-16 px-4 md:px-10 text-center">
         <div className="max-w-[1100px] mx-auto">

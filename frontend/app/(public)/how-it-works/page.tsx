@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import StepItem from '@/components/public/StepItem'
+import { getSeo } from '@/lib/public-content'
+import { pageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'How It Works — BulkReach',
-  description:
-    'From CSV upload to PDF report in four steps. Or brief our managed team and receive a branded report — we handle everything in between.',
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('how-it-works', {
+    title: 'How It Works',
+    description:
+      'From CSV upload to PDF report in four steps. Or brief our managed team and receive a branded report — we handle everything in between.',
+  })
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/how-it-works' })
 }
 
 const selfServiceSteps = [

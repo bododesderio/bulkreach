@@ -52,3 +52,22 @@ export async function getSections(
   const data = await get<Record<string, string>>(`/content/sections?page=${encodeURIComponent(page)}`);
   return { ...fallback, ...(data ?? {}) };
 }
+
+/**
+ * Per-page SEO title/description, CMS-overridable via the page-section store
+ * (keys `meta_title` / `meta_description`), with static fallbacks so pages
+ * always carry sound metadata even before a superadmin customises them. Shares
+ * the `/content/sections` fetch with getSections — Next dedupes identical calls
+ * within a render, so this adds no extra round-trip on pages that also render
+ * section copy.
+ */
+export async function getSeo(
+  page: string,
+  fallback: { title: string; description: string },
+): Promise<{ title: string; description: string }> {
+  const data = await get<Record<string, string>>(`/content/sections?page=${encodeURIComponent(page)}`);
+  return {
+    title: data?.meta_title?.trim() || fallback.title,
+    description: data?.meta_description?.trim() || fallback.description,
+  };
+}

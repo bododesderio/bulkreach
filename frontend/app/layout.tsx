@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Montserrat } from "next/font/google";
 import { Toaster } from "sonner";
 import { Providers } from "./providers";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const montserrat = Montserrat({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-display" });
@@ -9,9 +10,33 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variabl
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "BulkReach — Bulk SMS & Email Platform for Uganda",
-  description:
-    "Professional bulk SMS & email campaigns for Uganda's businesses — personalised merge tags, auto-generated PDF reports, and a fully managed option.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: DEFAULT_TITLE,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_UG",
+    url: SITE_URL,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

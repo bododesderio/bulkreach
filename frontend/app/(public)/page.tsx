@@ -2,17 +2,18 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Users, Check, FileText, Upload, Code, LayoutGrid, BarChart2, Award, Clock, ArrowRight } from 'lucide-react'
 import { seedPlans } from '@/lib/seed-data'
-import { getFeatures, getTestimonials } from '@/lib/public-content'
+import { getFeatures, getTestimonials, getSeo } from '@/lib/public-content'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { organizationSchema, softwareApplicationSchema, pageMetadata, websiteSchema, DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '@/lib/seo'
 import BroadcastAnimation from '@/components/public/BroadcastAnimation'
 import FeatureCard from '@/components/public/FeatureCard'
 import PlanCard from '@/components/public/PlanCard'
 import TestimonialCard from '@/components/public/TestimonialCard'
 import StepItem from '@/components/public/StepItem'
 
-export const metadata: Metadata = {
-  title: 'BulkReach — Bulk SMS & Email for Uganda',
-  description:
-    "Professional bulk SMS & email campaigns for Uganda's businesses — personalised merge tags, auto-generated PDF reports, and a fully managed option.",
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeo('home', { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION })
+  return pageMetadata({ title: seo.title, description: seo.description, path: '/', titleAbsolute: true })
 }
 
 const iconMap = { Upload, Code, LayoutGrid, BarChart2, Award, Clock }
@@ -49,6 +50,7 @@ export default async function HomePage() {
   const [features, testimonials] = await Promise.all([getFeatures(), getTestimonials()])
   return (
     <>
+      <JsonLd data={[organizationSchema(), websiteSchema(), softwareApplicationSchema()]} />
       {/* ── HERO ── */}
       <section className="bg-navy-dark py-16 px-4 md:px-10">
         <div className="max-w-[1100px] mx-auto flex items-center gap-10 flex-wrap">
