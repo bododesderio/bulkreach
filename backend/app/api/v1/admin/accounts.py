@@ -170,6 +170,30 @@ async def _set_status(
     )
     await db.commit()
     await db.refresh(account)
+
+    # Tell the account holder their status changed. Suspension force-emails because
+    # the user is locked out of the in-app feed (auth is blocked while suspended).
+    try:
+        from app.services.notifications import notify
+
+        if new_status == "suspended":
+            await notify(
+                db, account_id=account.id, type="account.suspended", level="error",
+                title="Your account has been suspended",
+                body="Access to BulkReach has been suspended. Contact support to resolve this.",
+                force_email=True, meta={"by": admin.email},
+            )
+        elif is_active and new_status == "active":
+            await notify(
+                db, account_id=account.id, type="account.reactivated", level="success",
+                title="Your account has been reactivated",
+                body="Welcome back — your BulkReach account is active again.",
+                link="/dashboard", meta={"by": admin.email},
+            )
+        await db.commit()
+    except Exception:  # noqa: BLE001 — an account-status change must not fail on a notice
+        pass
+
     since = datetime.now(timezone.utc) - timedelta(days=30)
     mrr = (await _mrr_map(db)).get(account_id, 0)
     msgs = (await _messages_map(db, since)).get(account_id, 0)

@@ -275,6 +275,7 @@ class PaymentService:
                 if settings.is_production:
                     payment.status = FAILED
                     log.error("simulator settlement blocked in production tx=%s", payment.tx_ref)
+                    await self._on_failure(db, payment, reason="provider_unavailable")
                     await db.commit()
                     return
             else:
@@ -284,18 +285,21 @@ class PaymentService:
                     payment.status = FAILED
                     log.error("AMOUNT MISMATCH/ABSENT tx=%s intent=%s got=%s",
                               payment.tx_ref, payment.amount_ugx, amount)
+                    await self._on_failure(db, payment, reason="amount_mismatch")
                     await db.commit()
                     return
                 if not currency or currency.upper() != payment.currency.upper():
                     payment.status = FAILED
                     log.error("CURRENCY MISMATCH/ABSENT tx=%s intent=%s got=%s",
                               payment.tx_ref, payment.currency, currency)
+                    await self._on_failure(db, payment, reason="currency_mismatch")
                     await db.commit()
                     return
             payment.status = SUCCESSFUL
             await self._on_success(db, payment)
         elif status in _TERMINAL:
             payment.status = status
+            await self._on_failure(db, payment, reason=status)
         else:
             payment.status = PENDING
         await db.commit()
@@ -341,6 +345,23 @@ class PaymentService:
                 sub.status = "cancelled"
         await db.commit()
         log.info("refund ok tx=%s by=%s", payment.tx_ref, actor_email or "system")
+
+        # Notify the account that the refund downgraded them off their paid plan.
+        if account is not None and payment.purpose == "subscription":
+            try:
+                from app.services.notifications import notify
+
+                await notify(
+                    db, account_id=account.id, type="billing.subscription_cancelled",
+                    level="warning", title="Your subscription was cancelled",
+                    body=f"A refund of UGX {payment.amount_ugx:,} was issued and your plan "
+                         "was moved back to Trial.",
+                    link="/dashboard/billing",
+                    meta={"tx_ref": payment.tx_ref, "reason": reason},
+                )
+                await db.commit()
+            except Exception:  # noqa: BLE001 — a notice must not fail a completed refund
+                log.warning("refund notification failed tx=%s", payment.tx_ref)
         return payment
 
     async def _on_success(self, db: AsyncSession, payment: Payment) -> None:
@@ -396,6 +417,26 @@ class PaymentService:
             )
         except Exception:  # noqa: BLE001 — a notice must never fail settlement
             log.warning("payment notification failed tx=%s", payment.tx_ref)
+
+    async def _on_failure(self, db: AsyncSession, payment: Payment, *, reason: str) -> None:
+        """Tell the account a subscription charge did not go through. Force-emails so
+        a user who has left the checkout still learns their payment failed. Best-effort
+        — a notice must never interfere with recording the failed payment."""
+        if payment.purpose != "subscription":
+            return
+        try:
+            from app.services.notifications import notify
+
+            await notify(
+                db, account_id=payment.account_id, type="payment.failed", level="error",
+                title="Your payment could not be completed",
+                body=f"We couldn't process your payment of UGX {payment.amount_ugx:,}. "
+                     "Please try again or use a different method.",
+                link="/dashboard/billing", force_email=True,
+                meta={"tx_ref": payment.tx_ref, "reason": reason},
+            )
+        except Exception:  # noqa: BLE001
+            log.warning("payment-failed notification failed tx=%s", payment.tx_ref)
 
 
 payment_service = PaymentService()

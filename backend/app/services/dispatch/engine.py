@@ -142,6 +142,20 @@ async def dispatch_campaign(
                 await progress.write(campaign_id, status="paused_quota_exceeded",
                                      total=total, sent=0, failed=0)
                 logger.info("dispatch: campaign %s paused — monthly quota exhausted", campaign_id)
+                try:
+                    from app.services.notifications import notify
+
+                    await notify(
+                        db, account_id=account.id, type="campaign.paused", level="warning",
+                        title=f"Campaign “{campaign.name}” paused — monthly limit reached",
+                        body="Your monthly message allowance ran out before this campaign "
+                             "could send. Upgrade your plan or wait for the reset to resume.",
+                        link=f"/dashboard/campaigns/{campaign_id}",
+                        meta={"campaign_id": str(campaign_id), "total": total},
+                    )
+                    await db.commit()
+                except Exception:  # noqa: BLE001 — a notice must not break the pause path
+                    logger.warning("campaign-paused notification failed %s", campaign_id)
                 return {"status": "paused_quota_exceeded", "total": total}
 
         campaign.status = "sending"
@@ -256,21 +270,33 @@ async def dispatch_campaign(
             except Exception:  # noqa: BLE001 — metering must never fail a completed send
                 logger.warning("quota consume failed for account %s", account.id)
 
-        # Notify the account that their campaign finished.
+        # Notify the account that their campaign finished. A run where nothing was
+        # delivered is a failure, not a success — report it honestly at error level.
         if account is not None:
             try:
                 from app.services.notifications import notify
 
-                await notify(
-                    db, account_id=account.id, type="campaign.completed", level="success",
-                    title=f"Campaign “{campaign.name}” finished",
-                    body=f"{sent:,} delivered · {failed:,} failed.",
-                    link=f"/dashboard/campaigns/{campaign_id}",
-                    meta={"campaign_id": str(campaign_id), "sent": sent, "failed": failed},
-                )
+                total_failure = sent == 0 and failed > 0
+                if total_failure:
+                    await notify(
+                        db, account_id=account.id, type="campaign.failed", level="error",
+                        title=f"Campaign “{campaign.name}” failed to send",
+                        body=f"None of the {failed:,} messages could be delivered. "
+                             "Open the campaign to review the errors.",
+                        link=f"/dashboard/campaigns/{campaign_id}",
+                        meta={"campaign_id": str(campaign_id), "sent": sent, "failed": failed},
+                    )
+                else:
+                    await notify(
+                        db, account_id=account.id, type="campaign.completed", level="success",
+                        title=f"Campaign “{campaign.name}” finished",
+                        body=f"{sent:,} delivered · {failed:,} failed.",
+                        link=f"/dashboard/campaigns/{campaign_id}",
+                        meta={"campaign_id": str(campaign_id), "sent": sent, "failed": failed},
+                    )
                 await db.commit()
             except Exception:  # noqa: BLE001 — never fail a completed send on a notice
-                logger.warning("campaign-complete notification failed %s", campaign_id)
+                logger.warning("campaign-finish notification failed %s", campaign_id)
 
         await flush_progress(status="completed")
 

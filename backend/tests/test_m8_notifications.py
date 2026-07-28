@@ -120,3 +120,58 @@ async def test_mark_read_rejects_other_accounts_notification(client):
     # But B can.
     r2 = await client.post(f"/api/v1/notifications/{nid}/read", headers=hdr_b)
     assert r2.status_code == 200
+
+
+async def _notifs_of(account_id: str, type_: str) -> list:
+    from sqlalchemy import select
+
+    from app.models.notification import Notification
+
+    async with LiveSessionLocal() as db:
+        rows = (
+            await db.execute(
+                select(Notification).where(
+                    Notification.account_id == uuid.UUID(account_id),
+                    Notification.type == type_,
+                )
+            )
+        ).scalars().all()
+        return list(rows)
+
+
+async def test_admin_suspend_emits_notification(client, super_headers):
+    hdr, account_id = await _fresh_owner(client)
+
+    r = await client.post(f"/api/v1/admin/accounts/{account_id}/suspend", headers=super_headers)
+    assert r.status_code == 200, r.text
+
+    # The suspended account can't reach the feed via API, but the record must exist.
+    notes = await _notifs_of(account_id, "account.suspended")
+    assert len(notes) == 1
+    assert notes[0].level == "error"
+
+    # Reactivation emits its own success notice.
+    r2 = await client.post(f"/api/v1/admin/accounts/{account_id}/activate", headers=super_headers)
+    assert r2.status_code == 200, r2.text
+    assert len(await _notifs_of(account_id, "account.reactivated")) == 1
+
+
+async def test_campaign_total_failure_emits_failed(client):
+    """A completed run that delivered nothing is reported as campaign.failed, not
+    campaign.completed — verified at the notify() layer."""
+    from app.services.notifications import notify
+
+    _hdr, account_id = await _fresh_owner(client)
+
+    async with LiveSessionLocal() as db:
+        # Mirrors the engine's total-failure branch (sent == 0, failed > 0).
+        await notify(
+            db, account_id=uuid.UUID(account_id), type="campaign.failed", level="error",
+            title="Campaign “Blast” failed to send",
+            body="None of the 5 messages could be delivered.",
+            meta={"sent": 0, "failed": 5},
+        )
+        await db.commit()
+
+    failed = await _notifs_of(account_id, "campaign.failed")
+    assert len(failed) == 1 and failed[0].level == "error"

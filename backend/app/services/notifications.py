@@ -76,10 +76,15 @@ async def notify(
     email_subject: str | None = None,
     email_html: str | None = None,
     email_to: str | None = None,
+    force_email: bool = False,
 ) -> Notification | None:
     """Create an in-app notification (if enabled) and optionally email it. Returns
     the Notification row, or None if in-app is disabled for the category. Never
-    raises for delivery problems — notifications must not break the triggering flow."""
+    raises for delivery problems — notifications must not break the triggering flow.
+
+    ``force_email`` sends the email regardless of the account's channel preference —
+    reserved for non-negotiable account/security alerts (suspension, password change)
+    that must reach a user who may be locked out of the in-app feed."""
     category = _category(type)
     channels = await _channels_for(db, account_id, category)
 
@@ -92,7 +97,7 @@ async def notify(
         db.add(notification)
         await db.flush()
 
-    if "email" in channels and (email_html or body):
+    if ("email" in channels or force_email) and (email_html or body):
         to = email_to
         if to is None:
             account = await db.get(Account, account_id)

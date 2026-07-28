@@ -89,3 +89,14 @@ async def apply_password_reset(db: AsyncSession, token: str, new_password: str) 
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid reset token.")
     user.hashed_password = hash_password(new_password)
     await db.flush()
+    try:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=user.account_id, user_id=user.id, type="security.password_changed",
+            level="warning", title="Your password was changed",
+            body="Your BulkReach password was just reset. If this wasn't you, contact support immediately.",
+            email_to=user.email, force_email=True,
+        )
+    except Exception:  # noqa: BLE001 — a security notice must not block the reset
+        pass

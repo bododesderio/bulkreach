@@ -191,6 +191,17 @@ async def activate_password(
         db, actor_id=user.id, actor_email=user.email, action="account.password_changed",
         resource_type="user", resource_id=str(user.id),
     )
+    try:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=user.account_id, user_id=user.id, type="security.password_changed",
+            level="warning", title="Your password was changed",
+            body="Your BulkReach password was just set. If this wasn't you, contact support immediately.",
+            email_to=user.email, force_email=True,
+        )
+    except Exception:  # noqa: BLE001 — a security notice must not block the password change
+        pass
     return {"status": "ok", "must_change_password": False}
 
 
