@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Password hashing, API-key hashing, and JWT issue/verify.
 
 Per Section 13.1: JWT (python-jose, HS256), 24h access tokens, refresh tokens in
@@ -55,6 +57,17 @@ def create_access_token(subject: str, **claims: Any) -> str:
     return _create_token(
         subject,
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        "access",
+        **claims,
+    )
+
+
+def create_impersonation_token(subject: str, **claims: Any) -> str:
+    """Short-lived access token a superadmin uses to act as an account's owner.
+    Carries an `imp`/`imp_email` claim identifying the real actor for audit."""
+    return _create_token(
+        subject,
+        timedelta(minutes=settings.IMPERSONATION_TOKEN_MINUTES),
         "access",
         **claims,
     )

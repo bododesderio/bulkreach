@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin portal (superadmin) schemas — overview, accounts, campaigns, audit,
 managed-service workflow, health, revenue. Read-mostly; money-safe writes live
 in the payments/plans routers."""
@@ -229,3 +231,17 @@ class RevenueResponse(BaseModel):
     totals: RevenueTotals
     series: list[RevenuePoint]
     method_split: list[MethodSplit]
+
+
+# ── Impersonation (superadmin "log in as") ──────────────────────────────────
+class ImpersonateOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    account_id: UUID
+    account_name: str
+    owner_email: str
+    expires_in: int  # seconds
+
+
+class ImpersonateStopBody(BaseModel):
+    account_id: UUID | None = None

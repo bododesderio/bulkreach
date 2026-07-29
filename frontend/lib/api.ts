@@ -1,8 +1,23 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 const TOKEN_KEY = "bulkreach_token";
+const IMP_TOKEN_KEY = "bulkreach_imp_token";
 
+/** The token used for authed requests: the impersonation token when a superadmin
+ *  is acting-as an account, otherwise the real session token. Single choke point
+ *  — api/apiDownload/apiUpload all route through here, so impersonation is
+ *  transparent to every caller. */
 export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(IMP_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+}
+
+/** The admin's own session token, ignoring any active impersonation. */
+export function getRealToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -13,6 +28,19 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export function setImpToken(token: string): void {
+  localStorage.setItem(IMP_TOKEN_KEY, token);
+}
+
+export function clearImpToken(): void {
+  localStorage.removeItem(IMP_TOKEN_KEY);
+}
+
+export function isImpersonating(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(IMP_TOKEN_KEY) != null;
 }
 
 export class ApiError extends Error {

@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """FastAPI auth dependencies: bearer JWT, X-API-Key, and role guards.
 
 Roles (Section 13.1): owner, admin, member (account level); superadmin (platform).
@@ -47,6 +49,9 @@ async def _user_from_jwt(token: str, db: AsyncSession) -> User | None:
         return None
     if not await _account_active(db, user.account_id):
         return None
+    # If this is a superadmin impersonation token, stamp the acting admin onto the
+    # principal (transient attr) so /auth/me can surface the session to the UI.
+    user.impersonated_by = payload.get("imp_email")
     return user
 
 

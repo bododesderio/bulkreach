@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Application configuration — all runtime settings loaded from environment.
 
 Every value maps to Section 10.2 of the BulkReach System Documentation v2.0.
@@ -29,6 +31,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h per spec 13.1
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    IMPERSONATION_TOKEN_MINUTES: int = 30  # superadmin "log in as" — deliberately short-lived
 
     # --- Databases ---
     DATABASE_URL: str = "postgresql+asyncpg://bulkreach:pw@localhost:5432/bulkreach"

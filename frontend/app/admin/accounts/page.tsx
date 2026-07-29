@@ -1,9 +1,15 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, CheckCircle, Clock, Ban, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Users, CheckCircle, Clock, Ban, Search, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useAuth } from '@/store/auth';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
@@ -40,6 +46,12 @@ interface AccountsResponse {
   stats: AccountStats;
 }
 
+interface ImpersonateResponse {
+  access_token: string;
+  account_name: string;
+  owner_email: string;
+}
+
 // ── config ────────────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { label: string; color: string; pulse: boolean }> = {
   active:    { label: 'Active',    color: '#10B981', pulse: true  },
@@ -70,6 +82,8 @@ const fmtDate = (iso: string) => {
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function AccountsPage() {
+  const router = useRouter();
+  const startImpersonation = useAuth((s) => s.startImpersonation);
   const [items, setItems]               = useState<AdminAccount[]>([]);
   const [stats, setStats]               = useState<AccountStats | null>(null);
   const [loading, setLoading]           = useState(true);
@@ -126,6 +140,29 @@ export default function AccountsPage() {
       setActionPending(null);
     }
   }, []);
+
+  const handleImpersonate = useCallback(async (row: AdminAccount) => {
+    if (row.status === 'suspended') {
+      toast.error('Reactivate the account before logging in as it.');
+      return;
+    }
+    if (!window.confirm(
+      `Log in as "${row.name}"? You'll act as this account for 30 minutes. Every action is audited.`
+    )) return;
+    setActionPending(row.id);
+    try {
+      const res = await api<ImpersonateResponse>(`/admin/accounts/${row.id}/impersonate`, {
+        method: 'POST',
+        auth: true,
+      });
+      await startImpersonation(res.access_token);
+      toast.success(`Now viewing ${res.account_name}`);
+      router.push('/dashboard');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to start session');
+      setActionPending(null);
+    }
+  }, [router, startImpersonation]);
 
   const rows = useMemo(() => {
     let out = [...items];
@@ -222,39 +259,51 @@ export default function AccountsPage() {
         align: 'right',
         render: (row) => {
           const busy = actionPending === row.id;
-          if (row.status === 'active') {
-            return (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => handleSuspend(row)}
-                className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ color: '#EF4444', borderColor: '#EF4444', background: 'transparent' }}
-                aria-label={`Suspend ${row.name}`}
-              >
-                {busy ? '…' : 'Suspend'}
-              </button>
-            );
-          }
-          if (row.status === 'suspended') {
-            return (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => handleActivate(row)}
-                className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ color: '#10B981', borderColor: '#10B981', background: 'transparent' }}
-                aria-label={`Activate ${row.name}`}
-              >
-                {busy ? '…' : 'Activate'}
-              </button>
-            );
-          }
-          return null;
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              {row.status !== 'suspended' && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleImpersonate(row)}
+                  className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: '#1B1F4A', borderColor: 'var(--border)', background: 'transparent' }}
+                  aria-label={`Log in as ${row.name}`}
+                >
+                  <LogIn size={12} aria-hidden="true" />
+                  {busy ? '…' : 'Log in as'}
+                </button>
+              )}
+              {row.status === 'active' && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleSuspend(row)}
+                  className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: '#EF4444', borderColor: '#EF4444', background: 'transparent' }}
+                  aria-label={`Suspend ${row.name}`}
+                >
+                  {busy ? '…' : 'Suspend'}
+                </button>
+              )}
+              {row.status === 'suspended' && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleActivate(row)}
+                  className="text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: '#10B981', borderColor: '#10B981', background: 'transparent' }}
+                  aria-label={`Activate ${row.name}`}
+                >
+                  {busy ? '…' : 'Activate'}
+                </button>
+              )}
+            </div>
+          );
         },
       },
     ],
-    [actionPending, handleSuspend, handleActivate],
+    [actionPending, handleSuspend, handleActivate, handleImpersonate],
   );
 
   return (

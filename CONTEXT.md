@@ -1,9 +1,31 @@
 # Project Context
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
-## Current task
+## Current task — RESUME HERE (2026-07-28 end of day)
+Gap-closing roadmap, recent slices:
+- ✅ Managed 15-state pipeline — backend phase 1 (84a353b) + kanban/client-approval UI phase 2 (3ab45cb).
+  Browser-verified (approve + request-changes + single-use token burn). See [[bulkreach-managed-pipeline]].
+- ✅ SEO system (e2a043e) — metadata/sitemap/robots/JSON-LD + dynamic OG image. Browser+build verified.
+  Gotcha: a parent `opengraph-image.tsx` is shadowed by per-page `openGraph` → reference OG_IMAGE
+  explicitly. See [[bulkreach-seo-slice]].
+- ✅ **Superadmin impersonation ("log in as") — DONE 2026-07-29.** Design: impersonation ONLY (no separate
+  /admin/composer; admin uses the client composer), full-access/audit-only (30-min TTL + start/stop audit;
+  principal = account owner so /admin/* stays role-blocked). Backend: `POST /admin/accounts/{id}/impersonate`
+  (mints short-TTL token, audits `admin.impersonate.start`) + `POST /admin/accounts/impersonate-stop` (audits
+  `.stop`, called with the admin's REAL token). Frontend: `lib/api.ts` imp-token overlay (single choke point —
+  getToken prefers imp token) + auth-store start/stopImpersonation + accounts "Log in as" button + dashboard
+  amber impersonation banner with Exit (managed_client→portal bounce skipped while impersonating). 4 new
+  pytest (81/81 suite green), tsc clean, browser-verified E2E (log in as → dashboard as client → banner →
+  Exit clears imp token, restores admin). See [[bulkreach-impersonation-wip]].
+
+## Authorship (NEW 2026-07-28)
+~/.claude/CLAUDE.md now mandates: all commits/PRs/code authored as Bodo Desderio, NEVER "Claude"/
+"Co-Authored-By: Claude"; run the `sign` skill before committing. (Commits 3ab45cb + e2a043e this
+session still carry the old trailer — leave unless asked to amend.)
+
+## Older current-task note
 Managed 15-state pipeline — Phase 1 (backend) DONE (77 tests). Next: Phase 2 (admin kanban rebuild +
-public /managed-approve/[token] page), then browser-verify.
+public /managed-approve/[token] page), then browser-verify. [BOTH PHASES NOW DONE — see above.]
 
 ## Queued deployment task (NOT started) — Traefik/VPS routing
 Route web-facing services onto the shared-Traefik VPS, one subdomain per service (landing/api/admin/

@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin account management (superadmin): list, detail, suspend/activate.
 
 Suspend flips status→suspended + is_active=False (blocks the account's users at
@@ -8,12 +10,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
+from app.core.security import create_impersonation_token
 from app.models.account import Account, User
 from app.models.billing import Payment, Plan, Subscription
 from app.models.campaign import Campaign
@@ -22,10 +26,17 @@ from app.schemas.admin import (
     AdminAccountDetail,
     AdminAccountOut,
     AdminAccountsResponse,
+    ImpersonateOut,
+    ImpersonateStopBody,
 )
 from app.services.audit import record_audit
 
 router = APIRouter(prefix="/admin/accounts", tags=["admin:accounts"])
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "0.0.0.0")
 
 
 async def _mrr_map(db: AsyncSession) -> dict[UUID, int]:
@@ -260,3 +271,75 @@ async def grant_portal_access(
         "email": owner.email,
         "temp_password": None if settings.is_production else temp,
     }
+
+
+async def _account_owner(db: AsyncSession, account_id: UUID) -> User | None:
+    """The account's owner, falling back to its earliest-created user."""
+    owner = (await db.execute(
+        select(User).where(User.account_id == account_id, User.role == "owner").limit(1)
+    )).scalar_one_or_none()
+    if owner is not None:
+        return owner
+    return (await db.execute(
+        select(User).where(User.account_id == account_id)
+        .order_by(User.created_at.asc()).limit(1)
+    )).scalar_one_or_none()
+
+
+@router.post("/{account_id}/impersonate", response_model=ImpersonateOut)
+async def impersonate_account(
+    account_id: UUID,
+    request: Request,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ImpersonateOut:
+    """Mint a short-lived token that lets a superadmin act as an account's owner.
+
+    Full access, audit-only: safety comes from the short TTL and the start/stop
+    audit trail, not per-action blocks. The principal is the (non-superadmin)
+    owner, so /admin/* stays blocked by role. A suspended account's token will
+    not authenticate (auth blocks inactive accounts) — acceptable by design."""
+    account = await db.get(Account, account_id)
+    if account is None or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    owner = await _account_owner(db, account_id)
+    if owner is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Account has no user to impersonate")
+
+    token = create_impersonation_token(
+        str(owner.id), imp=str(admin.id), imp_email=admin.email
+    )
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email,
+        action="admin.impersonate.start", resource_type="account",
+        resource_id=str(account.id),
+        details={"owner_id": str(owner.id), "owner_email": owner.email, "name": account.name},
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
+    return ImpersonateOut(
+        access_token=token,
+        account_id=account.id,
+        account_name=account.name,
+        owner_email=owner.email,
+        expires_in=settings.IMPERSONATION_TOKEN_MINUTES * 60,
+    )
+
+
+@router.post("/impersonate-stop")
+async def impersonate_stop(
+    body: ImpersonateStopBody,
+    request: Request,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Record the end of an impersonation session. Called with the admin's REAL
+    token (the frontend swaps back before calling), so `admin` is the superadmin."""
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email,
+        action="admin.impersonate.stop", resource_type="account",
+        resource_id=str(body.account_id) if body.account_id else None,
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
+    return {"ok": True}

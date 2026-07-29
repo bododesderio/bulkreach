@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Auth & account request/response schemas (Section 5.2)."""
 from __future__ import annotations
 
@@ -84,6 +86,9 @@ class UserOut(BaseModel):
     user_type: str = "self_service"
     must_change_password: bool = False
     last_login_at: datetime | None = None
+    # Email of the superadmin acting-as this account, when the session is an
+    # impersonation token; None for ordinary sessions.
+    impersonated_by: str | None = None
 
 
 class AccountOut(BaseModel):
