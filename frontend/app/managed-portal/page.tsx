@@ -1,10 +1,18 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, LogOut, Loader2 } from "lucide-react";
+import { Mail, FileText, LogOut, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/store/auth";
+import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
+import { StatusPill } from "@/components/admin/StatusPill";
+
+const cardBase = "bg-white border rounded-[11px] p-4";
 
 interface PortalCampaign {
   id: string;
@@ -15,11 +23,11 @@ interface PortalCampaign {
   created_at: string;
 }
 
-const STAGE: Record<string, { label: string; color: string }> = {
+const STAGE: Record<string, { label: string; color: string; pulse?: boolean }> = {
   briefed: { label: "Briefed", color: "#9CA3AF" },
   copy_approved: { label: "Copy approved", color: "#F59E0B" },
   scheduled: { label: "Scheduled", color: "#6366F1" },
-  sending: { label: "Sending", color: "#10B981" },
+  sending: { label: "Sending", color: "#10B981", pulse: true },
   complete: { label: "Complete", color: "#00D4AA" },
   report_issued: { label: "Report issued", color: "#1B1F4A" },
 };
@@ -59,8 +67,8 @@ export default function ManagedPortalHome() {
 
   if (!user || user.user_type !== "managed_client" || user.must_change_password) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" aria-label="Loading" />
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
+        <Loader2 className="h-7 w-7 animate-spin text-teal" aria-label="Loading" />
       </div>
     );
   }
@@ -71,64 +79,80 @@ export default function ManagedPortalHome() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-extrabold text-primary">BulkReach</span>
-          <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">
-            Campaign portal
-          </span>
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
+      {/* Topbar — admin design language, single-purpose portal (no sidebar). */}
+      <header
+        className="sticky top-0 z-20 flex items-center justify-between bg-white"
+        style={{ height: "60px", borderBottom: "1px solid var(--border)", padding: "0 22px" }}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex items-center justify-center rounded-[7px]"
+            style={{ width: "28px", height: "28px", background: "#00D4AA", flexShrink: 0 }}
+          >
+            <Mail size={13} className="text-navy" />
+          </div>
+          <span className="font-display font-extrabold text-[15px] text-navy">BulkReach</span>
+          <StatusPill label="Campaign portal" color="#00D4AA" bg="rgba(0,212,170,0.12)" dot={false} />
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{account?.name}</span>
+          <span className="text-[12.5px] font-semibold text-navy">{account?.name}</span>
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-text-muted transition-colors hover:text-navy"
           >
             <LogOut className="h-4 w-4" /> Log out
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="text-2xl font-bold">Your campaigns</h1>
-        <p className="mt-1 text-muted-foreground">
-          Track the progress of the campaigns our team is running for you.
-        </p>
+      <main className="mx-auto max-w-3xl px-6 py-[22px]">
+        <Reveal>
+          <h1 className="font-display text-[20px] font-extrabold text-navy">Your campaigns</h1>
+          <p className="mt-1 text-[12px] text-text-muted">
+            Track the progress of the campaigns our team is running for you.
+          </p>
+        </Reveal>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 space-y-3">
           {campaigns === null ? (
             [0, 1, 2].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl border bg-card" />
+              <div key={i} className="h-20 animate-pulse rounded-[11px] border bg-bg" />
             ))
           ) : campaigns.length === 0 ? (
-            <div className="flex flex-col items-center rounded-xl border bg-card p-10 text-center">
-              <FileText className="h-8 w-8 text-muted-foreground" aria-hidden />
-              <p className="mt-3 text-sm text-muted-foreground">
-                No managed campaigns yet. Your account manager will brief the first one soon.
-              </p>
-            </div>
-          ) : (
-            campaigns.map((c) => {
-              const st = STAGE[c.status] ?? { label: c.status, color: "#6B7280" };
-              return (
-                <div key={c.id} className="rounded-xl border bg-card p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold">{c.campaign_name ?? "Campaign brief"}</div>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{c.brief_text}</p>
-                    </div>
-                    <span
-                      className="whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                      style={{ background: `${st.color}1a`, color: st.color }}
-                    >
-                      {st.label}
-                    </span>
-                  </div>
+            <Reveal delay={0.1}>
+              <div className={`${cardBase} flex flex-col items-center py-12 text-center`}>
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
+                  style={{ background: "rgba(0,212,170,0.12)", color: "#00D4AA" }}
+                >
+                  <FileText className="h-5 w-5" aria-hidden />
                 </div>
-              );
-            })
+                <p className="mt-3 text-[12px] text-text-muted">
+                  No managed campaigns yet. Your account manager will brief the first one soon.
+                </p>
+              </div>
+            </Reveal>
+          ) : (
+            <RevealGroup className="space-y-3" stagger={0.05}>
+              {campaigns.map((c) => {
+                const st = STAGE[c.status] ?? { label: c.status, color: "#9CA3AF" };
+                return (
+                  <RevealItem key={c.id} lift>
+                    <div className={cardBase}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-navy">{c.campaign_name ?? "Campaign brief"}</div>
+                          <p className="mt-1 line-clamp-2 text-[12px] text-text-muted">{c.brief_text}</p>
+                        </div>
+                        <StatusPill label={st.label} color={st.color} pulse={st.pulse} />
+                      </div>
+                    </div>
+                  </RevealItem>
+                );
+              })}
+            </RevealGroup>
           )}
         </div>
       </main>
