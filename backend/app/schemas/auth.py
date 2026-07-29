@@ -76,6 +76,17 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
+class SessionOut(BaseModel):
+    """One active browser session for the sessions/devices UI."""
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    ip_address: str | None = None
+    user_agent: str | None = None
+    last_used_at: datetime | None = None
+    created_at: datetime
+    current: bool = False
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

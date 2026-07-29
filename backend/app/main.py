@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """BulkReach API — FastAPI application factory.
 
 Routers are registered per milestone as the corresponding domain is implemented.
@@ -47,6 +49,7 @@ async def health() -> JSONResponse:
 # --- Routers (registered per milestone) ---
 from app.api.v1.admin import router as admin_router  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
+from app.api.v1.sessions import router as sessions_router  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
 from app.api.v1.campaigns import router as campaigns_router  # noqa: E402
 from app.api.v1.contacts import router as contacts_router  # noqa: E402
@@ -60,6 +63,7 @@ from app.api.v1.reports import router as reports_router  # noqa: E402
 from app.api.v1.subscription import router as subscription_router  # noqa: E402
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
+app.include_router(sessions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(contacts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(content_router, prefix=settings.API_V1_PREFIX)
 app.include_router(campaigns_router, prefix=settings.API_V1_PREFIX)

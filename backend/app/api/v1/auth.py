@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Auth endpoints (Section 5.2): register, login, refresh, logout, forgot/reset password."""
 from __future__ import annotations
 
@@ -9,8 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser
+from app.core.net import client_ip
 from app.core.redis import sliding_window_allow
-from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.security import create_access_token
+from app.services.auth_session import (
+    SessionError,
+    clear_refresh_cookie,
+    issue_session,
+    record_auth_event,
+    revoke_by_raw,
+    rotate,
+    set_refresh_cookie,
+)
 from app.schemas.auth import (
     AccountOut,
     ActivatePasswordRequest,
@@ -35,24 +47,9 @@ from app.models.account import Account
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-REFRESH_COOKIE = "bulkreach_refresh"
-
 
 def _client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "0.0.0.0")
-
-
-def _set_refresh_cookie(response: Response, user_id: str) -> None:
-    response.set_cookie(
-        REFRESH_COOKIE,
-        create_refresh_token(user_id),
-        httponly=True,
-        secure=settings.is_production,
-        samesite="lax",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/api/v1/auth",
-    )
+    return client_ip(request) or "0.0.0.0"
 
 
 def _tokens(user_id: str) -> TokenResponse:
@@ -77,7 +74,8 @@ async def register(
         db, actor_id=user.id, actor_email=user.email, action="account.register",
         resource_type="account", resource_id=str(account.id), ip_address=ip,
     )
-    _set_refresh_cookie(response, str(user.id))
+    raw, _row = await issue_session(db, user, request)
+    set_refresh_cookie(response, raw)
     return _tokens(str(user.id))
 
 
@@ -112,7 +110,8 @@ async def signup_complete(
             f"It expires in 15 minutes.</p>"
         ),
     )
-    _set_refresh_cookie(response, str(user.id))
+    raw, _row = await issue_session(db, user, request)
+    set_refresh_cookie(response, raw)
     return SignupCompleteResponse(
         access_token=create_access_token(str(user.id)),
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
@@ -213,11 +212,18 @@ async def login(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenResponse:
     ip = _client_ip(request)
-    # Rate limit: max 5 failed logins / 15 min / IP (Section 13.4)
-    allowed = await sliding_window_allow(
+    # Rate limit two ways (Section 13.4): per-IP (max 5 / 15 min) stops one host
+    # hammering many accounts; per-account (by email) stops an attacker rotating
+    # source IPs from brute-forcing a single account under the per-IP ceiling.
+    per_ip = await sliding_window_allow(
         f"rl:login:{ip}", settings.RATE_LIMIT_LOGIN_MAX, settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS
     )
-    if not allowed:
+    per_account = await sliding_window_allow(
+        f"rl:login:acct:{data.email.strip().lower()}",
+        settings.RATE_LIMIT_LOGIN_ACCOUNT_MAX,
+        settings.RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_SECONDS,
+    )
+    if not (per_ip and per_account):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many login attempts. Try again later.")
 
     user = await auth_service.authenticate(db, data.email, data.password)
@@ -225,36 +231,45 @@ async def login(
         db, actor_id=user.id, actor_email=user.email, action="account.login",
         resource_type="user", resource_id=str(user.id), ip_address=ip,
     )
-    _set_refresh_cookie(response, str(user.id))
+    raw, _row = await issue_session(db, user, request)
+    set_refresh_cookie(response, raw)
     return _tokens(str(user.id))
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    request: Request, db: Annotated[AsyncSession, Depends(get_db)]
+    request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> TokenResponse:
-    token = request.cookies.get(REFRESH_COOKIE)
-    payload = decode_token(token) if token else None
-    if not payload or payload.get("type") != "refresh":
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token.")
-    # Re-validate against the DB — a refresh cookie must not outlive a
-    # suspended/deleted user or account.
-    from uuid import UUID
+    """Rotate the refresh cookie and mint a fresh access token. Rotation revokes
+    the presented token; replaying a revoked token burns the whole family."""
+    from app.services.auth_session import REFRESH_COOKIE
 
-    from app.models.account import User
-
-    user = await db.get(User, UUID(payload["sub"]))
-    if user is None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token.")
-    account = await db.get(Account, user.account_id)
-    if account is None or not account.is_active or account.status == "suspended" or account.deleted_at is not None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is suspended.")
-    return _tokens(payload["sub"])
+    try:
+        new_raw, row = await rotate(db, request.cookies.get(REFRESH_COOKIE), request)
+    except SessionError as e:
+        clear_refresh_cookie(response)
+        await db.commit()  # persist family-revocation / reuse event even on failure
+        raise HTTPException(e.status_code, e.detail)
+    set_refresh_cookie(response, new_raw)
+    return _tokens(str(row.user_id))
 
 
 @router.post("/logout")
-async def logout(response: Response) -> dict[str, str]:
-    response.delete_cookie(REFRESH_COOKIE, path="/api/v1/auth")
+async def logout(
+    request: Request, response: Response, db: Annotated[AsyncSession, Depends(get_db)]
+) -> dict[str, str]:
+    from app.services.auth_session import REFRESH_COOKIE
+
+    row = await revoke_by_raw(
+        db, request.cookies.get(REFRESH_COOKIE), reason="logout", request=request
+    )
+    if row is not None:
+        await record_auth_event(
+            db, account_id=row.account_id, user_id=row.user_id,
+            event_type="logout", request=request, refresh_token_id=row.id,
+        )
+    await db.commit()
+    clear_refresh_cookie(response)
     return {"message": "Logged out."}
 
 

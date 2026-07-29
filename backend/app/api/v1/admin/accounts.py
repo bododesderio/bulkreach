@@ -35,8 +35,9 @@ router = APIRouter(prefix="/admin/accounts", tags=["admin:accounts"])
 
 
 def _client_ip(request: Request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "0.0.0.0")
+    from app.core.net import client_ip
+
+    return client_ip(request) or "0.0.0.0"
 
 
 async def _mrr_map(db: AsyncSession) -> dict[UUID, int]:

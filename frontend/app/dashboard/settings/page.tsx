@@ -5,7 +5,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Trash2, UserPlus } from "lucide-react";
+import { Bell, Laptop, LogOut, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/store/auth";
@@ -19,6 +19,42 @@ interface Invite {
   role: string;
   expires_at: string;
   dev_link?: string | null;
+}
+
+interface Session {
+  id: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  current: boolean;
+}
+
+/** Friendly "Chrome on macOS" label from a raw user-agent string. */
+function deviceLabel(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  const browser = /Edg/.test(ua) ? "Edge"
+    : /Chrome/.test(ua) ? "Chrome"
+    : /Firefox/.test(ua) ? "Firefox"
+    : /Safari/.test(ua) ? "Safari"
+    : "Browser";
+  const os = /Windows/.test(ua) ? "Windows"
+    : /iPhone|iPad|iOS/.test(ua) ? "iOS"
+    : /Android/.test(ua) ? "Android"
+    : /Mac OS X|Macintosh/.test(ua) ? "macOS"
+    : /Linux/.test(ua) ? "Linux"
+    : "device";
+  return `${browser} on ${os}`;
+}
+
+function fmtWhen(iso: string | null): string {
+  if (!iso) return "—";
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 type Channels = Record<string, string[]>;
@@ -54,12 +90,55 @@ export default function SettingsPage() {
   const [channels, setChannels] = useState<Channels | null>(null);
   const [savingPref, setSavingPref] = useState<string | null>(null);
 
+  const [sessions, setSessions] = useState<Session[] | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      setSessions(await api<Session[]>("/auth/sessions", { auth: true }));
+    } catch {
+      setSessions([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadInvites();
+    loadSessions();
     api<{ channels: Channels }>("/notifications/preferences", { auth: true })
       .then((d) => setChannels(d.channels))
       .catch(() => {});
-  }, [loadInvites]);
+  }, [loadInvites, loadSessions]);
+
+  async function revokeSession(id: string) {
+    setRevoking(id);
+    try {
+      await api(`/auth/sessions/${id}/revoke`, { method: "POST", auth: true });
+      setSessions((prev) => (prev ?? []).filter((s) => s.id !== id));
+      toast.success("Device logged out");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not log out that device");
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function revokeOtherSessions() {
+    setRevoking("others");
+    try {
+      const res = await api<{ revoked: number }>("/auth/sessions/revoke-others", {
+        method: "POST",
+        auth: true,
+      });
+      toast.success(
+        res.revoked > 0 ? `Logged out ${res.revoked} other device${res.revoked === 1 ? "" : "s"}` : "No other devices",
+      );
+      await loadSessions();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not log out other devices");
+    } finally {
+      setRevoking(null);
+    }
+  }
 
   async function toggleEmail(category: string, enabled: boolean) {
     if (!channels) return;
@@ -254,8 +333,79 @@ export default function SettingsPage() {
         </Reveal>
       )}
 
-      {/* ── Notification preferences ──────────────────────────────────────── */}
+      {/* ── Security · active sessions ────────────────────────────────────── */}
       <Reveal delay={canInvite ? 0.3 : 0.2}>
+        <div className={cardBase}>
+          <div className="mb-0.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={15} className="text-text-muted" aria-hidden />
+              <div className="font-display text-[14px] font-bold text-navy">Active sessions</div>
+            </div>
+            {sessions !== null && sessions.length > 1 && (
+              <button
+                type="button"
+                onClick={revokeOtherSessions}
+                disabled={revoking === "others"}
+                className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors hover:bg-red-50 disabled:opacity-50"
+                style={{ color: "#EF4444", borderColor: "rgba(239,68,68,0.2)" }}
+              >
+                <LogOut className="h-3 w-3" />
+                {revoking === "others" ? "Logging out…" : "Log out other devices"}
+              </button>
+            )}
+          </div>
+          <p className="mb-4 text-[11px] text-text-muted">
+            Devices currently signed in to your account. Revoking one signs it out within a few minutes.
+          </p>
+
+          {sessions === null ? (
+            <div className="py-8 text-center text-[12px] text-text-muted">Loading…</div>
+          ) : sessions.length === 0 ? (
+            <div className="py-8 text-center text-[12px] text-text-muted">No active sessions.</div>
+          ) : (
+            <ul className="divide-y">
+              {sessions.map((s) => (
+                <li key={s.id} className="flex items-center justify-between gap-3 py-3.5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "var(--bg)", color: "var(--navy)" }}
+                    >
+                      <Laptop className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-semibold text-navy">{deviceLabel(s.user_agent)}</span>
+                        {s.current && (
+                          <StatusPill label="This device" color="#00D4AA" bg="rgba(0,212,170,0.12)" pulse />
+                        )}
+                      </div>
+                      <span className="mt-0.5 block text-[11px] text-text-muted">
+                        {s.ip_address ?? "unknown IP"} · active {fmtWhen(s.last_used_at ?? s.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                  {!s.current && (
+                    <button
+                      type="button"
+                      onClick={() => revokeSession(s.id)}
+                      disabled={revoking === s.id}
+                      aria-label={`Log out ${deviceLabel(s.user_agent)}`}
+                      className="inline-flex flex-shrink-0 items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors hover:bg-red-50 disabled:opacity-50"
+                      style={{ color: "#EF4444", borderColor: "rgba(239,68,68,0.2)" }}
+                    >
+                      {revoking === s.id ? "…" : "Log out"}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Reveal>
+
+      {/* ── Notification preferences ──────────────────────────────────────── */}
+      <Reveal delay={canInvite ? 0.4 : 0.3}>
         <div className={cardBase}>
           <div className="mb-0.5 flex items-center gap-2">
             <Bell size={15} className="text-text-muted" aria-hidden />

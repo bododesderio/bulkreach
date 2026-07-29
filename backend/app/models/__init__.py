@@ -1,5 +1,8 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Import all models so Alembic autogenerate and relationships resolve."""
 from app.models.account import Account, ApiKey, AuditLog, User
+from app.models.auth import AuthEvent, RefreshToken
 from app.models.billing import Payment, Plan, Subscription
 from app.models.campaign import (
     Campaign,
@@ -23,6 +26,8 @@ __all__ = [
     "User",
     "ApiKey",
     "AuditLog",
+    "RefreshToken",
+    "AuthEvent",
     "ContactList",
     "Contact",
     "Campaign",

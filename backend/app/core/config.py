@@ -10,7 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,10 +28,24 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3100"
 
     # --- Auth ---
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h per spec 13.1
+    # Access tokens are short-lived; sessions stay alive via rotating refresh
+    # tokens (DB-backed) so a revoked session dies within one access-token TTL.
+    JWT_ALGORITHM: str = "HS256"  # HS256 fallback when no RS256 keypair is configured
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     IMPERSONATION_TOKEN_MINUTES: int = 30  # superadmin "log in as" — deliberately short-lived
+    # RS256 asymmetric signing (preferred in prod). PEM strings via env; when both
+    # are set, tokens are signed RS256 with the private key and verified with the
+    # public key. Left blank → symmetric HS256 with SECRET_KEY (dev/test default).
+    JWT_PRIVATE_KEY: str = ""
+    JWT_PUBLIC_KEY: str = ""
+    # Two tabs sharing one cookie can rotate near-simultaneously; the loser lands
+    # just after the winner revoked the row (reason "rotated"). Inside this grace
+    # window that's benign concurrency, not theft — so the family isn't burned.
+    REFRESH_ROTATION_GRACE_SECONDS: int = 10
+    # Reverse-proxy hops we run in front of the app (nginx = 1). Governs how many
+    # right-most X-Forwarded-For entries are trusted; 0 = reached directly (dev).
+    TRUSTED_PROXY_COUNT: int = 0
 
     # --- Databases ---
     DATABASE_URL: str = "postgresql+asyncpg://bulkreach:pw@localhost:5432/bulkreach"
@@ -189,12 +203,27 @@ class Settings(BaseSettings):
     # --- Rate limits (Section 13.4) ---
     RATE_LIMIT_LOGIN_MAX: int = 5
     RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 15 * 60
+    # Per-account cap so an attacker rotating source IPs can't brute one account
+    # under the per-IP limit. Keyed by email, independent of the per-IP window.
+    RATE_LIMIT_LOGIN_ACCOUNT_MAX: int = 10
+    RATE_LIMIT_LOGIN_ACCOUNT_WINDOW_SECONDS: int = 15 * 60
     RATE_LIMIT_UPLOAD_MAX_PER_HOUR: int = 10
     MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50MB
 
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
+
+    @field_validator("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")
+    @classmethod
+    def _normalize_pem(cls, v: str) -> str:
+        # .env stores PEMs single-line with literal \n; restore real newlines.
+        return v.replace("\\n", "\n") if v else v
+
+    @property
+    def use_rs256(self) -> bool:
+        """True when an RS256 keypair is configured; else HS256 fallback."""
+        return bool(self.JWT_PRIVATE_KEY.strip() and self.JWT_PUBLIC_KEY.strip())
 
 
 @lru_cache

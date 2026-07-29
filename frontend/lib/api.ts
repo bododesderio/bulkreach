@@ -51,6 +51,65 @@ export class ApiError extends Error {
   }
 }
 
+/** Silent refresh: swap the short-lived access token for a fresh one using the
+ *  httpOnly refresh cookie (rotated server-side). Concurrent 401s share a single
+ *  in-flight request. Never runs while impersonating — an impersonation token has
+ *  no principal refresh cookie, so its 401 must surface (the UI exits instead). */
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccess(): Promise<boolean> {
+  if (isImpersonating()) return false;
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const res = await fetch(`/api/v1/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) return false;
+        const data = await res.json().catch(() => null);
+        if (data?.access_token) {
+          setToken(data.access_token);
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    })();
+    void refreshInFlight.finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+/** fetch wrapper that attaches the bearer token, and on a 401 for an authed call
+ *  transparently refreshes once and retries. The single network choke point for
+ *  api/apiDownload/apiUpload. */
+async function authedFetch(
+  path: string,
+  init: RequestInit,
+  useAuth: boolean,
+): Promise<Response> {
+  const build = (): RequestInit => {
+    const headers = new Headers(init.headers as HeadersInit | undefined);
+    if (useAuth) {
+      const token = getToken();
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+    return { ...init, headers, credentials: "include" };
+  };
+
+  let res = await fetch(`/api/v1${path}`, build());
+  if (res.status === 401 && useAuth && !path.startsWith("/auth/refresh")) {
+    if (await refreshAccess()) {
+      res = await fetch(`/api/v1${path}`, build());
+    }
+  }
+  return res;
+}
+
 /** Calls the backend through Next's /api proxy (same-origin → no CORS). */
 export async function api<T = unknown>(
   path: string,
@@ -61,15 +120,7 @@ export async function api<T = unknown>(
     "Content-Type": "application/json",
     ...(headers as Record<string, string>),
   };
-  if (auth) {
-    const token = getToken();
-    if (token) h.Authorization = `Bearer ${token}`;
-  }
-  const res = await fetch(`/api/v1${path}`, {
-    ...rest,
-    headers: h,
-    credentials: "include",
-  });
+  const res = await authedFetch(path, { ...rest, headers: h }, !!auth);
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
@@ -83,11 +134,7 @@ export async function api<T = unknown>(
 /** Download an authed binary response (e.g. a PDF) and trigger a Save dialog.
  *  Uses fetch+blob because a plain anchor can't send the Bearer header. */
 export async function apiDownload(path: string, fallbackName = "download"): Promise<void> {
-  const token = getToken();
-  const res = await fetch(`/api/v1${path}`, {
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const res = await authedFetch(path, {}, true);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     let detail = `Download failed (${res.status})`;
@@ -115,13 +162,7 @@ export async function apiDownload(path: string, fallbackName = "download"): Prom
 
 /** Multipart upload — never sets Content-Type so the browser adds the boundary. */
 export async function apiUpload<T = unknown>(path: string, form: FormData): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`/api/v1${path}`, {
-    method: "POST",
-    body: form,
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const res = await authedFetch(path, { method: "POST", body: form }, true);
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {

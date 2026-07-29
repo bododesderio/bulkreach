@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Team invitations (Section 5.2): an owner/admin invites a teammate by email;
 the invitee accepts via a tokenised link and joins the SAME account with the
 invited role. Single-account membership — an email that already has a BulkReach
@@ -17,17 +19,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import AdminUser
-from app.core.security import create_access_token, create_refresh_token, hash_password
+from app.core.security import create_access_token, hash_password
 from app.models.account import Account, InvitationToken, User
 from app.schemas.auth import TokenResponse
 from app.schemas.invitation import InviteAccept, InviteCreate, InviteOut, InvitePreview
 from app.services.audit import record_audit
+from app.services.auth_session import issue_session, set_refresh_cookie
 from app.services.email import send_email
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
 INVITE_TTL_HOURS = 72
-REFRESH_COOKIE = "bulkreach_refresh"
 
 
 def _now() -> datetime:
@@ -157,6 +159,7 @@ async def preview_invite(
 async def accept_invite(
     token: str,
     body: InviteAccept,
+    request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenResponse:
@@ -201,11 +204,8 @@ async def accept_invite(
         resource_type="invitation", resource_id=str(invite.id),
     )
 
-    response.set_cookie(
-        REFRESH_COOKIE, create_refresh_token(str(user.id)), httponly=True,
-        secure=settings.is_production, samesite="lax",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400, path="/api/v1/auth",
-    )
+    raw, _row = await issue_session(db, user, request)
+    set_refresh_cookie(response, raw)
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
