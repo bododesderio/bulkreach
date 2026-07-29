@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -6,6 +10,10 @@ import { FileText, Trash2, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 import { api, apiUpload } from "@/lib/api";
 import { useAuth } from "@/store/auth";
+import { Reveal } from "@/components/admin/Reveal";
+import DataTable, { Column } from "@/components/admin/DataTable";
+
+const cardBase = "bg-white border rounded-[11px] p-4";
 
 interface ContactList {
   id: string;
@@ -58,7 +66,9 @@ export default function ContactsPage() {
         form.append("name", files[0].name);
         const res = await apiUpload<ImportResult>("/contacts/upload", form);
         setLastImport(res);
-        toast.success(`Imported ${res.list.valid_contacts} contacts from ${files[0].name}`);
+        toast.success(
+          `Imported ${res.list.valid_contacts} contacts from ${files[0].name}`,
+        );
         refresh();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -73,8 +83,11 @@ export default function ContactsPage() {
     onDrop,
     accept: {
       "text/csv": [".csv"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
       "application/pdf": [".pdf"],
     },
     multiple: false,
@@ -115,27 +128,121 @@ export default function ContactsPage() {
     }
   }
 
+  const listColumns: Column<ContactList>[] = [
+    {
+      key: "name",
+      label: "List",
+      render: (l) => (
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+            style={{ background: "var(--bg)", color: "var(--navy)" }}
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+          </div>
+          <span className="font-semibold text-navy">{l.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: "source_format",
+      label: "Source",
+      render: (l) => (
+        <span className="text-text-muted">{l.source_format ?? "—"}</span>
+      ),
+    },
+    {
+      key: "valid_contacts",
+      label: "Contacts",
+      align: "right",
+      render: (l) => (
+        <span className="font-mono">{l.valid_contacts.toLocaleString()}</span>
+      ),
+    },
+    {
+      key: "duplicate_count",
+      label: "Dupes removed",
+      align: "right",
+      render: (l) => (
+        <span className="font-mono text-text-muted">
+          {l.duplicate_count.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "right",
+      render: (l) => (
+        <button
+          onClick={() => remove(l.id)}
+          aria-label={`Delete ${l.name}`}
+          className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-text-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ),
+    },
+  ];
+
   if (!user) return null;
 
   return (
-    <div>
-      <p className="text-muted-foreground">Import a contact list to send your first campaign.</p>
+    <div className="space-y-[18px]">
 
-      <div className="mt-6">
-        {/* Import card */}
-        <div className="mt-6 rounded-xl border bg-card p-6">
+      {/* ── Description ──────────────────────────────────────────────────────── */}
+      <Reveal>
+        <p className="text-[12px] text-text-muted">
+          Import a contact list to send your first campaign.
+        </p>
+      </Reveal>
+
+      {/* ── Import card ──────────────────────────────────────────────────────── */}
+      <Reveal delay={0.1}>
+        <div className="bg-white border rounded-[11px] p-5">
+          <div className="font-display text-[14px] font-bold text-navy mb-4">
+            Import contacts
+          </div>
+
+          {/* Tabs */}
           <div className="mb-4 flex gap-2">
             <button
               onClick={() => setTab("upload")}
               data-testid="tab-upload"
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === "upload" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+              className="text-[12px] rounded-[7px] border font-semibold px-3 py-1.5 transition"
+              style={
+                tab === "upload"
+                  ? {
+                      background: "#1B1F4A",
+                      color: "#fff",
+                      borderColor: "#1B1F4A",
+                    }
+                  : {
+                      background: "transparent",
+                      color: "#6B7280",
+                      borderColor: "var(--border)",
+                    }
+              }
             >
               Upload file
             </button>
             <button
               onClick={() => setTab("paste")}
               data-testid="tab-paste"
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${tab === "paste" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+              className="text-[12px] rounded-[7px] border font-semibold px-3 py-1.5 transition"
+              style={
+                tab === "paste"
+                  ? {
+                      background: "#1B1F4A",
+                      color: "#fff",
+                      borderColor: "#1B1F4A",
+                    }
+                  : {
+                      background: "transparent",
+                      color: "#6B7280",
+                      borderColor: "var(--border)",
+                    }
+              }
             >
               Paste
             </button>
@@ -146,14 +253,25 @@ export default function ContactsPage() {
               key="upload-pane"
               {...getRootProps()}
               data-testid="dropzone"
-              className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition ${
-                isDragActive ? "border-primary bg-accent" : "border-input hover:border-primary/60"
-              }`}
+              className="flex cursor-pointer flex-col items-center justify-center rounded-[9px] border-2 border-dashed p-10 text-center transition"
+              style={{
+                borderColor: isDragActive ? "#00D4AA" : "var(--border)",
+                background: isDragActive ? "rgba(0,212,170,0.06)" : "transparent",
+              }}
             >
               <input {...getInputProps()} data-testid="file-input" />
-              <Upload className="h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 font-medium">{busy ? "Importing…" : "Drop a file or click to browse"}</p>
-              <p className="mt-1 text-sm text-muted-foreground">CSV, Excel (.xlsx), Word (.docx), or PDF · max 50MB</p>
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: "var(--bg)", color: "var(--navy)" }}
+              >
+                <Upload className="h-5 w-5" aria-hidden />
+              </div>
+              <p className="mt-3 text-[13px] font-semibold text-navy">
+                {busy ? "Importing…" : "Drop a file or click to browse"}
+              </p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                CSV, Excel (.xlsx), Word (.docx), or PDF · max 50MB
+              </p>
             </div>
           ) : (
             <div key="paste-pane" className="space-y-3">
@@ -171,72 +289,98 @@ export default function ContactsPage() {
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
               />
-              <button onClick={submitPaste} disabled={busy} data-testid="paste-submit" className="btn-primary">
+              <button
+                onClick={submitPaste}
+                disabled={busy}
+                data-testid="paste-submit"
+                className="btn-primary"
+              >
                 {busy ? "Importing…" : "Import contacts"}
               </button>
             </div>
           )}
 
           {lastImport && (
-            <div data-testid="import-result" className="mt-5 rounded-lg border bg-background p-4 text-sm">
-              <p className="font-semibold">
+            <div
+              data-testid="import-result"
+              className="mt-4 rounded-[9px] p-4 text-[12px]"
+              style={{
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <p className="font-semibold text-navy">
                 {lastImport.list.name}: {lastImport.list.valid_contacts} valid ·{" "}
-                {lastImport.list.duplicate_count} duplicates · {lastImport.error_count} errors
+                {lastImport.list.duplicate_count} duplicates ·{" "}
+                {lastImport.error_count} errors
               </p>
               {lastImport.list.phone_column && (
-                <p className="mt-1 text-muted-foreground">
+                <p className="mt-1 text-text-muted">
                   Detected phone: <b>{lastImport.list.phone_column}</b>
-                  {lastImport.list.email_column && <> · email: <b>{lastImport.list.email_column}</b></>}
+                  {lastImport.list.email_column && (
+                    <>
+                      {" "}
+                      · email: <b>{lastImport.list.email_column}</b>
+                    </>
+                  )}
                   {lastImport.list.merge_columns.length > 0 && (
-                    <> · merge tags: {lastImport.list.merge_columns.map((c) => `{{${c}}}`).join(", ")}</>
+                    <>
+                      {" "}
+                      · merge tags:{" "}
+                      {lastImport.list.merge_columns
+                        .map((c) => `{{${c}}}`)
+                        .join(", ")}
+                    </>
                   )}
                 </p>
               )}
             </div>
           )}
         </div>
+      </Reveal>
 
-        {/* Lists */}
-        <h2 className="mt-10 text-lg font-semibold">Your contact lists</h2>
-        {lists === null ? (
-          <div className="mt-4 space-y-3">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-xl border bg-card" />
-            ))}
+      {/* ── Contact lists ─────────────────────────────────────────────────────── */}
+      <Reveal delay={0.2}>
+        <div className={cardBase}>
+          <div className="font-display text-[14px] font-bold text-navy mb-3">
+            Your contact lists
           </div>
-        ) : lists.length === 0 ? (
-          <div className="mt-4 rounded-xl border bg-card p-10 text-center text-muted-foreground">
-            No contact lists yet. Import one above to get started.
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3" data-testid="lists">
-            {lists.map((l) => (
-              <div key={l.id} className="flex items-center justify-between rounded-xl border bg-card p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{l.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      <Users className="mr-1 inline h-3.5 w-3.5" />
-                      {l.valid_contacts} contacts · {l.source_format ?? "—"}
-                      {l.duplicate_count > 0 && ` · ${l.duplicate_count} dupes removed`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => remove(l.id)}
-                  aria-label={`Delete ${l.name}`}
-                  className="rounded-lg p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+
+          {lists === null ? (
+            <div className="space-y-3 py-2">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-12 animate-pulse rounded-[9px] bg-bg"
+                />
+              ))}
+            </div>
+          ) : lists.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: "rgba(0,212,170,0.12)", color: "#00D4AA" }}
+              >
+                <Users className="h-5 w-5" aria-hidden />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="mt-3 font-semibold text-navy">
+                No contact lists yet
+              </p>
+              <p className="mt-1 text-[11px] text-text-muted">
+                Import one above to get started.
+              </p>
+            </div>
+          ) : (
+            <div data-testid="lists">
+              <DataTable<ContactList>
+                columns={listColumns}
+                rows={lists}
+                rowKey={(l) => l.id}
+              />
+            </div>
+          )}
+        </div>
+      </Reveal>
     </div>
   );
 }

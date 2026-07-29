@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import Link from "next/link";
@@ -9,7 +13,6 @@ import {
   Mail,
   Layers,
   Loader2,
-  CheckCircle2,
   XCircle,
   Download,
 } from "lucide-react";
@@ -21,11 +24,16 @@ import {
   type PaginatedMessages,
   type Progress,
   isLive,
-  statusTone,
   streamProgress,
   TERMINAL,
 } from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
+import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
+import CountUp from "@/components/admin/CountUp";
+import DataTable, { Column } from "@/components/admin/DataTable";
+import { StatusPill } from "@/components/admin/StatusPill";
+
+const cardBase = "bg-white border rounded-[11px] p-4";
 
 const CHANNEL_ICON = { sms: MessageSquare, email: Mail, both: Layers } as const;
 
@@ -41,6 +49,39 @@ const fmtDateTime = (iso: string | null) =>
 
 const FILTERS = ["all", "sent", "failed", "pending"] as const;
 type Filter = (typeof FILTERS)[number];
+
+const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
+  draft: { color: "#9CA3AF" },
+  scheduled: { color: "#6366F1" },
+  queued: { color: "#00D4AA", pulse: true },
+  sending: { color: "#00D4AA", pulse: true },
+  sent: { color: "#10B981" },
+  completed: { color: "#10B981" },
+  paused: { color: "#F59E0B" },
+  paused_quota_exceeded: { color: "#F59E0B" },
+  failed: { color: "#EF4444" },
+  bounced: { color: "#EF4444" },
+  cancelled: { color: "#EF4444" },
+};
+
+const MSG_STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
+  sent: { color: "#10B981" },
+  delivered: { color: "#10B981" },
+  failed: { color: "#EF4444" },
+  pending: { color: "#9CA3AF" },
+  queued: { color: "#00D4AA", pulse: true },
+};
+
+function campaignPill(status: string) {
+  const c = STATUS_COLOR[status.toLowerCase()] ?? { color: "#9CA3AF" };
+  return (
+    <StatusPill
+      label={status.replace(/_/g, " ")}
+      color={c.color}
+      pulse={c.pulse}
+    />
+  );
+}
 
 export default function CampaignDetailPage() {
   const { user } = useAuth();
@@ -124,7 +165,9 @@ export default function CampaignDetailPage() {
   const shown = useMemo(() => {
     if (filter === "all") return messages;
     if (filter === "sent")
-      return messages.filter((m) => m.status === "sent" || m.status === "delivered");
+      return messages.filter(
+        (m) => m.status === "sent" || m.status === "delivered",
+      );
     if (filter === "failed") return messages.filter((m) => m.status === "failed");
     return messages.filter(
       (m) => !["sent", "delivered", "failed"].includes(m.status),
@@ -133,18 +176,22 @@ export default function CampaignDetailPage() {
 
   if (notFound) {
     return (
-      <div className="animate-fade-up">
+      <div className="space-y-[18px]">
         <Link
           href="/dashboard/campaigns"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal hover:underline"
         >
-          <ArrowLeft className="h-4 w-4" /> Campaigns
+          <ArrowLeft size={14} aria-hidden /> Campaigns
         </Link>
-        <div className="mt-8 rounded-xl border bg-card p-12 text-center">
-          <h3 className="text-lg font-semibold">Campaign not found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            It may have been deleted, or the link is incorrect.
-          </p>
+        <div className={cardBase}>
+          <div className="py-12 text-center">
+            <div className="font-display text-[14px] font-bold text-navy">
+              Campaign not found
+            </div>
+            <p className="mt-1 text-[12px] text-text-muted">
+              It may have been deleted, or the link is incorrect.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -152,240 +199,299 @@ export default function CampaignDetailPage() {
 
   if (!campaign) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-40 animate-pulse rounded bg-muted" />
-        <div className="h-24 animate-pulse rounded-xl border bg-card" />
-        <div className="h-64 animate-pulse rounded-xl border bg-card" />
+      <div className="space-y-[18px]">
+        <div className="h-8 w-40 animate-pulse rounded-lg bg-bg" />
+        <div className="h-24 animate-pulse rounded-[11px] border bg-bg" />
+        <div className="h-64 animate-pulse rounded-[11px] border bg-bg" />
       </div>
     );
   }
 
   const stats = campaign.stats;
-  const Icon = CHANNEL_ICON[campaign.type as keyof typeof CHANNEL_ICON] ?? MessageSquare;
+  const Icon =
+    CHANNEL_ICON[campaign.type as keyof typeof CHANNEL_ICON] ?? MessageSquare;
   // Backend already returns delivery_rate as a percentage (0–100), not a fraction.
   const rate = stats ? Math.round(stats.delivery_rate) : 0;
   const running = live && !TERMINAL.has(live.status);
 
-  return (
-    <div className="animate-fade-up">
-      {/* Header */}
-      <Link
-        href="/dashboard/campaigns"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Campaigns
-      </Link>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-2xl font-bold">{campaign.name}</h2>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusTone(
-              campaign.status,
-            )}`}
-          >
-            {isLive(campaign.status) && (
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-            )}
-            {campaign.status}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={downloadReport}
-          disabled={downloading}
-          className="btn-outline h-9 px-3 text-sm"
-        >
-          {downloading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="mr-2 h-4 w-4" />
-          )}
-          Report PDF
-        </button>
-      </div>
-      <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span className="capitalize">{campaign.type}</span>
-        <span>·</span>
-        <span>Created {fmtDateTime(campaign.created_at)}</span>
-        {campaign.completed_at && <span>· Completed {fmtDateTime(campaign.completed_at)}</span>}
-      </div>
-
-      {/* Live progress (only while dispatching) */}
-      {running && live && (
-        <div className="mt-5 rounded-xl border bg-card p-5">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Dispatching…
-          </div>
-          <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {live.sent.toLocaleString()} of {live.total.toLocaleString()} delivered
-            </span>
-            <span className="font-mono font-semibold text-foreground">
-              {Math.round(live.pct)}%
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${Math.round(live.pct)}%` }}
+  const msgColumns: Column<MessageOut>[] = [
+    {
+      key: "recipient",
+      label: "Recipient",
+      render: (m) => (
+        <span className="font-mono text-[11px] text-navy">{m.recipient}</span>
+      ),
+    },
+    {
+      key: "channel",
+      label: "Channel",
+      render: (m) => (
+        <span className="capitalize text-text-muted">{m.channel}</span>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (m) => {
+        const mc = MSG_STATUS_COLOR[m.status] ?? { color: "#9CA3AF" };
+        return (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <StatusPill
+              label={m.status}
+              color={mc.color}
+              pulse={mc.pulse}
             />
+            {m.error_reason && (
+              <span className="text-[10.5px] text-text-muted">
+                {m.error_reason}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: "provider",
+      label: "Provider",
+      render: (m) => (
+        <span className="text-text-muted">{m.provider ?? "—"}</span>
+      ),
+    },
+    {
+      key: "sent_at",
+      label: "Sent",
+      render: (m) => (
+        <span className="whitespace-nowrap text-text-muted">
+          {fmtDateTime(m.sent_at)}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-[18px]">
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <Reveal>
+        <Link
+          href="/dashboard/campaigns"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal hover:underline"
+        >
+          <ArrowLeft size={14} aria-hidden /> Campaigns
+        </Link>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="font-display text-[20px] font-extrabold text-navy">
+              {campaign.name}
+            </h2>
+            {campaignPill(campaign.status)}
           </div>
-        </div>
-      )}
-
-      {/* Error banner */}
-      {campaign.status === "failed" && campaign.error_message && (
-        <div className="mt-5 flex gap-2.5 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-          <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
-          <p className="text-muted-foreground">{campaign.error_message}</p>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: "Recipients", value: stats?.total ?? 0, tone: "text-foreground" },
-          { label: "Delivered", value: stats?.sent ?? 0, tone: "text-primary" },
-          { label: "Failed", value: stats?.failed ?? 0, tone: "text-destructive" },
-          { label: "Delivery rate", value: `${rate}%`, tone: "text-foreground" },
-        ].map((s, i) => (
-          <div
-            key={s.label}
-            className="rounded-xl border bg-card p-4 animate-fade-up"
-            style={{ animationDelay: `${i * 0.04}s` }}
+          <button
+            type="button"
+            onClick={downloadReport}
+            disabled={downloading}
+            className="btn-outline h-9 px-3 text-sm"
           >
-            <div className={`text-2xl font-bold ${s.tone}`}>
-              {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
-            </div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              {s.label}
-            </div>
-          </div>
-        ))}
-      </div>
+            {downloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Report PDF
+          </button>
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
+          <Icon size={14} aria-hidden />
+          <span className="capitalize">{campaign.type}</span>
+          <span>·</span>
+          <span>Created {fmtDateTime(campaign.created_at)}</span>
+          {campaign.completed_at && (
+            <span>· Completed {fmtDateTime(campaign.completed_at)}</span>
+          )}
+        </div>
+      </Reveal>
 
-      {/* Channel split (only for combined campaigns) */}
-      {campaign.type === "both" && stats && (
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="rounded-xl border bg-card p-4">
-            <div className="flex items-center gap-1.5 text-sm font-semibold">
-              <MessageSquare className="h-4 w-4" /> SMS
+      {/* ── Live progress bar (SSE only while dispatching) ─────────────────── */}
+      {running && live && (
+        <Reveal delay={0.05}>
+          <div className={cardBase}>
+            <div className="mb-2 flex items-center gap-2">
+              <Loader2
+                size={15}
+                className="animate-spin"
+                style={{ color: "#00D4AA" }}
+                aria-hidden
+              />
+              <span className="text-[13px] font-semibold text-navy">
+                Dispatching…
+              </span>
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {stats.sms_sent.toLocaleString()} sent · {stats.sms_failed.toLocaleString()} failed
+            <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-text-muted">
+              <span>
+                {live.sent.toLocaleString()} of {live.total.toLocaleString()}{" "}
+                delivered
+              </span>
+              <span className="font-mono font-semibold text-navy">
+                {Math.round(live.pct)}%
+              </span>
+            </div>
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full"
+              style={{ background: "var(--bg)" }}
+              role="progressbar"
+              aria-valuenow={Math.round(live.pct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${Math.round(live.pct)}% dispatched`}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.round(live.pct)}%`,
+                  background: "#00D4AA",
+                }}
+              />
             </div>
           </div>
-          <div className="rounded-xl border bg-card p-4">
-            <div className="flex items-center gap-1.5 text-sm font-semibold">
-              <Mail className="h-4 w-4" /> Email
-            </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {stats.email_sent.toLocaleString()} sent · {stats.email_failed.toLocaleString()} failed
-            </div>
-          </div>
+        </Reveal>
+      )}
+
+      {/* ── Error banner ──────────────────────────────────────────────────── */}
+      {campaign.status === "failed" && campaign.error_message && (
+        <div
+          className="flex gap-2.5 rounded-[11px] border p-4"
+          style={{
+            borderColor: "rgba(239,68,68,0.3)",
+            background: "rgba(239,68,68,0.05)",
+          }}
+        >
+          <XCircle
+            size={15}
+            className="mt-0.5 flex-shrink-0"
+            style={{ color: "#EF4444" }}
+            aria-hidden
+          />
+          <p className="text-[12px] text-text-muted">{campaign.error_message}</p>
         </div>
       )}
 
-      {/* Message content */}
-      <div className="mt-4 rounded-xl border bg-card p-5">
-        <div className="text-sm font-semibold">Message</div>
-        {campaign.email_subject && (
-          <div className="mt-2 text-sm">
-            <span className="text-muted-foreground">Subject: </span>
-            {campaign.email_subject}
-          </div>
-        )}
-        {campaign.sms_body && (
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-            {campaign.sms_body}
-          </p>
-        )}
-      </div>
+      {/* ── KPI tiles ─────────────────────────────────────────────────────── */}
+      <RevealGroup className="grid grid-cols-2 gap-3 lg:grid-cols-4" stagger={0.06}>
+        {[
+          { label: "Recipients", value: stats?.total ?? 0, suffix: "" },
+          { label: "Delivered", value: stats?.sent ?? 0, suffix: "" },
+          { label: "Failed", value: stats?.failed ?? 0, suffix: "" },
+          { label: "Delivery rate", value: rate, suffix: "%" },
+        ].map((s) => (
+          <RevealItem key={s.label} lift>
+            <div className={`${cardBase} h-full`}>
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                {s.label}
+              </div>
+              <div className="mt-1 font-mono text-[26px] font-semibold leading-tight text-navy">
+                <CountUp value={s.value} suffix={s.suffix} />
+              </div>
+            </div>
+          </RevealItem>
+        ))}
+      </RevealGroup>
 
-      {/* Per-message delivery */}
-      <div className="mt-4 rounded-xl border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-          <div className="text-sm font-semibold">Delivery</div>
-          <div className="flex flex-wrap gap-1.5">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold capitalize transition-colors ${
-                  filter === f
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-accent"
-                }`}
-              >
-                {f} ({counts[f]})
-              </button>
-            ))}
+      {/* ── Channel split (combined campaigns only) ───────────────────────── */}
+      {campaign.type === "both" && stats && (
+        <Reveal delay={0.2}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className={cardBase}>
+              <div className="flex items-center gap-1.5">
+                <MessageSquare size={14} className="text-text-muted" aria-hidden />
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  SMS
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-text-muted">
+                {stats.sms_sent.toLocaleString()} sent ·{" "}
+                {stats.sms_failed.toLocaleString()} failed
+              </div>
+            </div>
+            <div className={cardBase}>
+              <div className="flex items-center gap-1.5">
+                <Mail size={14} className="text-text-muted" aria-hidden />
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  Email
+                </span>
+              </div>
+              <div className="mt-1 text-[12px] text-text-muted">
+                {stats.email_sent.toLocaleString()} sent ·{" "}
+                {stats.email_failed.toLocaleString()} failed
+              </div>
+            </div>
           </div>
+        </Reveal>
+      )}
+
+      {/* ── Message content ───────────────────────────────────────────────── */}
+      <Reveal delay={0.25}>
+        <div className={cardBase}>
+          <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+            Message
+          </div>
+          {campaign.email_subject && (
+            <div className="mt-2 text-[12px] text-text-md">
+              <span className="text-text-muted">Subject: </span>
+              {campaign.email_subject}
+            </div>
+          )}
+          {campaign.sms_body && (
+            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-text-muted">
+              {campaign.sms_body}
+            </p>
+          )}
         </div>
+      </Reveal>
 
-        {shown.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-            {messages.length === 0
-              ? "No messages materialised yet."
-              : "No messages match this filter."}
+      {/* ── Per-message delivery table ────────────────────────────────────── */}
+      <Reveal delay={0.3}>
+        <div className="overflow-hidden rounded-[11px] border bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+            <div className="font-display text-[14px] font-bold text-navy">
+              Delivery
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={`rounded-[5px] border px-2 py-1 text-[11px] font-semibold capitalize transition-colors ${
+                    filter === f
+                      ? "border-navy bg-navy text-white"
+                      : "text-text-muted hover:border-teal hover:text-teal"
+                  }`}
+                >
+                  {f} ({counts[f]})
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-5 py-2.5 font-semibold">Recipient</th>
-                  <th className="px-3 py-2.5 font-semibold">Channel</th>
-                  <th className="px-3 py-2.5 font-semibold">Status</th>
-                  <th className="px-3 py-2.5 font-semibold">Provider</th>
-                  <th className="px-3 py-2.5 font-semibold">Sent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.slice(0, 200).map((m) => (
-                  <tr key={m.id} className="border-b last:border-0">
-                    <td className="px-5 py-2.5 font-mono text-xs">{m.recipient}</td>
-                    <td className="px-3 py-2.5 capitalize text-muted-foreground">
-                      {m.channel}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusTone(
-                          m.status,
-                        )}`}
-                      >
-                        {(m.status === "sent" || m.status === "delivered") && (
-                          <CheckCircle2 className="h-3 w-3" />
-                        )}
-                        {m.status === "failed" && <XCircle className="h-3 w-3" />}
-                        {m.status}
-                      </span>
-                      {m.error_reason && (
-                        <span className="ml-1.5 text-xs text-muted-foreground">
-                          {m.error_reason}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {m.provider ?? "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {fmtDateTime(m.sent_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-4">
+            <DataTable<MessageOut>
+              columns={msgColumns}
+              rows={shown.slice(0, 200)}
+              rowKey={(m) => m.id}
+              empty={
+                messages.length === 0
+                  ? "No messages materialised yet."
+                  : "No messages match this filter."
+              }
+            />
             {shown.length > 200 && (
-              <div className="px-5 py-3 text-center text-xs text-muted-foreground">
+              <div className="pt-3 text-center text-[10.5px] text-text-muted">
                 Showing first 200 of {shown.length.toLocaleString()}.
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      </Reveal>
+
     </div>
   );
 }

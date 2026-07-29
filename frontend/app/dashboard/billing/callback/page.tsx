@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -72,16 +76,19 @@ function CallbackInner() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-xl border bg-card p-8 text-center shadow-sm animate-fade-up">
+      <div className="bg-white border rounded-[11px] p-8 w-full max-w-sm text-center animate-fade-up">
         {/* Verifying */}
         {!status && (
           <>
             <Loader2
-              className="mx-auto h-10 w-10 animate-spin text-primary"
+              className="mx-auto h-10 w-10 animate-spin"
+              style={{ color: '#00D4AA' }}
               aria-label="Verifying payment"
             />
-            <h2 className="mt-4 text-lg font-semibold">Verifying payment…</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+              Verifying payment&hellip;
+            </h2>
+            <p className="mt-2 text-[12px] text-text-muted">
               Please wait while we confirm your transaction.
             </p>
           </>
@@ -95,8 +102,10 @@ function CallbackInner() {
               style={{ color: '#10B981' }}
               aria-hidden="true"
             />
-            <h2 className="mt-4 text-lg font-semibold">Payment successful</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+              Payment successful
+            </h2>
+            <p className="mt-2 text-[12px] text-text-muted">
               Your plan is now active.
             </p>
             <Link href="/dashboard/billing" className="btn-primary mt-6 inline-flex">
@@ -113,10 +122,10 @@ function CallbackInner() {
               style={{ color: '#EF4444' }}
               aria-hidden="true"
             />
-            <h2 className="mt-4 text-lg font-semibold">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
               {status === 'timeout' ? 'Payment timed out' : 'Payment failed'}
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-[12px] text-text-muted">
               {status === 'timeout'
                 ? 'We could not confirm your payment in time. Check your history or contact support.'
                 : 'The payment was not completed. Please try again.'}
@@ -139,7 +148,8 @@ export default function CallbackPage() {
       fallback={
         <div className="flex min-h-[60vh] items-center justify-center">
           <Loader2
-            className="h-8 w-8 animate-spin text-primary"
+            className="h-8 w-8 animate-spin"
+            style={{ color: '#00D4AA' }}
             aria-label="Loading"
           />
         </div>

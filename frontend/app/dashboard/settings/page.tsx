@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -5,6 +9,9 @@ import { Bell, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/store/auth";
+import { Reveal } from "@/components/admin/Reveal";
+import DataTable, { Column } from "@/components/admin/DataTable";
+import { StatusPill } from "@/components/admin/StatusPill";
 
 interface Invite {
   id: string;
@@ -23,6 +30,8 @@ const PREF_CATEGORIES: { key: string; label: string }[] = [
   { key: "campaign", label: "Campaign updates" },
   { key: "team", label: "Team activity" },
 ];
+
+const cardBase = "bg-white border rounded-[11px] p-4";
 
 export default function SettingsPage() {
   const { user, account } = useAuth();
@@ -117,157 +126,187 @@ export default function SettingsPage() {
     ["Trial messages left", String(account.trial_messages_remaining)],
   ];
 
+  const inviteColumns: Column<Invite>[] = [
+    {
+      key: "email",
+      label: "Email",
+      render: (i) => <span className="font-semibold text-navy">{i.email}</span>,
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (i) => <StatusPill label={i.role} color="#6366F1" />,
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "right",
+      render: (i) => (
+        <button
+          type="button"
+          onClick={() => revoke(i.id)}
+          aria-label={`Revoke invite for ${i.email}`}
+          className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors hover:bg-red-50"
+          style={{ color: "#EF4444", borderColor: "rgba(239,68,68,0.2)" }}
+        >
+          <Trash2 className="h-3 w-3" /> Revoke
+        </button>
+      ),
+    },
+  ];
+
   return (
-    <div className="max-w-2xl">
-      <p className="text-muted-foreground">Your account, team, and profile details.</p>
+    <div className="space-y-[18px] max-w-2xl">
 
-      {/* Account */}
-      <div className="mt-6 rounded-xl border bg-card">
-        <div className="border-b px-6 py-4">
-          <h3 className="font-semibold">Account</h3>
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <Reveal>
+        <h2 className="font-display text-[20px] font-extrabold text-navy">Settings</h2>
+        <p className="mt-0.5 text-[12px] text-text-muted">
+          Your account, team, and profile details.
+        </p>
+      </Reveal>
+
+      {/* ── Account ───────────────────────────────────────────────────────── */}
+      <Reveal delay={0.1}>
+        <div className={cardBase}>
+          <div className="mb-3 font-display text-[14px] font-bold text-navy">Account</div>
+          <dl className="divide-y">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between py-3">
+                <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  {label}
+                </dt>
+                <dd className="text-[12px] font-semibold text-navy capitalize">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <dl className="divide-y">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between px-6 py-3.5">
-              <dt className="text-sm text-muted-foreground">{label}</dt>
-              <dd className="text-sm font-medium capitalize">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      </Reveal>
 
-      {/* Team */}
+      {/* ── Team ──────────────────────────────────────────────────────────── */}
       {canInvite && (
-        <div className="mt-6 rounded-xl border bg-card">
-          <div className="border-b px-6 py-4">
-            <h3 className="font-semibold">Team</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+        <Reveal delay={0.2}>
+          <div className={cardBase}>
+            <div className="mb-0.5 font-display text-[14px] font-bold text-navy">Team</div>
+            <p className="mb-4 text-[11px] text-text-muted">
               Invite teammates to your account. They join with the role you choose.
             </p>
-          </div>
 
-          <div className="flex flex-wrap items-end gap-2 px-6 py-4">
-            <div className="min-w-[220px] flex-1">
-              <label htmlFor="invite-email" className="mb-1 block text-xs font-medium text-muted-foreground">
-                Email
-              </label>
-              <input
-                id="invite-email"
-                data-testid="invite-email"
-                type="email"
-                className="input"
-                placeholder="teammate@company.ug"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="invite-role" className="mb-1 block text-xs font-medium text-muted-foreground">
-                Role
-              </label>
-              <select
-                id="invite-role"
-                className="input"
-                value={role}
-                onChange={(e) => setRole(e.target.value as "member" | "admin")}
-              >
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={sendInvite}
-              disabled={sending || !email}
-              data-testid="send-invite"
-              className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <UserPlus className="h-4 w-4" /> {sending ? "Sending…" : "Send invite"}
-            </button>
-          </div>
-
-          {invites.length > 0 && (
-            <div className="border-t">
-              <div className="px-6 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Pending invitations
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[220px] flex-1">
+                <label
+                  htmlFor="invite-email"
+                  className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted"
+                >
+                  Email
+                </label>
+                <input
+                  id="invite-email"
+                  data-testid="invite-email"
+                  type="email"
+                  className="input"
+                  placeholder="teammate@company.ug"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
-              <ul className="divide-y">
-                {invites.map((i) => (
-                  <li key={i.id} className="flex items-center justify-between px-6 py-3">
-                    <div>
-                      <span className="text-sm font-medium">{i.email}</span>
-                      <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[11px] capitalize text-accent-foreground">
-                        {i.role}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => revoke(i.id)}
-                      aria-label={`Revoke invite for ${i.email}`}
-                      className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div>
+                <label
+                  htmlFor="invite-role"
+                  className="mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted"
+                >
+                  Role
+                </label>
+                <select
+                  id="invite-role"
+                  className="input"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as "member" | "admin")}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={sendInvite}
+                disabled={sending || !email}
+                data-testid="send-invite"
+                className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <UserPlus className="h-4 w-4" /> {sending ? "Sending…" : "Send invite"}
+              </button>
             </div>
-          )}
-        </div>
+
+            {invites.length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  Pending invitations
+                </div>
+                <DataTable<Invite>
+                  columns={inviteColumns}
+                  rows={invites}
+                  rowKey={(i) => i.id}
+                />
+              </div>
+            )}
+          </div>
+        </Reveal>
       )}
 
-      {/* Notification preferences */}
-      <div className="mt-6 rounded-xl border bg-card">
-        <div className="border-b px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-semibold">Notifications</h3>
+      {/* ── Notification preferences ──────────────────────────────────────── */}
+      <Reveal delay={canInvite ? 0.3 : 0.2}>
+        <div className={cardBase}>
+          <div className="mb-0.5 flex items-center gap-2">
+            <Bell size={15} className="text-text-muted" aria-hidden />
+            <div className="font-display text-[14px] font-bold text-navy">Notifications</div>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mb-4 text-[11px] text-text-muted">
             In-app alerts are always on. Choose which also arrive by email.
           </p>
-        </div>
 
-        {channels === null ? (
-          <div className="px-6 py-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : (
-          <ul className="divide-y">
-            {PREF_CATEGORIES.map(({ key, label }) => {
-              const emailOn = (channels[key] ?? []).includes("email");
-              const locked = key === "billing" || key === "quota";
-              return (
-                <li key={key} className="flex items-center justify-between px-6 py-3.5">
-                  <div>
-                    <span className="text-sm font-medium">{label}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      In-app{locked ? " (always on)" : ""}
-                      {emailOn ? " · Email" : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">Email</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={emailOn}
-                      aria-label={`Email notifications for ${label}`}
-                      disabled={savingPref === key}
-                      onClick={() => toggleEmail(key, !emailOn)}
-                      className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
-                      style={{ background: emailOn ? "#00D4AA" : "#CBD5E1" }}
-                    >
-                      <span
-                        className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                        style={{ transform: emailOn ? "translateX(24px)" : "translateX(4px)" }}
-                      />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+          {channels === null ? (
+            <div className="py-8 text-center text-[12px] text-text-muted">Loading…</div>
+          ) : (
+            <ul className="divide-y">
+              {PREF_CATEGORIES.map(({ key, label }) => {
+                const emailOn = (channels[key] ?? []).includes("email");
+                const locked = key === "billing" || key === "quota";
+                return (
+                  <li key={key} className="flex items-center justify-between py-3.5">
+                    <div>
+                      <span className="text-[13px] font-semibold text-navy">{label}</span>
+                      <span className="mt-0.5 block text-[11px] text-text-muted">
+                        In-app{locked ? " (always on)" : ""}
+                        {emailOn ? " · Email" : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10.5px] text-text-muted">Email</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={emailOn}
+                        aria-label={`Email notifications for ${label}`}
+                        disabled={savingPref === key}
+                        onClick={() => toggleEmail(key, !emailOn)}
+                        className="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
+                        style={{ background: emailOn ? "#00D4AA" : "#CBD5E1" }}
+                      >
+                        <span
+                          className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                          style={{ transform: emailOn ? "translateX(24px)" : "translateX(4px)" }}
+                        />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Reveal>
+
     </div>
   );
 }

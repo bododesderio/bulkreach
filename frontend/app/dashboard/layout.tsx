@@ -4,32 +4,12 @@
  */
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  CreditCard,
-  Eye,
-  FileBarChart,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Send,
-  Settings,
-  Users,
-  X,
-} from "lucide-react";
+import { Eye } from "lucide-react";
 import { useAuth } from "@/store/auth";
-import NotificationBell from "@/components/NotificationBell";
-
-const NAV = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/contacts", label: "Contacts", icon: Users },
-  { href: "/dashboard/campaigns", label: "Campaigns", icon: Send },
-  { href: "/dashboard/reports", label: "Reports", icon: FileBarChart },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
+import Sidebar from "@/components/dashboard/Sidebar";
+import Topbar from "@/components/dashboard/Topbar";
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Overview",
@@ -40,9 +20,14 @@ const TITLES: Record<string, string> = {
   "/dashboard/settings": "Settings",
 };
 
-function initials(email: string): string {
-  return email.slice(0, 2).toUpperCase();
-}
+const SUBTITLES: Record<string, string> = {
+  "/dashboard": "Your account at a glance",
+  "/dashboard/contacts": "Import and manage recipient lists",
+  "/dashboard/campaigns": "Compose, send, and track messages",
+  "/dashboard/reports": "Delivery analytics and exports",
+  "/dashboard/billing": "Plan, invoices, and payments",
+  "/dashboard/settings": "Profile, security, and team",
+};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -68,14 +53,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !user || !account) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-teal border-t-transparent" />
       </div>
     );
   }
 
   const title =
     TITLES[pathname] ?? (pathname.startsWith("/dashboard/campaigns") ? "Campaigns" : "Dashboard");
+  const subtitle = SUBTITLES[pathname] ?? "";
 
   async function handleLogout() {
     await logout();
@@ -88,109 +74,55 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.replace("/admin/accounts");
   }
 
-  const SidebarInner = (
-    <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <span className="text-xl font-extrabold text-primary">BulkReach</span>
-      </div>
-      <nav className="flex-1 space-y-1 p-4" data-testid="sidebar-nav">
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              data-testid={`nav-${label.toLowerCase()}`}
-              aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-      {/* Logout — last sidebar item */}
-      <div className="border-t p-4">
-        <button
-          onClick={handleLogout}
-          data-testid="sidebar-logout"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-        >
-          <LogOut className="h-4 w-4" />
-          Log out
-        </button>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-muted/20">
+    <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r bg-background lg:block">
-        {SidebarInner}
+      <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">
+        <Sidebar plan={account.plan} onLogout={handleLogout} />
       </aside>
 
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-60 border-r bg-background">{SidebarInner}</aside>
+          <aside className="absolute inset-y-0 left-0 h-full">
+            <Sidebar plan={account.plan} onLogout={handleLogout} />
+          </aside>
         </div>
       )}
 
       {/* Content column */}
-      <div className="lg:pl-60">
-        {user.impersonated_by && (
-          <div className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 sm:px-6">
-            <span className="flex items-center gap-2">
-              <Eye className="h-4 w-4 shrink-0" />
-              <span>
-                Viewing <strong>{account.name}</strong> as {user.impersonated_by}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Sticky header cluster: impersonation banner (if any) + topbar move together */}
+        <div className="sticky top-0 z-20">
+          {user.impersonated_by && (
+            <div className="flex items-center justify-between gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950">
+              <span className="flex items-center gap-2">
+                <Eye className="h-4 w-4 shrink-0" />
+                <span>
+                  Viewing <strong>{account.name}</strong> as {user.impersonated_by}
+                </span>
               </span>
-            </span>
-            <button
-              onClick={handleExitImpersonation}
-              disabled={exiting}
-              className="shrink-0 rounded-md bg-amber-950/10 px-3 py-1 font-semibold transition hover:bg-amber-950/20 disabled:opacity-50"
-            >
-              {exiting ? "Exiting…" : "Exit"}
-            </button>
-          </div>
-        )}
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen((o) => !o)}
-              className="rounded-lg p-2 hover:bg-accent lg:hidden"
-              aria-label="Toggle navigation"
-            >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-            <h1 className="text-lg font-semibold" data-testid="page-title">{title}</h1>
-          </div>
-
-          {/* Profile */}
-          <div className="flex items-center gap-3" data-testid="topbar-profile">
-            <NotificationBell />
-            <div className="hidden text-right sm:block">
-              <div className="text-sm font-medium leading-tight">{account.name}</div>
-              <div className="text-xs capitalize text-muted-foreground">{account.plan} plan</div>
+              <button
+                onClick={handleExitImpersonation}
+                disabled={exiting}
+                className="shrink-0 rounded-md bg-amber-950/10 px-3 py-1 font-semibold transition hover:bg-amber-950/20 disabled:opacity-50"
+              >
+                {exiting ? "Exiting…" : "Exit"}
+              </button>
             </div>
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-              title={user.email}
-            >
-              {initials(user.email)}
-            </div>
-          </div>
-        </header>
+          )}
+          <Topbar
+            title={title}
+            subtitle={subtitle}
+            accountName={account.name}
+            plan={account.plan}
+            email={user.email}
+            onMenuClick={() => setMobileOpen(true)}
+          />
+        </div>
 
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <main className="p-[18px]">{children}</main>
       </div>
     </div>
   );
