@@ -1,7 +1,24 @@
 # Project Context
 Last updated: 2026-07-29
 
-## Current task — RESUME HERE (2026-07-28 end of day)
+## Current task — ✅ Session infra DONE + pushed (2026-07-29, commit 3c5d20f)
+Session-infra slice shipped: DB-backed rotating refresh sessions (opaque+sha256, family reuse/theft
+detection) + append-only auth_events + RS256 (HS256 fallback) + 15-min access token + Settings "Active
+sessions" UI + frontend silent-refresh interceptor. Migration b4d6f8a02c15. **All 4 security-audit
+findings fixed:** (1) rotation race → `rotate()` uses `SELECT ... FOR UPDATE` + a grace window
+(`REFRESH_ROTATION_GRACE_SECONDS`) so a concurrent two-tab replay re-issues instead of burning the family;
+(2) XFF spoof → new `app/core/net.py` `client_ip()` trusting only `TRUSTED_PROXY_COUNT` hops + per-account
+login limiter; (3) dead `create_refresh_token` removed; (4) CSRF stance documented on the cookie helper.
+**88 backend tests pass.** Signed as Bodo, pushed (7 commits, fast-forward). Detail in
+[[bulkreach-session-infra-wip]].
+
+⚠️ **Authorship debt on origin:** the 3 previously-unpushed dirty commits were scrubbed of Claude trailers
+before this push, but `origin/main`'s OLDER published history still carries them — fixing that needs a
+destructive force-push (`git filter-repo` + `--force-with-lease`), left as an explicit user decision.
+
+Next gaps (see [[bulkreach-gap-closing]]): deep profile settings, per-client plan controls.
+
+## Older current task (2026-07-28 end of day)
 Gap-closing roadmap, recent slices:
 - ✅ Managed 15-state pipeline — backend phase 1 (84a353b) + kanban/client-approval UI phase 2 (3ab45cb).
   Browser-verified (approve + request-changes + single-use token burn). See [[bulkreach-managed-pipeline]].
@@ -18,10 +35,11 @@ Gap-closing roadmap, recent slices:
   pytest (81/81 suite green), tsc clean, browser-verified E2E (log in as → dashboard as client → banner →
   Exit clears imp token, restores admin). See [[bulkreach-impersonation-wip]].
 
-## Authorship (NEW 2026-07-28)
-~/.claude/CLAUDE.md now mandates: all commits/PRs/code authored as Bodo Desderio, NEVER "Claude"/
-"Co-Authored-By: Claude"; run the `sign` skill before committing. (Commits 3ab45cb + e2a043e this
-session still carry the old trailer — leave unless asked to amend.)
+## Authorship (2026-07-28)
+~/.claude/CLAUDE.md mandates: all commits/PRs/code authored as Bodo Desderio, NEVER "Claude"/
+"Co-Authored-By: Claude"; run the `sign` skill before committing. The formerly-dirty local commits
+(seo/managed phase 1+2) were scrubbed via `git filter-branch origin/main..HEAD` before the 2026-07-29
+push. Older commits already on origin still carry the trailer — force-push rewrite pending user go-ahead.
 
 ## Older current-task note
 Managed 15-state pipeline — Phase 1 (backend) DONE (77 tests). Next: Phase 2 (admin kanban rebuild +
