@@ -30,6 +30,12 @@ bounced/undelivered/complained message states + campaign delivered/bounced count
 f1a4c6e8b2d3); auto-suppression on hard bounce/complaint; per-account suppression list enforced in
 materialise_and_queue + mgmt router; DLR-aware compute_stats. 108 tests. Remaining polish: inbound
 STOP, frontend delivery UI. Next: Phase 3 security (jose→PyJWT, XSS) or Phase 5 ops (CI/backups).
+**Phase 3 security ✅ mostly DONE (7cba573 backend, c1b24a9 frontend — pushed):** python-jose→PyJWT
+(CVE-2024-33663/4; venv installed pyjwt 2.13, jose uninstalled), single-use reset token (pwf
+fingerprint), impersonation audit-stamping (ContextVar → impersonated_by on every audit entry),
+MoMo/Airtel unsigned webhook fail-closed in prod, archive log client_ip, upload filename sanitise,
+DOMPurify managed-approve XSS. 109 tests, tsc clean. Deferred: access-token localStorage→in-memory
+(C8), server-side impersonation read-only, aud/iss pin (C11). Next: Phase 5 ops (CI/backups/Sentry).
 
 ## Prior task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
 Four threads shipped this session:
