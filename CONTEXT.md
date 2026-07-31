@@ -18,6 +18,12 @@ wasn't running — dispatch is correct). NOT-yet-done work is the phased plan in
 (Phase 1 scale-hardening: quota atomic reserve, bulk-insert recipients, admin query scoping, API-key
 fast lookup, auth cache; Phase 2 DLR/suppression; Phase 3 sec: jose→PyJWT, XSS, impersonation audit;
 Phase 4 FE: React Query/dark-mode/shared ui; Phase 5 ops: CI/backups/Sentry). See [[bulkreach-audit-masterplan]].
+**Phase 1 scale-hardening ✅ mostly DONE (aa4510a, 61c2a16 — pushed):** quota reserve-and-refund
+(atomic INCRBY, closes monthly TOCTOU; obsolete Layer-3 pause removed), bulk-insert recipients,
+account-scoped admin aggregates, SQL account_summary, cancel-inside-batch-loop. 100 backend tests.
+Deferred by design: fast API-key lookup (feature unwired — 0 rows; note left in dependencies.py) +
+auth-principal cache (conflicts with immediate-suspend invariant). Still open: trial-decrement
+atomicity (bug M-1), list-map scoping (perf M1). Next: Phase 2 (DLR ingestion) or 3/5.
 
 ## Prior task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
 Four threads shipped this session:
