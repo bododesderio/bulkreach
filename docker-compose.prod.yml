@@ -1,11 +1,18 @@
-# BulkReach — production stack. Self-contained: datastores + api + worker + web
-# behind nginx. Datastores are internal-only (no host ports) so this can run
-# alongside the dev containers; only nginx is published.
+# BulkReach — production stack for the shared-Traefik VPS.
 #
-#   cp .env.production.example .env.production   # fill in secrets
+# Web-facing services (api, web) publish NO host ports; the shared Traefik edge
+# (owns :80/:443, terminates TLS via the `le` ACME resolver) routes them by
+# Host label over the external `web` network. Datastores stay on the private
+# `internal` network. Hosts:
+#   bulkreach.ug (+ www)   → web   :3100   (landing + /dashboard client app)
+#   admin.bulkreach.ug     → web   :3100   (Basic-Auth gated at the edge)
+#   api.bulkreach.ug       → api   :3101   (/docs + /openapi.json Basic-Auth gated)
+#
+#   cp .env.production.example .env.production   # fill in secrets + BASICAUTH hashes
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-#   → app served at http://localhost:${WEB_HTTP_PORT:-8080}
 # NB: --env-file is required — compose only auto-loads a file literally named .env.
+# NB: the `web` network is created by the shared Traefik stack, not here:
+#     docker network ls | grep web   → must exist before `up`.
 name: bulkreach-prod
 
 x-app-env: &app-env
@@ -22,6 +29,17 @@ x-app-env: &app-env
   PAYMENTS_ENCRYPTION_KEY: ${PAYMENTS_ENCRYPTION_KEY:?set PAYMENTS_ENCRYPTION_KEY}
   ANON_PEPPER: ${ANON_PEPPER:-}
   ENVIRONMENT: production
+  FRONTEND_URL: ${FRONTEND_URL:-https://bulkreach.ug}
+  BASE_URL: ${BASE_URL:-https://api.bulkreach.ug}
+  PAYMENTS_CALLBACK_BASE_URL: ${PAYMENTS_CALLBACK_BASE_URL:-https://api.bulkreach.ug}
+  # client → Traefik → container = one trusted proxy hop.
+  TRUSTED_PROXY_COUNT: ${TRUSTED_PROXY_COUNT:-1}
+
+networks:
+  web:
+    external: true          # created by the shared Traefik stack
+  internal:
+    driver: bridge
 
 services:
   postgres:
@@ -33,20 +51,26 @@ services:
     volumes:
       - pg:/var/lib/postgresql/data
       - ./infra/postgres-init.sql:/docker-entrypoint-initdb.d/10-archive-db.sql:ro
+    networks: [internal]
+    mem_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bulkreach"]
       interval: 5s
       timeout: 3s
       retries: 15
+    restart: always
 
   redis:
     image: redis:7
     volumes: [redis:/data]
+    networks: [internal]
+    mem_limit: 256m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 15
+    restart: always
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
@@ -57,11 +81,14 @@ services:
     volumes:
       - ch:/var/lib/clickhouse
       - ./infra/clickhouse-open-networks.xml:/etc/clickhouse-server/users.d/z-open-networks.xml:ro
+    networks: [internal]
+    mem_limit: 1536m
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: always
 
   minio:
     image: minio/minio:latest
@@ -70,11 +97,14 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
     volumes: [minio:/data]
+    networks: [internal]
+    mem_limit: 512m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: always
 
   api:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
@@ -85,7 +115,32 @@ services:
       redis: { condition: service_healthy }
       clickhouse: { condition: service_started }
       minio: { condition: service_healthy }
-    restart: unless-stopped
+    networks: [web, internal]
+    mem_limit: 768m
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Shared middlewares — defined once here, referenced by name everywhere.
+      - "traefik.http.middlewares.bulkreach-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.bulkreach-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.middlewares.bulkreach-docs-auth.basicauth.users=${DOCS_BASICAUTH}"
+      - "traefik.http.middlewares.bulkreach-admin-auth.basicauth.users=${ADMIN_BASICAUTH}"
+      # api.bulkreach.ug → :3101 (app traffic, open)
+      - "traefik.http.routers.bulkreach-api.rule=Host(`api.bulkreach.ug`)"
+      - "traefik.http.routers.bulkreach-api.entrypoints=websecure"
+      - "traefik.http.routers.bulkreach-api.tls.certresolver=le"
+      - "traefik.http.services.bulkreach-api.loadbalancer.server.port=3101"
+      # Swagger/OpenAPI on the api host — Basic-Auth gated (more specific rule wins).
+      - "traefik.http.routers.bulkreach-api-docs.rule=Host(`api.bulkreach.ug`) && (PathPrefix(`/docs`) || PathPrefix(`/redoc`) || Path(`/openapi.json`))"
+      - "traefik.http.routers.bulkreach-api-docs.entrypoints=websecure"
+      - "traefik.http.routers.bulkreach-api-docs.tls.certresolver=le"
+      - "traefik.http.routers.bulkreach-api-docs.service=bulkreach-api"
+      - "traefik.http.routers.bulkreach-api-docs.middlewares=bulkreach-docs-auth"
+      # HTTP → HTTPS
+      - "traefik.http.routers.bulkreach-api-http.rule=Host(`api.bulkreach.ug`)"
+      - "traefik.http.routers.bulkreach-api-http.entrypoints=web"
+      - "traefik.http.routers.bulkreach-api-http.middlewares=bulkreach-redirect-https"
 
   worker:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
@@ -95,7 +150,9 @@ services:
       RUN_MIGRATIONS: "0"   # api owns migrations
     depends_on:
       api: { condition: service_started }
-    restart: unless-stopped
+    networks: [internal]
+    mem_limit: 512m
+    restart: always
 
   web:
     build: { context: ./frontend, dockerfile: Dockerfile.prod }
@@ -104,18 +161,27 @@ services:
       NODE_ENV: production
     depends_on:
       api: { condition: service_started }
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:1.27-alpine
-    ports:
-      - "${WEB_HTTP_PORT:-8080}:80"
-    volumes:
-      - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - api
-      - web
-    restart: unless-stopped
+    networks: [web, internal]
+    mem_limit: 512m
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # bulkreach.ug (+ www) → :3100 (landing + client /dashboard)
+      - "traefik.http.routers.bulkreach-web.rule=Host(`bulkreach.ug`) || Host(`www.bulkreach.ug`)"
+      - "traefik.http.routers.bulkreach-web.entrypoints=websecure"
+      - "traefik.http.routers.bulkreach-web.tls.certresolver=le"
+      - "traefik.http.services.bulkreach-web.loadbalancer.server.port=3100"
+      # admin.bulkreach.ug → same web container, Basic-Auth gated at the edge.
+      - "traefik.http.routers.bulkreach-admin.rule=Host(`admin.bulkreach.ug`)"
+      - "traefik.http.routers.bulkreach-admin.entrypoints=websecure"
+      - "traefik.http.routers.bulkreach-admin.tls.certresolver=le"
+      - "traefik.http.routers.bulkreach-admin.service=bulkreach-web"
+      - "traefik.http.routers.bulkreach-admin.middlewares=bulkreach-admin-auth"
+      # HTTP → HTTPS (both hosts)
+      - "traefik.http.routers.bulkreach-web-http.rule=Host(`bulkreach.ug`) || Host(`www.bulkreach.ug`) || Host(`admin.bulkreach.ug`)"
+      - "traefik.http.routers.bulkreach-web-http.entrypoints=web"
+      - "traefik.http.routers.bulkreach-web-http.middlewares=bulkreach-redirect-https"
 
 volumes:
   pg:

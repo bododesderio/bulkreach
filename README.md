@@ -63,11 +63,14 @@ holds the same `.next` (restart dev + `rm -rf .next` afterward).
 ```bash
 cp .env.production.example .env.production          # fill in secrets (see "Secrets")
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-# app served through nginx at http://localhost:${WEB_HTTP_PORT:-8080}
+# routed by the shared Traefik edge — see infra/DEPLOY-TRAEFIK.md
 ```
-Brings up pg + redis + clickhouse + minio + api + worker + web + nginx. The api
-container runs both Alembic migrations on start (`backend/entrypoint.prod.sh`).
-`--env-file` is required (Compose only auto-loads a file literally named `.env`).
+Brings up pg + redis + clickhouse + minio + api + worker + web. The api container
+runs Alembic migrations on start (`backend/entrypoint.prod.sh`). Web-facing
+services publish no host ports — the shared Traefik edge routes them by Host over
+the external `web` network (`bulkreach.ug` → web, `api.bulkreach.ug` → api,
+`admin.bulkreach.ug` → web, gated). `--env-file` is required (Compose only
+auto-loads a file literally named `.env`). Full runbook: **[infra/DEPLOY-TRAEFIK.md](infra/DEPLOY-TRAEFIK.md)**.
 
 ---
 
@@ -111,10 +114,10 @@ See `.env.production.example` for the full list.
 
 ## Deploy (go-live checklist)
 
-1. **Provision** a Linux VPS (Docker + Compose); DNS `app.bulkreach.ug` → IP; open 80/443 only.
-2. **Configure** `.env.production` (secrets above; set `FRONTEND_URL` + `PAYMENTS_CALLBACK_BASE_URL` to the HTTPS host).
+1. **Provision** — deploy onto the shared-Traefik VPS at `/opt/bulkreach`. DNS: `bulkreach.ug`, `www`, `admin.bulkreach.ug`, `api.bulkreach.ug` → VPS IP (A records). Full steps + gotchas: **[infra/DEPLOY-TRAEFIK.md](infra/DEPLOY-TRAEFIK.md)**.
+2. **Configure** `.env.production` (secrets above; `FRONTEND_URL=https://bulkreach.ug`, `BASE_URL`/`PAYMENTS_CALLBACK_BASE_URL=https://api.bulkreach.ug`, `TRUSTED_PROXY_COUNT=1`, and the `ADMIN_BASICAUTH` / `DOCS_BASICAUTH` edge hashes).
 3. **Up:** `docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build` (migrations auto-run). Create the first superadmin.
-4. **TLS:** put Caddy/Traefik or certbot in front of nginx (or terminate at Cloudflare) → redirect 80→443, add HSTS.
+4. **TLS:** terminated by the shared Traefik edge (Let's Encrypt via the `le` resolver); HTTP→HTTPS redirect is baked into the compose labels. No per-project certbot/nginx.
 5. **Providers / KYC:** enter live credentials in `/admin/settings/payments` (Fernet-encrypted), route each method:
    - Flutterwave — business KYC → live keys + webhook hash → webhook `${CALLBACK}/api/v1/payments/webhooks/flutterwave`.
    - Pesapal — production consumer key/secret + IPN URL (sandbox creds don't work live).
