@@ -91,3 +91,8 @@ curl -sS -o /dev/null -w "health          → %{http_code}\n" https://api.bulkre
   changed service under memory pressure (`... up -d --build web`).
 - **Provider webhooks** post to `https://api.bulkreach.ug/api/v1/payments/webhooks/<provider>` —
   set each provider's callback/IPN URL accordingly in `/admin/settings/payments`.
+- **Delivery-report (DLR) callbacks** post to `https://api.bulkreach.ug/api/v1/webhooks/dlr/<provider>`
+  (`africastalking`, `mailgun`, `sendgrid`). Configure each in the provider console: Africa's Talking
+  SMS delivery-report URL; Mailgun webhooks (delivered/permanent-fail/complained) — signed with the
+  Mailgun API key; SendGrid Event Webhook. Without these, campaigns still send but show accepted-not-
+  delivered counts.

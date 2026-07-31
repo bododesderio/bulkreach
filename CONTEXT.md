@@ -23,7 +23,13 @@ Phase 4 FE: React Query/dark-mode/shared ui; Phase 5 ops: CI/backups/Sentry). Se
 account-scoped admin aggregates, SQL account_summary, cancel-inside-batch-loop. 100 backend tests.
 Deferred by design: fast API-key lookup (feature unwired — 0 rows; note left in dependencies.py) +
 auth-principal cache (conflicts with immediate-suspend invariant). Still open: trial-decrement
-atomicity (bug M-1), list-map scoping (perf M1). Next: Phase 2 (DLR ingestion) or 3/5.
+atomicity (bug M-1), list-map scoping (perf M1).
+**Phase 2 DLR ingestion ✅ DONE (9765645 — pushed):** delivery-report webhooks
+(/webhooks/dlr/{provider}: africastalking/mailgun[HMAC]/sendgrid/simulator) → real delivered/
+bounced/undelivered/complained message states + campaign delivered/bounced counters (migration
+f1a4c6e8b2d3); auto-suppression on hard bounce/complaint; per-account suppression list enforced in
+materialise_and_queue + mgmt router; DLR-aware compute_stats. 108 tests. Remaining polish: inbound
+STOP, frontend delivery UI. Next: Phase 3 security (jose→PyJWT, XSS) or Phase 5 ops (CI/backups).
 
 ## Prior task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
 Four threads shipped this session:

@@ -39,6 +39,11 @@ There are two ways a customer uses BulkReach:
   keys are configured; a labelled simulator is the dev fallback.
 - **Reports** — per-account analytics (sent/delivered/failed by channel, over time) and a branded
   per-campaign success **PDF** (WeasyPrint).
+- **Delivery reports (DLR) & suppression** — inbound provider callbacks (`/webhooks/dlr/{provider}`:
+  Africa's Talking, Mailgun signature-verified, SendGrid) transition each message to its true
+  outcome (delivered/undelivered/bounced/complained). Hard bounces + spam complaints auto-add the
+  recipient to a per-account **suppression list** that future campaigns skip (sender-reputation +
+  opt-out compliance); the list is viewable and editable.
 - **Plans, quota & billing** — four plans (Starter/Growth/Business/Managed); monthly message
   quota + daily limits + concurrency + feature gates enforced in three layers (Redis counters);
   invoices/receipts with gapless numbering + Uganda 18% VAT + mid-cycle proration; auto-renewal
@@ -137,6 +142,8 @@ Full runbook: `infra/DEPLOY-TRAEFIK.md`. Operational drafts (CI, backups, monito
 - **Campaigns:** `POST /campaigns`, `GET /campaigns`, `GET /campaigns/{id}`, `/preview`,
   `/send`, `/schedule`, `/cancel`, `GET /campaigns/{id}/messages`, `GET /campaigns/{id}/progress` (SSE).
 - **Reports:** `GET /reports/summary`, `GET /reports/campaigns/{id}/pdf`.
+- **Deliveries:** `POST /webhooks/dlr/{provider}` (inbound DLR, unauthenticated — signature/secret-URL);
+  **Suppressions:** `GET|POST /suppressions`, `DELETE /suppressions/{id}`.
 - **Billing:** `GET /billing/subscription`, `/invoices`, `/invoices/{id}/pdf`, `/proration-preview`,
   `PATCH /billing/auto-renew`; **Payments:** `/payments/checkout`, `/payments/verify`,
   `/payments/webhooks/{provider}`.
