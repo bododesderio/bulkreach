@@ -56,6 +56,32 @@ class OnboardingRequest(BaseModel):
     referral_source: str | None = Field(None, max_length=60)
 
 
+class UpdateProfileRequest(BaseModel):
+    """Self-service account/profile edit (Settings → Profile). Every field is
+    optional — only the ones sent are written (partial update). The account
+    email and consent record are intentionally NOT editable here."""
+    name: str | None = Field(None, min_length=2, max_length=255)
+    contact_name: str | None = Field(None, max_length=255)
+    phone: str | None = Field(None, max_length=32)
+    industry: str | None = Field(None, max_length=60)
+    timezone: str | None = Field(None, max_length=64)
+    logo_url: str | None = Field(None, max_length=1024)
+    report_header: str | None = Field(None, max_length=2000)
+    marketing_opt_in: bool | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    """Change password while logged in — the current password is verified first."""
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class DeleteAccountRequest(BaseModel):
+    """Danger zone: self-service account closure. Owner-only, password-confirmed."""
+    password: str = Field(min_length=1, max_length=128)
+    confirm: str = Field(description="Must equal the account name to confirm.")
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -111,6 +137,11 @@ class AccountOut(BaseModel):
     status: str
     logo_url: str | None = None
     report_header: str | None = None
+    contact_name: str | None = None
+    phone: str | None = None
+    industry: str | None = None
+    timezone: str = "Africa/Kampala"
+    marketing_opt_in: bool = False
     trial_messages_remaining: int
     trial_expires_at: datetime | None = None
     created_at: datetime

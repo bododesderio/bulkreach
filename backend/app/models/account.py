@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Account, User, ApiKey, AuditLog — Section 4.1 + consent fields (Section 23.3)."""
 from __future__ import annotations
 
@@ -55,6 +57,10 @@ class Account(UUIDPk, TimestampMixin, Base):
     industry: Mapped[str | None] = mapped_column(String(60))
     use_case: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     referral_source: Mapped[str | None] = mapped_column(String(60))
+    # IANA tz name — drives report timestamps + scheduled-send local time.
+    timezone: Mapped[str] = mapped_column(
+        String(64), default="Africa/Kampala", server_default="Africa/Kampala", nullable=False
+    )
 
     users: Mapped[list["User"]] = relationship(back_populates="account")
 

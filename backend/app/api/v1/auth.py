@@ -26,6 +26,8 @@ from app.services.auth_session import (
 from app.schemas.auth import (
     AccountOut,
     ActivatePasswordRequest,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     LoginRequest,
     MeResponse,
@@ -36,14 +38,15 @@ from app.schemas.auth import (
     SignupCompleteRequest,
     SignupCompleteResponse,
     TokenResponse,
+    UpdateProfileRequest,
     UserOut,
     VerifyEmailRequest,
 )
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.services import auth_service, otp
 from app.services.audit import record_audit
 from app.services.email import send_email
-from app.models.account import Account
+from app.models.account import Account, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -305,3 +308,131 @@ async def reset_password(
 async def me(user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]) -> MeResponse:
     account = await db.get(Account, user.account_id)
     return MeResponse(user=UserOut.model_validate(user), account=AccountOut.model_validate(account))
+
+
+@router.patch("/me", response_model=AccountOut)
+async def update_profile(
+    data: UpdateProfileRequest,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AccountOut:
+    """Self-service profile edit. Only owner/admin may change account-wide fields;
+    a plain member gets 403. Email + consent record are immutable here."""
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Only an account owner or admin can edit account details.")
+    account = await db.get(Account, user.account_id)
+    if account is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    fields = data.model_dump(exclude_unset=True)
+    for key, value in fields.items():
+        setattr(account, key, value)
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.profile_updated",
+        resource_type="account", resource_id=str(account.id),
+        details={"fields": sorted(fields.keys())},
+    )
+    await db.commit()
+    await db.refresh(account)
+    return AccountOut.model_validate(account)
+
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    request: Request,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Verify the current password, set a new one, and revoke every OTHER session
+    (a password change invalidates other devices; the current tab stays signed in)."""
+    if not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Current password is incorrect.")
+    if verify_password(data.new_password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "New password must differ from the current one.")
+    user.hashed_password = hash_password(data.new_password)
+    user.must_change_password = False
+
+    from app.services.auth_session import REFRESH_COOKIE, hash_refresh, revoke_others
+    from app.models.auth import RefreshToken
+    from sqlalchemy import select as _select
+
+    keep_id = None
+    raw = request.cookies.get(REFRESH_COOKIE)
+    if raw:
+        current = (await db.execute(
+            _select(RefreshToken).where(RefreshToken.token_hash == hash_refresh(raw))
+        )).scalar_one_or_none()
+        keep_id = current.id if current else None
+    await revoke_others(db, user, keep_id, reason="password_changed")
+
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.password_changed",
+        resource_type="user", resource_id=str(user.id), ip_address=_client_ip(request),
+    )
+    await db.commit()
+    try:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=user.account_id, user_id=user.id, type="security.password_changed",
+            level="warning", title="Your password was changed",
+            body="Your BulkReach password was just changed. If this wasn't you, contact support immediately.",
+            email_to=user.email, force_email=True,
+        )
+        await db.commit()
+    except Exception:  # noqa: BLE001 — a security notice must not block the change
+        pass
+    return {"status": "ok"}
+
+
+@router.post("/delete-account")
+async def delete_account(
+    data: DeleteAccountRequest,
+    request: Request,
+    response: Response,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Danger zone: owner-only self-service account closure. Password-confirmed and
+    name-confirmed. Soft-deletes the account (status=closed, deleted_at set) and
+    revokes every session for its users — auth then blocks the whole account."""
+    if user.role != "owner":
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Only the account owner can close the account.")
+    if not verify_password(data.password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password is incorrect.")
+    account = await db.get(Account, user.account_id)
+    if account is None or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    if (data.confirm or "").strip() != account.name.strip():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Confirmation text does not match the account name.")
+
+    from datetime import datetime, timezone as _tz
+    from sqlalchemy import select as _select, update as _update
+    from app.models.auth import RefreshToken
+
+    now = datetime.now(_tz.utc)
+    account.status = "closed"
+    account.is_active = False
+    account.deleted_at = now
+    # Revoke every live session across all of the account's users.
+    user_ids = (await db.execute(
+        _select(User.id).where(User.account_id == account.id)
+    )).scalars().all()
+    if user_ids:
+        await db.execute(
+            _update(RefreshToken)
+            .where(RefreshToken.user_id.in_(user_ids), RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now, revoked_reason="account_closed")
+        )
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.closed",
+        resource_type="account", resource_id=str(account.id),
+        details={"name": account.name}, ip_address=_client_ip(request),
+    )
+    await db.commit()
+    clear_refresh_cookie(response)
+    return {"status": "closed"}
