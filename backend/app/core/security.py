@@ -2,7 +2,7 @@
 # @copyright 2026 Rooibok Technologies. All rights reserved.
 """Password hashing, API-key hashing, and JWT issue/verify.
 
-Per Section 13.1: JWT (python-jose) — RS256 when a keypair is configured, HS256
+Per Section 13.1: JWT (PyJWT) — RS256 when a keypair is configured, HS256
 fallback otherwise. Access tokens are short-lived (15 min); sessions live via the
 DB-backed rotating refresh cookie (see `app.services.auth_session`), not a JWT.
 API keys are bcrypt-hashed and shown once at creation.
@@ -14,7 +14,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -91,16 +91,27 @@ def create_impersonation_token(subject: str, **claims: Any) -> str:
     )
 
 
-def create_reset_token(subject: str) -> str:
-    """Short-lived (1h) password-reset token."""
-    return _create_token(subject, timedelta(hours=1), "reset")
+def reset_fingerprint(hashed_password: str) -> str:
+    """A short fingerprint of the current password hash, embedded in a reset token
+    so it becomes single-use: once the reset changes the password, the fingerprint
+    no longer matches and the (still-unexpired) link can't be replayed."""
+    return sha256_hex(hashed_password)[:16]
+
+
+def create_reset_token(subject: str, hashed_password: str) -> str:
+    """Short-lived (1h), single-use password-reset token bound to the current hash."""
+    return _create_token(
+        subject, timedelta(hours=1), "reset", pwf=reset_fingerprint(hashed_password)
+    )
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
     key, alg = _verify_key_alg()
     try:
+        # algorithms is an explicit allowlist — the single configured alg — so a
+        # token can't downgrade to `none` or a confused HS/RS algorithm.
         return jwt.decode(token, key, algorithms=[alg])
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
 

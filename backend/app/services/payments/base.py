@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Payment provider abstraction — one adapter per gateway.
 
 Every adapter is constructed from a DB-stored config (mode + decrypted
@@ -156,8 +158,13 @@ class PaymentProvider(ABC):
         """
         secret = self.cred(secret_key).strip()
         if not secret:
-            # Empty / whitespace-only == not configured (no silent broken enforcement).
-            return True
+            # No signing secret configured. In PRODUCTION, fail closed — reject the
+            # unsigned callback; the reconcile-payments cron still settles via the
+            # authoritative server-side poll, so nothing is lost and a forged callback
+            # is turned away at the edge. In dev/test, accept and lean on the re-verify.
+            from app.core.config import settings
+
+            return not settings.is_production
         received = _first_header(headers, header_names).strip()
         if not received:
             return False

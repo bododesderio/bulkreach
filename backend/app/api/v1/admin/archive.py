@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Archive subsystem admin API (superadmin). Governs the SEPARATE archive DB.
 
 Every read and action is written to the append-only archive_access_log (Section
@@ -48,7 +50,11 @@ LiveDB = Annotated[AsyncSession, Depends(get_db)]
 
 
 def _ip(request: Request) -> str | None:
-    return request.client.host if request.client else None
+    # Behind Traefik/nginx the socket peer is the proxy — use the trusted-hop XFF
+    # helper so the DPA access log records the real client (Section 18.1).
+    from app.core.net import client_ip
+
+    return client_ip(request)
 
 
 def _contact_out(mc: MasterContact) -> MasterContactOut:

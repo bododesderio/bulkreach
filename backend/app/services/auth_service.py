@@ -13,6 +13,7 @@ from app.core.security import (
     create_reset_token,
     decode_token,
     hash_password,
+    reset_fingerprint,
     verify_password,
 )
 from app.models.account import Account, User
@@ -77,7 +78,7 @@ async def authenticate(db: AsyncSession, email: str, password: str) -> User:
 
 
 def make_reset_token(user: User) -> str:
-    return create_reset_token(str(user.id))
+    return create_reset_token(str(user.id), user.hashed_password)
 
 
 async def apply_password_reset(db: AsyncSession, token: str, new_password: str) -> None:
@@ -89,6 +90,12 @@ async def apply_password_reset(db: AsyncSession, token: str, new_password: str) 
     user = await db.get(User, UUID(payload["sub"]))
     if not user:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid reset token.")
+    # Single-use: the token is bound to the password hash it was minted against.
+    # A second use (or a link issued before another password change) no longer
+    # matches and is rejected.
+    if payload.get("pwf") != reset_fingerprint(user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "This reset link has already been used or has expired.")
     user.hashed_password = hash_password(new_password)
     # Recovery-from-compromise: revoke EVERY existing session (keep_id=None) so a
     # phished refresh-token family cannot survive the password reset.

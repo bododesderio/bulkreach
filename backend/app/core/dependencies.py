@@ -50,8 +50,13 @@ async def _user_from_jwt(token: str, db: AsyncSession) -> User | None:
     if not await _account_active(db, user.account_id):
         return None
     # If this is a superadmin impersonation token, stamp the acting admin onto the
-    # principal (transient attr) so /auth/me can surface the session to the UI.
+    # principal (transient attr) so /auth/me can surface the session to the UI, and
+    # into the request-scoped audit context so every write is attributed to them.
     user.impersonated_by = payload.get("imp_email")
+    if user.impersonated_by:
+        from app.services.audit import set_impersonator
+
+        set_impersonator(user.impersonated_by)
     return user
 
 

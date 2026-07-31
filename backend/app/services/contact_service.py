@@ -1,6 +1,9 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Contact import persistence: turn a ParseResult into ContactList + Contact rows."""
 from __future__ import annotations
 
+import re
 import uuid
 
 from sqlalchemy import func, select
@@ -29,7 +32,11 @@ async def persist_import(
     checksum = sha256_hex(raw_file.decode("latin-1")) if raw_file else None
     s3_key = None
     if raw_file is not None:
-        key = f"{account_id}/contacts/{uuid.uuid4()}_{source_filename or 'upload'}"
+        # Sanitise the client filename to a safe basename — it composes a storage
+        # key that the local backend joins onto a filesystem path, so "../" must
+        # not escape the root (prod uses S3 where it's just a key, but defend both).
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", (source_filename or "upload").rsplit("/", 1)[-1])[:80] or "upload"
+        key = f"{account_id}/contacts/{uuid.uuid4()}_{safe_name}"
         s3_key = get_storage().put(key, raw_file)
 
     contact_list = ContactList(

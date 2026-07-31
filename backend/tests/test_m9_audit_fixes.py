@@ -50,3 +50,18 @@ async def test_quota_reserve_accumulates_and_releases():
     await quota.release(acct, 8)
     assert await quota.get_monthly_used(acct) == 0
     assert await quota.get_daily_used(acct) == 0
+
+
+def test_reset_token_single_use_fingerprint():
+    """A reset token is bound to the password hash it was minted against; once the
+    password changes the fingerprint no longer matches, so the link can't be replayed."""
+    from app.core.security import (
+        create_reset_token, decode_token, hash_password, reset_fingerprint,
+    )
+
+    h1 = hash_password("originalpass1")
+    payload = decode_token(create_reset_token("user-123", h1))
+    assert payload and payload["type"] == "reset"
+    assert payload["pwf"] == reset_fingerprint(h1)          # valid against current hash
+    h2 = hash_password("changedpass2")
+    assert payload["pwf"] != reset_fingerprint(h2)          # stale after a password change

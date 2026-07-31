@@ -144,9 +144,9 @@ async def test_logout_revokes_session(client):
 def test_rs256_sign_verify_roundtrip(monkeypatch):
     """RS256 path: with a keypair configured, tokens sign with the private key and
     verify with the public key, and the JWT header advertises alg=RS256."""
+    import jwt
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
-    from jose import jwt
 
     from app.core import security
     from app.core.config import settings
