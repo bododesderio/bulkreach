@@ -1,0 +1,47 @@
+# BulkReach — lightweight monitoring, routed by the SAME shared Traefik edge.
+# One extra subdomain: status.bulkreach.ug (Basic-Auth gated). Uptime-Kuma is a
+# single ~256MB container that does HTTP/keyword checks + alerting (email, Slack,
+# Telegram) with a status page — right-sized for a 2-vCPU VPS.
+#
+#   docker compose --env-file ../.env.production -f docker-compose.monitoring.yml up -d
+#
+# Configure inside the UI (persisted in the kuma volume):
+#   - Monitor  https://api.bulkreach.ug/health        keyword "ok"   60s
+#   - Monitor  https://bulkreach.ug/                    HTTP 200       60s
+#   - Monitor  push-based heartbeat for the ARQ worker (see worker note below)
+#   - Notifications → email/Telegram; alert after 2 consecutive failures.
+name: bulkreach-monitoring
+
+networks:
+  web: { external: true }
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    volumes: [kuma:/app/data]
+    networks: [web]
+    mem_limit: 256m
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.br-status.rule=Host(`status.bulkreach.ug`)"
+      - "traefik.http.routers.br-status.entrypoints=websecure"
+      - "traefik.http.routers.br-status.tls.certresolver=le"
+      - "traefik.http.routers.br-status.middlewares=bulkreach-admin-auth"
+      - "traefik.http.services.br-status.loadbalancer.server.port=3001"
+      - "traefik.http.routers.br-status-http.rule=Host(`status.bulkreach.ug`)"
+      - "traefik.http.routers.br-status-http.entrypoints=web"
+      - "traefik.http.routers.br-status-http.middlewares=bulkreach-redirect-https"
+
+volumes:
+  kuma:
+
+# ── ARQ worker visibility (no native HTTP endpoint) ───────────────────────────
+# The worker has no health port, and `depends_on: api` only waits for start, not
+# health. Two lightweight options:
+#   1. Uptime-Kuma "Push" monitor: add an ARQ cron that curls the Kuma push URL
+#      every minute — if the beat stops, Kuma alerts. (Best signal that crons run.)
+#   2. Docker-level: `restart: always` + a shell healthcheck on the worker, e.g.
+#      test: ["CMD-SHELL", "pgrep -f 'arq app.workers' >/dev/null || exit 1"]
+#      (add to the worker service in an override; the base compose is not edited here.)
