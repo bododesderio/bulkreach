@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +13,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 import { api, ApiError } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -326,15 +331,14 @@ export default function ManagedApprovePage() {
                         </span>
                       </div>
                     )}
-                    {/* HTML body — client's own drafted copy */}
+                    {/* HTML body — sanitized before render to prevent stored-XSS */}
                     {data.copy_email_body && (
                       <div
                         className="px-5 py-4 text-[14px] leading-relaxed"
                         style={{ color: "var(--text)" }}
-                        // The body is the client's own drafted campaign copy served
-                        // from the managed-service backend — not user-generated input
-                        // from untrusted third parties.
-                        dangerouslySetInnerHTML={{ __html: data.copy_email_body }}
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(data.copy_email_body),
+                        }}
                       />
                     )}
                   </div>
