@@ -1,7 +1,32 @@
 # Project Context
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
-## Current task — ✅ Session infra DONE + pushed (2026-07-29, commit 3c5d20f)
+## Current task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
+Four threads shipped this session:
+- **Feature A — deep profile settings.** Account `timezone` column (migration `c7e1a2f3d4b5`);
+  `PATCH /auth/me` (partial profile edit, owner/admin only), `POST /auth/change-password`
+  (verifies current, revokes other sessions), `POST /auth/delete-account` (owner-only soft
+  close: status=closed + revoke all sessions, password + name confirm). Settings page rebuilt
+  into 6 tabs (Profile · Security · Team · Sessions · Notifications · Danger).
+- **Feature B — per-client plan controls.** Subscription override columns (migration
+  `d8f2b3c4e5a6`): `manually_assigned`, `custom_messages_per_month`, `custom_daily_limit`,
+  `custom_price_ugx`, `custom_features`. `enforce.resolve_limits` layers overrides over the
+  shared Plan; `POST /admin/accounts/{id}/plan` (audited manual assign); settlement/dunning
+  guarded so custom deals aren't clobbered (refund skip + renewal-sweep excludes manual subs).
+  New admin account **detail page** `/admin/accounts/[id]` + "Manage" links.
+- **Traefik routing.** `docker-compose.prod.yml` rebuilt for the shared-Traefik edge (dropped
+  nginx): `bulkreach.ug`+`www` → web:3100, `admin.bulkreach.ug` → web:3100 (Basic-Auth gated),
+  `api.bulkreach.ug` → api:3101 (`/docs` gated). External `web` network, `le` resolver, HTTP→HTTPS
+  redirect, `TRUSTED_PROXY_COUNT=1`. Runbook `infra/DEPLOY-TRAEFIK.md` (VPS `195.110.59.36`;
+  `.ug` DNS is NOT on Hostinger → A-records added manually at registrar). nginx.conf removed.
+- **Authorship debt — RESOLVED (was stale).** Verified: `.env.production` was NEVER committed
+  (untracked, gitignored); origin history is clean of Claude trailers; HEAD == origin/main. No
+  force-push needed. Local-only secrets can be rotated at will (never exposed).
+
+Tests: **94 backend pass** (added `tests/test_m9_profile_plan.py`, 6 tests; `pytest.ini` now
+collects `test_m9_*`). Frontend `tsc --noEmit` clean. All source signed as Bodo.
+
+## Prior task — ✅ Session infra DONE + pushed (2026-07-29, commit 3c5d20f)
 Session-infra slice shipped: DB-backed rotating refresh sessions (opaque+sha256, family reuse/theft
 detection) + append-only auth_events + RS256 (HS256 fallback) + 15-min access token + Settings "Active
 sessions" UI + frontend silent-refresh interceptor. Migration b4d6f8a02c15. **All 4 security-audit
@@ -12,11 +37,10 @@ login limiter; (3) dead `create_refresh_token` removed; (4) CSRF stance document
 **88 backend tests pass.** Signed as Bodo, pushed (7 commits, fast-forward). Detail in
 [[bulkreach-session-infra-wip]].
 
-⚠️ **Authorship debt on origin:** the 3 previously-unpushed dirty commits were scrubbed of Claude trailers
-before this push, but `origin/main`'s OLDER published history still carries them — fixing that needs a
-destructive force-push (`git filter-repo` + `--force-with-lease`), left as an explicit user decision.
-
-Next gaps (see [[bulkreach-gap-closing]]): deep profile settings, per-client plan controls.
+✅ **Authorship debt — RESOLVED (2026-07-31).** Re-verified against the live remote: 56 commits,
+zero `Claude`/`Anthropic`/`Co-authored-by` trailers across every ref, all authored by Bodo, and
+`HEAD == origin/main`. The Jul-29 filter-branch rewrite completed and was pushed; no force-push
+outstanding. `.env.production` was never committed (untracked + gitignored) — no secret in history.
 
 ## Older current task (2026-07-28 end of day)
 Gap-closing roadmap, recent slices:
