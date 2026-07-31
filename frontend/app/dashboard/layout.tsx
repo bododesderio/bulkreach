@@ -96,9 +96,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Sticky header cluster: impersonation banner (if any) + topbar move together */}
         <div className="sticky top-0 z-20">
           {user.impersonated_by && (
-            <div className="flex items-center justify-between gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950">
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium"
+              style={{
+                background: "#FFFBEB",
+                borderBottom: "2px solid #F59E0B",
+                color: "#92400E",
+              }}
+            >
               <span className="flex items-center gap-2">
-                <Eye className="h-4 w-4 shrink-0" />
+                <Eye className="h-4 w-4 shrink-0" style={{ color: "#D97706" }} aria-hidden />
                 <span>
                   Viewing <strong>{account.name}</strong> as {user.impersonated_by}
                 </span>
@@ -106,7 +113,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 onClick={handleExitImpersonation}
                 disabled={exiting}
-                className="shrink-0 rounded-md bg-amber-950/10 px-3 py-1 font-semibold transition hover:bg-amber-950/20 disabled:opacity-50"
+                className="shrink-0 rounded-md px-3 py-1 font-semibold transition disabled:opacity-50"
+                style={{
+                  background: "#FDE68A",
+                  color: "#92400E",
+                  border: "1px solid #F59E0B",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FCD34D"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FDE68A"; }}
               >
                 {exiting ? "Exiting…" : "Exit"}
               </button>

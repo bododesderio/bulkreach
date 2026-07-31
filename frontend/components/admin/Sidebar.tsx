@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
 import Link from 'next/link';
@@ -45,9 +49,9 @@ const sections: NavSection[] = [
   {
     label: 'Clients',
     items: [
-      { icon: Users, label: 'Accounts', href: '/admin/accounts', badge: '127', badgeType: 'teal' },
+      { icon: Users, label: 'Accounts', href: '/admin/accounts' },
       { icon: RefreshCw, label: 'Subscriptions', href: '/admin/subscriptions' },
-      { icon: Zap, label: 'Managed queue', href: '/admin/managed', badge: '3', badgeType: 'red' },
+      { icon: Zap, label: 'Managed queue', href: '/admin/managed' },
     ],
   },
   {

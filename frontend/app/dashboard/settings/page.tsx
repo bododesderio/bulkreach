@@ -531,17 +531,17 @@ export default function SettingsPage() {
             <dl className="mb-5 grid grid-cols-2 gap-x-6 gap-y-3 border-b pb-5">
               {(
                 [
-                  ["Account email",       profileData?.email                              ?? account.email],
-                  ["Plan",                profileData?.plan                               ?? account.plan],
-                  ["Status",              profileData?.status                             ?? account.status],
-                  ["Trial messages left", String(profileData?.trial_messages_remaining    ?? account.trial_messages_remaining)],
-                ] satisfies [string, string][]
-              ).map(([label, value]) => (
+                  ["Account email",       profileData?.email                              ?? account.email,                              true],
+                  ["Plan",                profileData?.plan                               ?? account.plan,                               false],
+                  ["Status",              profileData?.status                             ?? account.status,                             false],
+                  ["Trial messages left", String(profileData?.trial_messages_remaining    ?? account.trial_messages_remaining),           false],
+                ] satisfies [string, string, boolean][]
+              ).map(([label, value, raw]) => (
                 <div key={label}>
                   <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
                     {label}
                   </dt>
-                  <dd className="mt-0.5 text-[12px] font-semibold text-navy capitalize">{value}</dd>
+                  <dd className={`mt-0.5 text-[12px] font-semibold text-navy ${raw ? "normal-case" : "capitalize"}`}>{value}</dd>
                 </div>
               ))}
             </dl>

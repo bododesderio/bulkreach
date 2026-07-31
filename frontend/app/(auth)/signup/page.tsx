@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,6 +72,7 @@ export default function SignupStep1() {
           data-testid="email"
           label="Work email"
           type="email"
+          autoComplete="email"
           placeholder="you@company.com"
           error={errors.email?.message}
         />
@@ -76,6 +81,8 @@ export default function SignupStep1() {
           id="signup-phone"
           data-testid="phone"
           label="Phone (optional)"
+          type="tel"
+          autoComplete="tel"
           placeholder="+256 7XX XXX XXX"
           error={errors.phone?.message}
         />
@@ -85,6 +92,7 @@ export default function SignupStep1() {
             id="signup-password"
             data-testid="password"
             label="Password"
+            autoComplete="new-password"
             placeholder="••••••••"
             error={errors.password?.message}
           />

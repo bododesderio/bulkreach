@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -138,6 +142,7 @@ export default function InviteAcceptPage() {
           id="invite-name"
           data-testid="invite-name"
           label="Your full name"
+          autoComplete="name"
           placeholder="Grace Nakato"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
@@ -147,6 +152,7 @@ export default function InviteAcceptPage() {
             id="invite-password"
             data-testid="invite-password"
             label="Password"
+            autoComplete="new-password"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

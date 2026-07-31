@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -61,6 +65,7 @@ export default function ManagedPortalLogin() {
               data-testid="email"
               label="Email"
               type="email"
+              autoComplete="email"
               placeholder="you@company.ug"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -69,6 +74,7 @@ export default function ManagedPortalLogin() {
               id="mp-password"
               data-testid="password"
               label="Password"
+              autoComplete="current-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

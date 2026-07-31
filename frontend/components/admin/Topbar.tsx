@@ -1,7 +1,12 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
 import { useState } from 'react';
 import { Bell } from 'lucide-react';
+import { useAuth } from '@/store/auth';
 
 export type Period = 'Today' | 'Month' | 'Quarter';
 const PERIODS: Period[] = ['Today', 'Month', 'Quarter'];
@@ -17,6 +22,11 @@ interface TopbarProps {
   showPeriod?: boolean;
 }
 
+function adminInitials(email: string | undefined): string {
+  if (!email) return 'SA';
+  return email.slice(0, 2).toUpperCase();
+}
+
 export default function Topbar({
   title,
   subtitle,
@@ -25,6 +35,8 @@ export default function Topbar({
   showPeriod = true,
 }: TopbarProps) {
   const [internalPeriod, setInternalPeriod] = useState<Period>('Month');
+  const user = useAuth((s) => s.user);
+
   const activePeriod = period ?? internalPeriod;
   const setActivePeriod = (p: Period) => {
     if (onPeriodChange) onPeriodChange(p);
@@ -56,12 +68,12 @@ export default function Topbar({
           className="flex items-center border rounded-[7px] p-0.5"
           style={{ background: 'var(--bg)' }}
         >
-          {PERIODS.map((period) => {
-            const isActive = period === activePeriod;
+          {PERIODS.map((p) => {
+            const isActive = p === activePeriod;
             return (
               <button
-                key={period}
-                onClick={() => setActivePeriod(period)}
+                key={p}
+                onClick={() => setActivePeriod(p)}
                 className="px-3 py-[5px] rounded-[5px] text-[11.5px] font-semibold transition-colors"
                 style={
                   isActive
@@ -69,39 +81,30 @@ export default function Topbar({
                     : { color: 'var(--text-muted)' }
                 }
               >
-                {period}
+                {p}
               </button>
             );
           })}
         </div>
         )}
 
-        {/* Notification bell */}
+        {/* Notification bell — no fake unread dot */}
         <button
-          className="relative flex items-center justify-center border bg-transparent rounded-[7px] transition-colors hover:bg-bg"
+          className="flex items-center justify-center border bg-transparent rounded-[7px] transition-colors hover:bg-bg"
           style={{ width: '32px', height: '32px' }}
           aria-label="Notifications"
         >
           <Bell size={15} className="text-text-md" />
-          {/* Unread dot */}
-          <span
-            className="absolute top-1 right-1 rounded-full"
-            style={{
-              width: '6px',
-              height: '6px',
-              background: '#EF4444',
-              border: '1.5px solid white',
-            }}
-          />
         </button>
 
-        {/* SA avatar */}
+        {/* Avatar with real user initials */}
         <div
           className="flex items-center justify-center rounded-full font-display font-extrabold text-teal"
           style={{ width: '32px', height: '32px', background: 'var(--navy)', fontSize: '12px' }}
-          aria-label="Super admin"
+          aria-label={user?.email ?? 'Admin'}
+          title={user?.email ?? 'Admin'}
         >
-          SA
+          {adminInitials(user?.email)}
         </div>
       </div>
     </header>

@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -65,6 +69,7 @@ export default function ManagedPortalActivate() {
                 id="mp-new-password"
                 data-testid="new-password"
                 label="New password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -75,6 +80,7 @@ export default function ManagedPortalActivate() {
               id="mp-confirm-password"
               data-testid="confirm-password"
               label="Confirm password"
+              autoComplete="new-password"
               placeholder="••••••••"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
