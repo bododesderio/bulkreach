@@ -57,6 +57,14 @@ async def _user_from_jwt(token: str, db: AsyncSession) -> User | None:
 
 async def _user_from_api_key(raw_key: str, db: AsyncSession) -> User | None:
     # API keys are per-account; resolve to the account owner as the acting user.
+    #
+    # SCALE NOTE: this scans every active key and bcrypt-verifies each — O(n) per
+    # request. It's harmless today (no key-issuance endpoint exists yet, so there
+    # are zero rows), but BEFORE building the create-key endpoint, add an indexed
+    # lookup column: store sha256(raw_key) (the raw key is high-entropy, so a plain
+    # sha256 lookup is safe — same pattern as invitation/refresh tokens), filter by
+    # it to a single row, then bcrypt-verify that one. Do NOT ship key issuance on
+    # top of this linear scan.
     result = await db.execute(select(ApiKey).where(ApiKey.is_active.is_(True)))
     for api_key in result.scalars():
         if verify_api_key(raw_key, api_key.key_hash):
