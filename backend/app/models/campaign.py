@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Campaign, CampaignContact, ManagedCampaign, Report — Section 4.1."""
 from __future__ import annotations
 
@@ -43,6 +45,10 @@ class Campaign(UUIDPk, TimestampMixin, Base):
     sms_failed: Mapped[int] = mapped_column(Integer, default=0)
     email_sent: Mapped[int] = mapped_column(Integer, default=0)
     email_failed: Mapped[int] = mapped_column(Integer, default=0)
+    # Delivery-report (DLR) outcomes, populated by inbound provider callbacks after
+    # a message is accepted ("sent"). delivered ≤ sent; bounced counts hard failures.
+    delivered: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    bounced: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     elapsed_seconds: Mapped[float | None] = mapped_column(Float)
     error_message: Mapped[str | None] = mapped_column(Text)
 
@@ -72,7 +78,11 @@ class Message(UUIDPk, TimestampMixin, Base):
     reporting (Sections 3.3, 6.x). Aggregate counters live on Campaign."""
 
     __tablename__ = "messages"
-    __table_args__ = (Index("ix_messages_campaign_status", "campaign_id", "status"),)
+    __table_args__ = (
+        Index("ix_messages_campaign_status", "campaign_id", "status"),
+        # DLR lookup: inbound callbacks resolve a message by its provider id.
+        Index("ix_messages_provider_message_id", "provider_message_id"),
+    )
 
     campaign_id: Mapped[uuid.UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("campaigns.id", ondelete="CASCADE"), index=True
@@ -82,7 +92,7 @@ class Message(UUIDPk, TimestampMixin, Base):
     )
     channel: Mapped[str] = mapped_column(String(10), nullable=False)  # sms|email
     recipient: Mapped[str] = mapped_column(String(320), nullable=False)  # E.164 or email
-    # queued|sending|sent|failed
+    # queued|sending|sent|failed → (via DLR) delivered|undelivered|bounced|complained
     status: Mapped[str] = mapped_column(String(20), default="queued", nullable=False, index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
@@ -90,6 +100,7 @@ class Message(UUIDPk, TimestampMixin, Base):
     provider_message_id: Mapped[str | None] = mapped_column(String(255))
     error_reason: Mapped[str | None] = mapped_column(Text)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ManagedCampaign(UUIDPk, TimestampMixin, Base):

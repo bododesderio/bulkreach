@@ -20,6 +20,7 @@ from app.models.payment_provider import (
     PaymentSettings,
     RawWebhookEvent,
 )
+from app.models.suppression import Suppression
 
 __all__ = [
     "Account",

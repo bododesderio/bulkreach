@@ -163,10 +163,30 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Attach a contact list before sending.")
 
     contacts = await _valid_contacts(db, campaign.contact_list_id)
+
+    # Suppression list (Section 20): skip addresses that hard-bounced, complained,
+    # or opted out. Loaded once per channel, not per recipient.
+    from app.services import deliveries
+
+    sms_blocked = (
+        await deliveries.suppressed_addresses(db, campaign.account_id, "sms")
+        if campaign.type in ("sms", "both") else set()
+    )
+    email_blocked = (
+        await deliveries.suppressed_addresses(db, campaign.account_id, "email")
+        if campaign.type in ("email", "both") else set()
+    )
+
     targets = []
     for c in contacts:
-        sms_ok = campaign.type in ("sms", "both") and bool(c.phone)
-        email_ok = campaign.type in ("email", "both") and bool(c.email)
+        sms_ok = (
+            campaign.type in ("sms", "both") and bool(c.phone)
+            and c.phone.strip() not in sms_blocked
+        )
+        email_ok = (
+            campaign.type in ("email", "both") and bool(c.email)
+            and c.email.strip().lower() not in email_blocked
+        )
         if sms_ok or email_ok:
             targets.append((c, sms_ok, email_ok))
 
@@ -246,17 +266,31 @@ async def compute_stats(db: AsyncSession, campaign_id: uuid.UUID) -> dict:
     stats = {
         "total": 0, "queued": 0, "sending": 0, "sent": 0, "failed": 0,
         "sms_sent": 0, "sms_failed": 0, "email_sent": 0, "email_failed": 0,
+        "delivered": 0, "bounced": 0,
     }
+    # A message that was accepted by the provider counts as "sent" whether or not a
+    # delivery report has since moved it to delivered/undelivered/bounced/complained.
+    accepted = {"sent", "delivered", "undelivered", "bounced", "complained"}
     for channel, st, count in rows:
         stats["total"] += count
-        if st in stats:
-            stats[st] += count
-        if st == "sent":
+        if st in accepted:
+            stats["sent"] += count
             stats[f"{channel}_sent"] += count
         elif st == "failed":
+            stats["failed"] += count
             stats[f"{channel}_failed"] += count
+        elif st in ("queued", "sending"):
+            stats[st] += count
+        if st == "delivered":
+            stats["delivered"] += count
+        elif st in ("bounced", "complained"):
+            stats["bounced"] += count
     done = stats["sent"] + stats["failed"]
     stats["delivery_rate"] = round(stats["sent"] / done * 100, 1) if done else 0.0
+    # Of the messages accepted, how many a DLR confirmed delivered (0 until DLRs arrive).
+    stats["delivered_rate"] = (
+        round(stats["delivered"] / stats["sent"] * 100, 1) if stats["sent"] else 0.0
+    )
     return stats
 
 
