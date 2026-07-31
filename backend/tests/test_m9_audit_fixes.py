@@ -31,3 +31,22 @@ def test_pdf_fetcher_blocks_cloud_metadata_ip():
 def test_pdf_fetcher_blocks_private_ip():
     with pytest.raises(ValueError):
         safe_url_fetcher("http://10.0.0.5/logo.png")
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_quota_reserve_accumulates_and_releases():
+    """Reserve is an atomic INCRBY: concurrent reservations accumulate, so the
+    post-reserve limit check sees the true total (closes the overspend TOCTOU).
+    Release rolls a reservation back to zero."""
+    from uuid import uuid4
+
+    from app.services.subscription import quota
+
+    acct = uuid4()
+    m1, d1 = await quota.reserve(acct, 5)
+    assert m1 == 5 and d1 == 5
+    m2, d2 = await quota.reserve(acct, 3)          # a second concurrent-style reserve
+    assert m2 == 8 and d2 == 8                     # accumulated, not stale-read
+    await quota.release(acct, 8)
+    assert await quota.get_monthly_used(acct) == 0
+    assert await quota.get_daily_used(acct) == 0

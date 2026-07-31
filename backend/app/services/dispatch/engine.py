@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Campaign dispatch engine (Section 3.3).
 
 Orchestrates one campaign end-to-end: renders each message per-recipient, sends
@@ -55,6 +57,16 @@ def _chunk(seq: Sequence, size: int):
 def _backoff_seconds(round_idx: int) -> float:
     # 1s, 2s, 4s, ... capped — exercised for real in prod, tiny in tests via monkeypatch.
     return min(2.0**round_idx, 30.0)
+
+
+async def _refund_unsent(db, account, refund: int) -> None:
+    """Refund reserved-but-unsent monthly/daily quota (paid plans only; trial is
+    DB-metered up-front). `refund` = reserved message_count − actually sent."""
+    if account is None or (account.plan or "").lower() == "trial" or refund <= 0:
+        return
+    from app.services.subscription import quota as quota_svc
+
+    await quota_svc.release(account.id, refund)
 
 
 async def _send_one(message, campaign, merge_map, sms_provider, email_provider, sem) -> SendResult:
@@ -130,33 +142,11 @@ async def dispatch_campaign(
             ).scalars()
             merge_map = {r.id: (r.merge_data or {}) for r in rows}
 
-        # Layer 3 fail-safe: if the monthly quota ran out since this campaign was
-        # queued (a concurrent campaign consumed it), pause instead of overspending.
+        # Quota is RESERVED atomically at queue time (enforce_send), so a queued
+        # campaign already owns its allowance and cannot be starved by a concurrent
+        # campaign — the old Layer-3 `monthly_exhausted` pause is now obsolete (and
+        # would false-positive, since `used` includes this campaign's own reservation).
         account = await db.get(Account, campaign.account_id)
-        if account is not None:
-            from app.services.subscription import enforce
-
-            if await enforce.monthly_exhausted(db, account):
-                campaign.status = "paused_quota_exceeded"
-                await db.commit()
-                await progress.write(campaign_id, status="paused_quota_exceeded",
-                                     total=total, sent=0, failed=0)
-                logger.info("dispatch: campaign %s paused — monthly quota exhausted", campaign_id)
-                try:
-                    from app.services.notifications import notify
-
-                    await notify(
-                        db, account_id=account.id, type="campaign.paused", level="warning",
-                        title=f"Campaign “{campaign.name}” paused — monthly limit reached",
-                        body="Your monthly message allowance ran out before this campaign "
-                             "could send. Upgrade your plan or wait for the reset to resume.",
-                        link=f"/dashboard/campaigns/{campaign_id}",
-                        meta={"campaign_id": str(campaign_id), "total": total},
-                    )
-                    await db.commit()
-                except Exception:  # noqa: BLE001 — a notice must not break the pause path
-                    logger.warning("campaign-paused notification failed %s", campaign_id)
-                return {"status": "paused_quota_exceeded", "total": total}
 
         campaign.status = "sending"
         await db.commit()
@@ -188,15 +178,23 @@ async def dispatch_campaign(
             if not pending:
                 break
 
-            # Honour a cancellation requested mid-flight.
+            # Honour a cancellation requested mid-flight (checked per round).
             current_status = await db.scalar(select(Campaign.status).where(Campaign.id == campaign.id))
             if current_status == "cancelled":
                 logger.info("dispatch: campaign %s cancelled mid-flight", campaign_id)
+                await _refund_unsent(db, account, len(messages) - sent)
                 await flush_progress(status="cancelled")
                 return {"status": "cancelled", "sent": sent, "failed": failed}
 
             retriable: list = []
             for batch in _chunk(pending, batch_size):
+                # Also honour cancellation BETWEEN batches, so a large single-round
+                # campaign can actually be stopped (not only between retry rounds).
+                if await db.scalar(select(Campaign.status).where(Campaign.id == campaign.id)) == "cancelled":
+                    logger.info("dispatch: campaign %s cancelled mid-batch", campaign_id)
+                    await _refund_unsent(db, account, len(messages) - sent)
+                    await flush_progress(status="cancelled")
+                    return {"status": "cancelled", "sent": sent, "failed": failed}
                 results = await asyncio.gather(
                     *[_send_one(m, campaign, merge_map, sms_provider, email_provider, sem) for m in batch]
                 )
@@ -253,12 +251,13 @@ async def dispatch_campaign(
         campaign.elapsed_seconds = round(time.monotonic() - started, 3)
         await db.commit()
 
-        # Meter dispatched messages against the paid monthly/daily quota (trial
-        # allowance is decremented up-front at queue time, not here).
-        if account is not None and (account.plan or "").lower() != "trial" and sent > 0:
+        # Quota was RESERVED up-front at queue time (message_count). Refund the
+        # messages that ultimately didn't send so the counter reflects actual
+        # dispatched volume (trial allowance is DB-metered up-front, not here).
+        if account is not None and (account.plan or "").lower() != "trial":
             from app.services.subscription import enforce, quota as quota_svc
             try:
-                await quota_svc.consume(account.id, sent)
+                await _refund_unsent(db, account, len(messages) - sent)
                 # Warn once/month when monthly usage crosses 80/90/100%.
                 limits = await enforce.resolve_limits(db, account)
                 if limits and not limits.is_trial and limits.monthly_limit:
@@ -268,7 +267,7 @@ async def dispatch_campaign(
                     await notify_quota_threshold(db, account, used, limits.monthly_limit)
                     await db.commit()
             except Exception:  # noqa: BLE001 — metering must never fail a completed send
-                logger.warning("quota consume failed for account %s", account.id)
+                logger.warning("quota refund failed for account %s", account.id)
 
         # Notify the account that their campaign finished. A run where nothing was
         # delivered is a failure, not a success — report it honestly at error level.

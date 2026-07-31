@@ -110,28 +110,24 @@ async def enforce_send(db: AsyncSession, account: Account, campaign: Campaign, m
     if await _active_sending(db, account.id) >= limits.simultaneous_limit:
         raise _402("CONCURRENT_LIMIT_REACHED", limit=limits.simultaneous_limit)
 
-    # Monthly quota
-    if limits.monthly_limit is not None:
-        used = await quota.get_monthly_used(account.id)
-        remaining = limits.monthly_limit - used
-        if remaining <= 0:
-            raise _402("MONTHLY_QUOTA_EXCEEDED", remaining=0,
-                       resets_at=quota.month_reset_at().isoformat())
-        if message_count > remaining:
-            raise _402("PARTIAL_QUOTA", remaining=remaining, requested=message_count)
-
-    # Daily limit — block-partial like the monthly check, so a single large
-    # campaign can't blow past the cap (the daily counter only moves after a
-    # campaign finishes, so a same-day check on accumulated-only under-enforces).
-    if limits.daily_limit is not None:
-        daily_used = await quota.get_daily_used(account.id)
-        daily_remaining = limits.daily_limit - daily_used
-        if daily_remaining <= 0:
-            raise _402("DAILY_LIMIT_REACHED", remaining=0,
-                       resets_at=quota.day_reset_at().isoformat())
-        if message_count > daily_remaining:
-            raise _402("DAILY_LIMIT_REACHED", remaining=daily_remaining,
-                       requested=message_count,
+    # Monthly + daily quota — RESERVE atomically up front, then validate. Reserving
+    # (INCRBY) instead of read-then-check closes the TOCTOU where two concurrent
+    # sends both read a stale `used` and overspend: whichever reservation pushes a
+    # counter over its limit is rejected and rolled back. The dispatch engine
+    # refunds the unsent remainder so the counter still reflects actual volume.
+    if limits.monthly_limit is not None or limits.daily_limit is not None:
+        new_monthly, new_daily = await quota.reserve(account.id, message_count)
+        over_monthly = limits.monthly_limit is not None and new_monthly > limits.monthly_limit
+        over_daily = limits.daily_limit is not None and new_daily > limits.daily_limit
+        if over_monthly or over_daily:
+            await quota.release(account.id, message_count)
+            if over_monthly:
+                remaining = max(limits.monthly_limit - (new_monthly - message_count), 0)
+                raise _402("MONTHLY_QUOTA_EXCEEDED" if remaining == 0 else "PARTIAL_QUOTA",
+                           remaining=remaining, requested=message_count,
+                           resets_at=quota.month_reset_at().isoformat())
+            remaining = max(limits.daily_limit - (new_daily - message_count), 0)
+            raise _402("DAILY_LIMIT_REACHED", remaining=remaining, requested=message_count,
                        resets_at=quota.day_reset_at().isoformat())
 
 

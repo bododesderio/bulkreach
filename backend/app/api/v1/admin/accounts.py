@@ -60,6 +60,24 @@ async def _messages_map(db: AsyncSession, since: datetime) -> dict[UUID, int]:
     return {acc: int(m) for acc, m in rows}
 
 
+async def _mrr_for(db: AsyncSession, account_id: UUID) -> int:
+    """MRR for ONE account — scalar query, not a scan of all subscriptions."""
+    return int((await db.execute(
+        select(func.coalesce(Plan.price_ugx, 0))
+        .join(Subscription, Subscription.plan_id == Plan.id)
+        .where(Subscription.account_id == account_id, Subscription.status == "active")
+        .limit(1)
+    )).scalar() or 0)
+
+
+async def _messages_for(db: AsyncSession, account_id: UUID, since: datetime) -> int:
+    """30-day message volume for ONE account — scalar, not a group-by over all."""
+    return int((await db.execute(
+        select(func.coalesce(func.sum(Campaign.messages_sent), 0))
+        .where(Campaign.account_id == account_id, Campaign.created_at >= since)
+    )).scalar() or 0)
+
+
 def _out(a: Account, messages_month: int, mrr: int) -> AdminAccountOut:
     return AdminAccountOut(
         id=a.id, name=a.name, email=a.email, plan=a.plan, status=a.status,
@@ -115,8 +133,8 @@ async def account_detail(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
 
     since = datetime.now(timezone.utc) - timedelta(days=30)
-    mrr = (await _mrr_map(db)).get(account_id, 0)
-    msgs = (await _messages_map(db, since)).get(account_id, 0)
+    mrr = await _mrr_for(db, account_id)
+    msgs = await _messages_for(db, account_id, since)
 
     sub_row = (await db.execute(
         select(Subscription, Plan.name, Plan.price_ugx)
@@ -216,8 +234,8 @@ async def _set_status(
         pass
 
     since = datetime.now(timezone.utc) - timedelta(days=30)
-    mrr = (await _mrr_map(db)).get(account_id, 0)
-    msgs = (await _messages_map(db, since)).get(account_id, 0)
+    mrr = await _mrr_for(db, account_id)
+    msgs = await _messages_for(db, account_id, since)
     return _out(account, msgs, mrr)
 
 

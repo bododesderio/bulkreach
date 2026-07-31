@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Campaign lifecycle: create/validate drafts, materialise recipients into
 messages, queue for dispatch, cancel, and compute delivery stats. Section 3-6."""
 from __future__ import annotations
@@ -191,28 +193,34 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
 
         await enforce.enforce_send(db, account, campaign, message_count)
 
+    # Bulk-build all rows, then a SINGLE flush. IDs are generated app-side so the
+    # Message FK needs no per-contact flush round-trip (was O(n) flushes — up to
+    # 20k — at send time). SQLAlchemy topologically orders CampaignContact before
+    # Message on flush, satisfying the FK.
+    rows: list = []
     for contact, sms_ok, email_ok in targets:
-        cc = CampaignContact(
+        cc_id = uuid.uuid4()
+        rows.append(CampaignContact(
+            id=cc_id,
             campaign_id=campaign.id,
             contact_id=contact.id,
             phone=contact.phone,
             email=contact.email,
             merge_data=contact.raw_data or {},
-        )
-        db.add(cc)
-        await db.flush()  # need cc.id for the FK
+        ))
         if sms_ok:
-            db.add(Message(
-                campaign_id=campaign.id, campaign_contact_id=cc.id, channel="sms",
+            rows.append(Message(
+                campaign_id=campaign.id, campaign_contact_id=cc_id, channel="sms",
                 recipient=contact.phone, status="queued",
                 max_attempts=settings.MAX_RETRIES_PER_MESSAGE,
             ))
         if email_ok:
-            db.add(Message(
-                campaign_id=campaign.id, campaign_contact_id=cc.id, channel="email",
+            rows.append(Message(
+                campaign_id=campaign.id, campaign_contact_id=cc_id, channel="email",
                 recipient=contact.email, status="queued",
                 max_attempts=settings.MAX_RETRIES_PER_MESSAGE,
             ))
+    db.add_all(rows)
 
     campaign.status = "queued"
     await db.flush()
