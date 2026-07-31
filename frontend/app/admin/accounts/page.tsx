@@ -5,8 +5,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Users, CheckCircle, Clock, Ban, Search, LogIn } from 'lucide-react';
+import { Users, CheckCircle, Clock, Ban, Search, LogIn, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/store/auth';
@@ -261,6 +262,16 @@ export default function AccountsPage() {
           const busy = actionPending === row.id;
           return (
             <div className="flex items-center justify-end gap-1.5">
+              {/* Manage: navigate to per-account detail + plan controls */}
+              <Link
+                href={`/admin/accounts/${row.id}`}
+                className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors"
+                style={{ color: '#1B1F4A', borderColor: 'var(--border)', background: 'transparent' }}
+                aria-label={`Manage ${row.name}`}
+              >
+                <Settings2 size={12} aria-hidden="true" />
+                Manage
+              </Link>
               {row.status !== 'suspended' && (
                 <button
                   type="button"

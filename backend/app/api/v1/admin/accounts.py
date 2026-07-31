@@ -26,6 +26,8 @@ from app.schemas.admin import (
     AdminAccountDetail,
     AdminAccountOut,
     AdminAccountsResponse,
+    AssignPlanRequest,
+    AssignPlanResult,
     ImpersonateOut,
     ImpersonateStopBody,
 )
@@ -127,8 +129,15 @@ async def account_detail(
     if sub_row is not None:
         s, pname, pprice = sub_row
         subscription = {
+            "id": str(s.id),
+            "plan_id": str(s.plan_id),
             "plan_name": pname, "price_ugx": pprice, "status": s.status,
             "current_period_end": s.current_period_end.isoformat() if s.current_period_end else None,
+            "manually_assigned": s.manually_assigned,
+            "custom_messages_per_month": s.custom_messages_per_month,
+            "custom_daily_limit": s.custom_daily_limit,
+            "custom_price_ugx": s.custom_price_ugx,
+            "custom_features": s.custom_features,
         }
 
     campaigns = (await db.execute(
@@ -233,6 +242,96 @@ async def activate_account(
     return await _set_status(
         db, admin, account_id, new_status="active", is_active=True,
         action="account.activate",
+    )
+
+
+@router.post("/{account_id}/plan", response_model=AssignPlanResult)
+async def assign_plan(
+    account_id: UUID,
+    body: AssignPlanRequest,
+    request: Request,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AssignPlanResult:
+    """Manually place an account on a plan with optional per-client overrides.
+
+    Upserts the account's single subscription (UNIQUE account_id), flags it
+    `manually_assigned` so settlement/dunning won't clobber it, syncs the
+    account.plan display name, and audits the change."""
+    account = await db.get(Account, account_id)
+    if account is None or account.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    plan = await db.get(Plan, body.plan_id)
+    if plan is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plan not found")
+
+    now = datetime.now(timezone.utc)
+    period_end = now + timedelta(days=body.period_days)
+    sub = (await db.execute(
+        select(Subscription).where(Subscription.account_id == account_id).limit(1)
+    )).scalar_one_or_none()
+    if sub is None:
+        sub = Subscription(account_id=account_id, plan_id=plan.id)
+        db.add(sub)
+    sub.plan_id = plan.id
+    sub.status = "active"
+    sub.manually_assigned = True
+    sub.custom_messages_per_month = body.custom_messages_per_month
+    sub.custom_daily_limit = body.custom_daily_limit
+    sub.custom_price_ugx = body.custom_price_ugx
+    sub.custom_features = body.custom_features
+    sub.current_period_start = now
+    sub.current_period_end = period_end
+    # Clear any dunning state — a manual assignment starts the account healthy.
+    sub.dunning_stage = 0
+    sub.past_due_since = None
+    sub.last_dunning_at = None
+    sub.grace_until = None
+
+    account.plan = plan.name.lower()
+    # A manual plan grant reactivates a trial/closed-for-nonpayment account, but
+    # never overrides an explicit suspension.
+    if account.status not in ("suspended",):
+        account.status = "active"
+        account.is_active = True
+
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="admin.plan_assigned",
+        resource_type="account", resource_id=str(account.id),
+        details={
+            "plan": plan.name,
+            "custom_messages_per_month": body.custom_messages_per_month,
+            "custom_daily_limit": body.custom_daily_limit,
+            "custom_price_ugx": body.custom_price_ugx,
+            "note": body.note,
+        },
+        ip_address=_client_ip(request),
+    )
+    await db.commit()
+    await db.refresh(sub)
+
+    try:
+        from app.services.notifications import notify
+
+        await notify(
+            db, account_id=account.id, type="billing.plan_changed", level="info",
+            title=f"Your plan is now {plan.name}",
+            body=f"An administrator set your BulkReach plan to {plan.name}.",
+            link="/dashboard/settings", meta={"by": admin.email},
+        )
+        await db.commit()
+    except Exception:  # noqa: BLE001 — a plan change must not fail on a notice
+        pass
+
+    return AssignPlanResult(
+        account_id=account.id,
+        plan_name=plan.name,
+        status=sub.status,
+        manually_assigned=sub.manually_assigned,
+        custom_messages_per_month=sub.custom_messages_per_month,
+        custom_daily_limit=sub.custom_daily_limit,
+        custom_price_ugx=sub.custom_price_ugx,
+        current_period_end=sub.current_period_end,
     )
 
 

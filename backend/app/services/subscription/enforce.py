@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """The subscription hard gate (Section K, Layer 2) + the quota-state read the
 dashboard/composer use (Layer 1). Layer 3 (per-dispatch fail-safe) calls
 `monthly_exhausted` from the engine.
@@ -24,15 +26,34 @@ def _402(code: str, **detail):
 
 
 class Limits:
-    def __init__(self, plan: Plan | None, *, is_trial: bool, trial_remaining: int = 0):
-        gates = (plan.features or {}).get("gates", {}) if plan else {}
+    def __init__(
+        self,
+        plan: Plan | None,
+        *,
+        is_trial: bool,
+        trial_remaining: int = 0,
+        sub: "Subscription | None" = None,
+    ):
+        # Per-account overrides (admin plan controls) win over the shared Plan.
+        # `custom_features` is shallow-merged over the plan's feature gates.
+        gates = dict((plan.features or {}).get("gates", {})) if plan else {}
+        if sub is not None and sub.custom_features:
+            gates.update((sub.custom_features or {}).get("gates", sub.custom_features))
         self.plan_name = "Trial" if is_trial else (plan.name if plan else None)
         self.is_trial = is_trial
         self.trial_remaining = trial_remaining
         # -1 (or None) monthly means unlimited.
-        raw_monthly = trial_remaining if is_trial else (plan.messages_per_month if plan else 0)
+        if is_trial:
+            raw_monthly = trial_remaining
+        elif sub is not None and sub.custom_messages_per_month is not None:
+            raw_monthly = sub.custom_messages_per_month
+        else:
+            raw_monthly = plan.messages_per_month if plan else 0
         self.monthly_limit = None if (raw_monthly is not None and raw_monthly < 0) else raw_monthly
-        self.daily_limit = gates.get("daily_limit")  # None = no daily cap
+        if sub is not None and sub.custom_daily_limit is not None:
+            self.daily_limit = sub.custom_daily_limit
+        else:
+            self.daily_limit = gates.get("daily_limit")  # None = no daily cap
         self.simultaneous_limit = int(gates.get("simultaneous_limit", 3))
         self.scheduling = bool(gates.get("scheduling", True))
         self.allowed_formats = gates.get("allowed_formats")  # None = all
@@ -47,7 +68,7 @@ async def resolve_limits(db: AsyncSession, account: Account) -> Limits | None:
     if sub is not None:
         plan = await db.get(Plan, sub.plan_id)
         if plan is not None:
-            return Limits(plan, is_trial=False)
+            return Limits(plan, is_trial=False, sub=sub)
     if (account.plan or "").lower() == "trial":
         return Limits(None, is_trial=True, trial_remaining=account.trial_messages_remaining)
     if account.plan:

@@ -245,3 +245,29 @@ class ImpersonateOut(BaseModel):
 
 class ImpersonateStopBody(BaseModel):
     account_id: UUID | None = None
+
+
+# ── Per-client plan controls ─────────────────────────────────────────────────
+class AssignPlanRequest(BaseModel):
+    """Superadmin: manually place an account on a plan, optionally with per-client
+    overrides. Overrides are NULL to inherit the plan value; -1 monthly = unlimited.
+    Setting any of these marks the subscription `manually_assigned` so payment
+    settlement / dunning won't overwrite it."""
+    plan_id: UUID
+    custom_messages_per_month: int | None = Field(None, ge=-1)
+    custom_daily_limit: int | None = Field(None, ge=0)
+    custom_price_ugx: int | None = Field(None, ge=0)
+    custom_features: dict | None = None
+    period_days: int = Field(30, ge=1, le=366)
+    note: str | None = Field(None, max_length=500)
+
+
+class AssignPlanResult(BaseModel):
+    account_id: UUID
+    plan_name: str
+    status: str
+    manually_assigned: bool
+    custom_messages_per_month: int | None = None
+    custom_daily_limit: int | None = None
+    custom_price_ugx: int | None = None
+    current_period_end: datetime | None = None

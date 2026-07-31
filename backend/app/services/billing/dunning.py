@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Auto-renewal sweep + failed-payment dunning ladder (Section 14, day 0 → 30).
 
 We never fabricate a card charge we can't actually make. Instead:
@@ -66,6 +68,9 @@ async def run_renewal_sweep(db: AsyncSession, *, now: datetime | None = None) ->
             await db.execute(
                 select(Subscription).where(
                     Subscription.status == "active",
+                    # Admin-assigned custom deals aren't payment-driven — they never
+                    # enter the dunning ladder.
+                    Subscription.manually_assigned.is_(False),
                     Subscription.current_period_end.is_not(None),
                     Subscription.current_period_end <= now,
                 )

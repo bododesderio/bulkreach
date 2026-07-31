@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """PaymentService — orchestrates the transaction state machine.
 
     created → pending → (successful | failed | timeout)
@@ -335,14 +337,17 @@ class PaymentService:
         payment.refund_provider_id = result.provider_refund_id
         payment.refund_reason = reason
         payment.raw_response = {**(payment.raw_response or {}), "refund": result.raw}
-        # Reflect the downgrade: drop the account off the paid plan.
+        # Reflect the downgrade: drop the account off the paid plan — UNLESS the
+        # subscription was manually assigned by an admin (a custom deal is not tied
+        # to this payment and must survive a refund).
         account = await db.get(Account, payment.account_id)
         if account is not None and payment.purpose == "subscription":
-            account.plan = "trial"
             res = await db.execute(select(Subscription).where(Subscription.account_id == account.id))
             sub = res.scalar_one_or_none()
-            if sub is not None:
-                sub.status = "cancelled"
+            if sub is None or not sub.manually_assigned:
+                account.plan = "trial"
+                if sub is not None:
+                    sub.status = "cancelled"
         await db.commit()
         log.info("refund ok tx=%s by=%s", payment.tx_ref, actor_email or "system")
 

@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Plan, Subscription, Payment — Section 4.1 + Pricing (Section 14)."""
 from __future__ import annotations
 
@@ -42,6 +44,16 @@ class Subscription(UUIDPk, TimestampMixin, Base):
     current_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     flutterwave_subscription_id: Mapped[str | None] = mapped_column(String(120))
+
+    # Per-account plan overrides (admin "per-client plan controls"). When set,
+    # these win over the shared Plan row in enforce.resolve_limits. NULL = inherit
+    # the plan value. `manually_assigned` guards the row from being clobbered by
+    # payment settlement / dunning (Section 14 custom deals).
+    manually_assigned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    custom_messages_per_month: Mapped[int | None] = mapped_column(Integer)  # -1 = unlimited
+    custom_daily_limit: Mapped[int | None] = mapped_column(Integer)
+    custom_price_ugx: Mapped[int | None] = mapped_column(BigInteger)
+    custom_features: Mapped[dict | None] = mapped_column(JSONB)  # merged over plan.features
 
     # Auto-renewal + dunning (failed-payment day 0→30 ladder).
     auto_renew: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
