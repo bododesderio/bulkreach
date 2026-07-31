@@ -120,10 +120,18 @@ async def enforce_send(db: AsyncSession, account: Account, campaign: Campaign, m
         if message_count > remaining:
             raise _402("PARTIAL_QUOTA", remaining=remaining, requested=message_count)
 
-    # Daily limit
+    # Daily limit — block-partial like the monthly check, so a single large
+    # campaign can't blow past the cap (the daily counter only moves after a
+    # campaign finishes, so a same-day check on accumulated-only under-enforces).
     if limits.daily_limit is not None:
-        if await quota.get_daily_used(account.id) >= limits.daily_limit:
+        daily_used = await quota.get_daily_used(account.id)
+        daily_remaining = limits.daily_limit - daily_used
+        if daily_remaining <= 0:
             raise _402("DAILY_LIMIT_REACHED", remaining=0,
+                       resets_at=quota.day_reset_at().isoformat())
+        if message_count > daily_remaining:
+            raise _402("DAILY_LIMIT_REACHED", remaining=daily_remaining,
+                       requested=message_count,
                        resets_at=quota.day_reset_at().isoformat())
 
 

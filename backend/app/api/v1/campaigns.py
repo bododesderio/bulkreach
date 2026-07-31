@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Campaigns API (Section 5.x): CRUD, preview, send/schedule/cancel, per-message
 delivery, live SSE progress, and provider status."""
 from __future__ import annotations
@@ -238,11 +240,19 @@ async def list_messages(
 
 @router.get("/{campaign_id}/progress")
 async def progress_stream(
-    campaign_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+    campaign_id: UUID, user: CurrentUser
 ) -> StreamingResponse:
-    """Server-Sent Events stream of live dispatch progress from Redis."""
-    campaign = await campaign_service.get_owned(db, campaign_id, user.account_id)
-    initial_status = campaign.status
+    """Server-Sent Events stream of live dispatch progress from Redis.
+
+    Ownership is resolved in a SHORT-LIVED session that is released before the
+    stream starts: a StreamingResponse keeps a `Depends(get_db)` session checked
+    out for the whole stream (up to the 1h cap), so a handful of open campaign
+    tabs would exhaust the connection pool. The stream itself reads only Redis."""
+    from app.core.database import LiveSessionLocal
+
+    async with LiveSessionLocal() as check_db:
+        campaign = await campaign_service.get_owned(check_db, campaign_id, user.account_id)
+        initial_status = campaign.status
 
     async def event_stream():
         last = None

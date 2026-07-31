@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Notifications API: the bell feed, unread count, mark-read, preferences."""
 from __future__ import annotations
 
@@ -111,6 +113,9 @@ async def update_preferences(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PreferencesOut:
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Only an account owner or admin can change notification preferences.")
     # Keep only known categories + valid channels; in-app for billing/quota is not
     # removable (critical account-health alerts must always reach the bell).
     clean: dict[str, list[str]] = {}

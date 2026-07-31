@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Branded client-success PDF for a completed campaign (Section 2.2).
 
 Renders an HTML template to PDF via WeasyPrint. WeasyPrint pulls in native
@@ -125,10 +127,12 @@ async def campaign_report_pdf(
 ) -> bytes:
     """Render a completed campaign's branded PDF. Returns raw PDF bytes."""
     from weasyprint import HTML  # lazy — native deps only needed here
+    from app.core.pdf_safety import safe_url_fetcher
 
     stats = await campaign_service.compute_stats(db, campaign.id)
     document = _render_html(campaign, account, stats)
-    return HTML(string=document).write_pdf()
+    # url_fetcher blocks SSRF / file:// via the tenant-supplied logo_url.
+    return HTML(string=document, url_fetcher=safe_url_fetcher).write_pdf()
 
 
 def report_filename(campaign_id: uuid.UUID, name: str) -> str:

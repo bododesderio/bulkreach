@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Billing API (Section 14): invoices/receipts, proration preview, auto-renew.
 
 Client-facing. Amounts and VAT are server-authoritative; the client only reads.
@@ -118,6 +120,9 @@ async def set_auto_renew(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SubscriptionStateOut:
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Only an account owner or admin can change auto-renewal.")
     account = await db.get(Account, user.account_id)
     sub = (
         await db.execute(select(Subscription).where(Subscription.account_id == user.account_id))

@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Branded invoice / receipt PDF (Section 14). WeasyPrint is imported lazily so the
 module stays importable where cairo/pango are absent — only rendering needs them."""
 from __future__ import annotations
@@ -117,8 +119,11 @@ def _render_html(invoice: Invoice) -> str:
 
 def invoice_pdf(invoice: Invoice) -> bytes:
     from weasyprint import HTML  # lazy — native deps only needed here
+    from app.core.pdf_safety import safe_url_fetcher
 
-    return HTML(string=_render_html(invoice)).write_pdf()
+    # Defensive: the invoice template embeds no tenant URL today, but the hardened
+    # fetcher keeps it SSRF-safe if that ever changes.
+    return HTML(string=_render_html(invoice), url_fetcher=safe_url_fetcher).write_pdf()
 
 
 def invoice_filename(invoice: Invoice) -> str:

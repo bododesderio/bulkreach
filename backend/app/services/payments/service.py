@@ -386,10 +386,18 @@ class PaymentService:
             account.status = "active"  # repayment restores a dunning-suspended account
         now = datetime.now(timezone.utc)
         period_end = now + timedelta(days=settings.SUBSCRIPTION_PERIOD_DAYS)
+        # A real paid settlement produces a payment-driven subscription: clear any
+        # admin manual-assignment overrides so the row renews/dunns/refunds normally.
+        # (A "was-manual, now-pays" row that kept manually_assigned=True would be
+        # skipped by the renewal sweep and the refund downgrade — indefinite free
+        # service + refund-proof.)
         reset = dict(
             plan_id=plan.id, status="active",
             current_period_start=now, current_period_end=period_end,
             dunning_stage=0, past_due_since=None, last_dunning_at=None, grace_until=None,
+            manually_assigned=False,
+            custom_messages_per_month=None, custom_daily_limit=None,
+            custom_price_ugx=None, custom_features=None,
         )
         stmt = pg_insert(Subscription).values(
             account_id=account.id, **reset,

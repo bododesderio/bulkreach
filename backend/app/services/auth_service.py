@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Auth business logic: registration with consent, login, password reset."""
 from __future__ import annotations
 
@@ -88,6 +90,11 @@ async def apply_password_reset(db: AsyncSession, token: str, new_password: str) 
     if not user:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid reset token.")
     user.hashed_password = hash_password(new_password)
+    # Recovery-from-compromise: revoke EVERY existing session (keep_id=None) so a
+    # phished refresh-token family cannot survive the password reset.
+    from app.services.auth_session import revoke_others
+
+    await revoke_others(db, user, keep_id=None, reason="password_reset")
     await db.flush()
     try:
         from app.services.notifications import notify

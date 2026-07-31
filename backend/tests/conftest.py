@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Pytest fixtures for the M8 integration suite.
 
 Runs the real ASGI app in-process (httpx ASGITransport) against the throwaway
@@ -34,10 +36,23 @@ def _client() -> httpx.AsyncClient:
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def _clear_login_rate_limit():
-    """Clear login rate-limit keys so the suite (and repeated runs) can log in."""
-    keys = await redis.keys("rl:login:*")
-    if keys:
-        await redis.delete(*keys)
+    """Clear auth rate-limit keys so the suite (and repeated runs) can log in,
+    register, and reset — the suite creates many accounts from one client IP."""
+    for pattern in ("rl:login:*", "rl:signup:*", "rl:forgot:*", "rl:otp:*"):
+        keys = await redis.keys(pattern)
+        if keys:
+            await redis.delete(*keys)
+    yield
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _reset_auth_limits():
+    """Per-test: clear signup/forgot/otp rate-limit keys so the many accounts the
+    suite registers from one client IP never trip the production limiter."""
+    for pattern in ("rl:signup:*", "rl:forgot:*", "rl:otp:*"):
+        keys = await redis.keys(pattern)
+        if keys:
+            await redis.delete(*keys)
     yield
 
 

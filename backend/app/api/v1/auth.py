@@ -70,6 +70,9 @@ async def register(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenResponse:
     ip = _client_ip(request)
+    if not await sliding_window_allow(f"rl:signup:{ip}", 10, 3600):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many sign-up attempts. Try again later.")
     account, user = await auth_service.register_account(
         db, data, ip=ip, user_agent=request.headers.get("user-agent", "unknown")
     )
@@ -92,6 +95,9 @@ async def signup_complete(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupCompleteResponse:
     ip = _client_ip(request)
+    if not await sliding_window_allow(f"rl:signup:{ip}", 10, 3600):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many sign-up attempts. Try again later.")
     account, user = await auth_service.register_account(
         db, data, ip=ip, user_agent=request.headers.get("user-agent", "unknown")
     )
@@ -278,10 +284,21 @@ async def logout(
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 async def forgot_password(
-    data: ForgotPasswordRequest, db: Annotated[AsyncSession, Depends(get_db)]
+    data: ForgotPasswordRequest, request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, str]:
     from sqlalchemy import select
     from app.models.account import User
+
+    # Throttle by IP and by target email to stop enumeration + email-bombing.
+    ip = _client_ip(request)
+    allowed_ip = await sliding_window_allow(f"rl:forgot:{ip}", 5, 3600)
+    allowed_email = await sliding_window_allow(
+        f"rl:forgot:acct:{data.email.strip().lower()}", 5, 3600
+    )
+    if not (allowed_ip and allowed_email):
+        # Preserve the non-revealing 202 contract — silently drop over-limit calls.
+        return {"message": "If an account exists for that email, a reset link has been sent."}
 
     user = await db.scalar(select(User).where(User.email == data.email))
     if user:  # Never reveal whether the email exists
