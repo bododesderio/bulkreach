@@ -1,7 +1,25 @@
 # Project Context
 Last updated: 2026-07-31
 
-## Current task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
+## Current task — ✅ Full audit (10 lenses + live E2E) + hardening + docs (2026-07-31)
+Ran a ten-lens senior-engineer audit as 7 parallel agents (architecture/tech-lead, performance,
+security, frontend, devops, bug-hunt, live Playwright) against a running seeded stack. Deliverables
+in **docs/**: `AUDIT-2026-07-31.md` (unified ranked findings + fixed-vs-planned + 6-phase master
+plan), `PRODUCT.md`, `USER-MANUAL.md`. Deploy drafts (CI/backup/monitoring) in `infra/deploy-drafts/`.
+Top corroborated findings: SSE DB-connection leak (Critical, 2 agents), quota TOCTOU (2 agents),
+`manually_assigned` survives settlement (a bug in the prior plan-controls slice).
+**Applied + verified fixes** (commits 1d4aa2d backend, a451246 frontend, 029a548 docs — pushed):
+SSE session release, settlement normalizes manually_assigned, daily-quota block-partial, SSRF-safe
+PDF url_fetcher, password-reset revokes sessions, signup/forgot rate limits, billing/notif role
+guards, hot-path index migration (e9a3c5b7d1f2); FE admin-layout auth guard, 3 legal-consent pages,
+error/not-found boundaries, amber impersonation banner, email lowercase, autocomplete, removed fake
+admin badges. **99 backend tests pass** (+5), tsc clean. Live "stalled dispatch" was env-only (worker
+wasn't running — dispatch is correct). NOT-yet-done work is the phased plan in AUDIT-2026-07-31.md
+(Phase 1 scale-hardening: quota atomic reserve, bulk-insert recipients, admin query scoping, API-key
+fast lookup, auth cache; Phase 2 DLR/suppression; Phase 3 sec: jose→PyJWT, XSS, impersonation audit;
+Phase 4 FE: React Query/dark-mode/shared ui; Phase 5 ops: CI/backups/Sentry). See [[bulkreach-audit-masterplan]].
+
+## Prior task — ✅ Gap-closing slice: profile settings + plan controls + Traefik (2026-07-31)
 Four threads shipped this session:
 - **Feature A — deep profile settings.** Account `timezone` column (migration `c7e1a2f3d4b5`);
   `PATCH /auth/me` (partial profile edit, owner/admin only), `POST /auth/change-password`
