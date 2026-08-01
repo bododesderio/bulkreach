@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import Sidebar from "@/components/admin/Sidebar";
+import { AppShell } from "@/components/ui";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -37,10 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Non-superadmin: redirect is in flight; render nothing to avoid flash.
   if (user.role !== "superadmin") return null;
 
-  return (
-    <div className="flex min-h-screen bg-bg">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
-  );
+  // Admin pages render their own <Topbar> (some carry a page-specific period
+  // toggle), so the shell owns only the responsive sidebar + mobile drawer.
+  return <AppShell sidebar={<Sidebar />}>{children}</AppShell>;
 }
