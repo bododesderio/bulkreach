@@ -41,25 +41,28 @@ curl -fsS https://api.bulkreach.ug/health/ready    # readiness → 200 (503 if a
 curl -sS -o /dev/null -w "web → %{http_code}\n" https://bulkreach.ug/
 ```
 
-## 2. CI / continuous deploy
+## 2. CI / deploy
 
-`.github/workflows/ci.yml` runs on every push/PR to `main`:
+There is **no GitHub Actions workflow** — it was removed because GitHub Actions
+is billing-locked on this account (every run failed and spammed "run failed"
+emails). Run the same gates locally before pushing, and deploy manually:
 
-- **backend** — Postgres + Redis service containers, Alembic migrate (live + archive), ruff (advisory), pytest.
-- **frontend** — `npm ci`, typecheck, lint, production build (`NODE_ENV=production`).
-- **deploy** — only on `push` to `main`, after both gates pass. SSHes to the VPS, resets to
-  `origin/main`, rebuilds api/worker/web one at a time, then smoke-tests `/health/ready`.
+```bash
+# gates (mirror what a CI would run)
+cd backend  && source .venv/bin/activate && python -m pytest tests/ -q      # 112 tests
+cd frontend && npm ci && npm run typecheck && NODE_ENV=production npm run build
 
-Set these GitHub Actions secrets (Settings → Secrets and variables → Actions) to enable deploy:
+# deploy (from the VPS, /opt/bulkreach)
+git fetch --all --prune && git reset --hard origin/main
+for svc in api worker web; do
+  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build "$svc"
+done
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+curl -fsS https://api.bulkreach.ug/health/ready     # smoke test
+```
 
-| Secret | Value |
-| --- | --- |
-| `SSH_HOST` | `195.110.59.36` |
-| `SSH_USER` | `deploy` |
-| `SSH_KEY`  | private key of the deploy user (public key in the VPS `~/.ssh/authorized_keys`) |
-
-Until `SSH_HOST` is set the deploy job **safely no-ops** — its gate step sets
-`enabled=false` and it logs `deploy secrets not set — skipping` instead of connecting.
+If Actions billing is restored later, a CI workflow can be re-added under
+`.github/workflows/`; keep the same gate commands above.
 
 ## 3. Backups
 
