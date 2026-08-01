@@ -161,3 +161,43 @@ async def test_compute_stats_dlr_counts_survive_the_schema():
         # The API response model must retain the DLR counts, not drop them.
         model = CampaignStats(**stats)
         assert model.delivered == 1 and model.bounced == 0
+
+
+# ── inbound STOP / opt-out ────────────────────────────────────────────────────
+@pytest.mark.asyncio(loop_scope="session")
+async def test_inbound_stop_suppresses_for_sending_account():
+    async with LiveSessionLocal() as db:
+        acct_id = await _any_account_id(db)
+        number = f"+2567{uuid.uuid4().int % 10**8:08d}"
+        await _mk_message(db, acct_id, "sms", number, f"pm-{uuid.uuid4().hex[:10]}")
+        await db.commit()
+
+        # A STOP reply opts the sender out for the account that messaged them.
+        res = await deliveries.handle_inbound_sms(db, from_number=number, text="STOP", commit=True)
+        assert res == "suppressed"
+        assert await deliveries.is_suppressed(db, acct_id, "sms", number)
+
+        # Idempotent — a second STOP doesn't create a duplicate.
+        assert await deliveries.handle_inbound_sms(db, from_number=number, text="stop", commit=True) == "already_suppressed"
+
+        # A non-STOP reply is ignored; an unknown number (never messaged) is a no-op.
+        assert await deliveries.handle_inbound_sms(db, from_number=number, text="hello there", commit=True) is None
+        never = f"+2567{uuid.uuid4().int % 10**8:08d}"
+        assert await deliveries.handle_inbound_sms(db, from_number=never, text="STOP", commit=True) is None
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_inbound_webhook_route_suppresses(client):
+    async with LiveSessionLocal() as db:
+        acct_id = await _any_account_id(db)
+        number = f"+2567{uuid.uuid4().int % 10**8:08d}"
+        await _mk_message(db, acct_id, "sms", number, f"pm-{uuid.uuid4().hex[:10]}")
+        await db.commit()
+
+    r = await client.post("/api/v1/webhooks/inbound/simulator",
+                          json={"from": number, "text": "STOP"})
+    assert r.status_code == 200, r.text
+    assert r.json()["suppressed"] == 1
+
+    async with LiveSessionLocal() as db:
+        assert await deliveries.is_suppressed(db, acct_id, "sms", number)

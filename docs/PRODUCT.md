@@ -43,7 +43,8 @@ There are two ways a customer uses BulkReach:
   Africa's Talking, Mailgun signature-verified, SendGrid) transition each message to its true
   outcome (delivered/undelivered/bounced/complained). Hard bounces + spam complaints auto-add the
   recipient to a per-account **suppression list** that future campaigns skip (sender-reputation +
-  opt-out compliance); the list is viewable and editable.
+  opt-out compliance); the list is viewable and editable. Inbound **STOP replies**
+  (`/webhooks/inbound/{provider}`) opt the sender out for the account that last messaged them.
 - **Plans, quota & billing** — four plans (Starter/Growth/Business/Managed); monthly message
   quota + daily limits + concurrency + feature gates enforced in three layers (Redis counters);
   invoices/receipts with gapless numbering + Uganda 18% VAT + mid-cycle proration; auto-renewal
@@ -143,6 +144,7 @@ Full runbook: `infra/DEPLOY-TRAEFIK.md`. Operational drafts (CI, backups, monito
   `/send`, `/schedule`, `/cancel`, `GET /campaigns/{id}/messages`, `GET /campaigns/{id}/progress` (SSE).
 - **Reports:** `GET /reports/summary`, `GET /reports/campaigns/{id}/pdf`.
 - **Deliveries:** `POST /webhooks/dlr/{provider}` (inbound DLR, unauthenticated — signature/secret-URL);
+  `POST /webhooks/inbound/{provider}` (mobile-originated SMS; STOP → opt-out for the sending account);
   **Suppressions:** `GET|POST /suppressions`, `DELETE /suppressions/{id}`.
 - **Billing:** `GET /billing/subscription`, `/invoices`, `/invoices/{id}/pdf`, `/proration-preview`,
   `PATCH /billing/auto-renew`; **Payments:** `/payments/checkout`, `/payments/verify`,

@@ -51,6 +51,33 @@ def _verify_mailgun(payload: dict) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
+def parse_inbound(
+    provider: str, raw_body: bytes, payload: dict | None, form: dict | None
+) -> tuple[bool, list[dict]]:
+    """Normalise an inbound-SMS (mobile-originated) webhook into
+    `[{from, text, raw}]`. Used for STOP/opt-out handling. Unsigned (secret
+    callback URL + edge rate-limit), mirroring the DLR stance."""
+    provider = (provider or "").lower()
+
+    if provider in ("simulator", "test"):
+        p = payload or {}
+        frm, text = p.get("from"), p.get("text")
+        if frm and text is not None:
+            return True, [{"from": str(frm), "text": str(text), "raw": p}]
+        return True, []
+
+    if provider in ("africastalking", "at"):
+        # AT posts form-encoded: from, to, text, date, id, linkId.
+        d = form or payload or {}
+        frm, text = d.get("from"), d.get("text")
+        if frm and text is not None:
+            return True, [{"from": str(frm), "text": str(text),
+                           "raw": {"to": d.get("to"), "linkId": d.get("linkId")}}]
+        return True, []
+
+    return True, []
+
+
 def parse(provider: str, raw_body: bytes, payload: dict | None, form: dict | None) -> tuple[bool, list[dict]]:
     """Return (verified, events). `verified` False means reject the webhook."""
     provider = (provider or "").lower()

@@ -25,6 +25,16 @@ from app.models.suppression import Suppression
 DELIVERY_OUTCOMES = {"delivered", "undelivered", "bounced", "complained"}
 # Outcomes that permanently suppress the recipient (protect sender reputation).
 _HARD = {"bounced", "complained"}
+# Inbound-SMS reply keywords that opt a recipient out (Section 6/20).
+STOP_KEYWORDS = {
+    "stop", "stopall", "unsubscribe", "unsub", "cancel", "end", "quit",
+    "optout", "opt-out", "opt out",
+}
+
+
+def is_stop_keyword(text: str | None) -> bool:
+    """True if an inbound reply is an opt-out request (whole-message match)."""
+    return (text or "").strip().lower() in STOP_KEYWORDS
 
 
 def _norm(channel: str, address: str) -> str:
@@ -117,3 +127,35 @@ async def record_delivery(
     if commit:
         await db.commit()
     return True
+
+
+async def handle_inbound_sms(
+    db: AsyncSession, *, from_number: str, text: str, commit: bool = True
+) -> str | None:
+    """Process an inbound (mobile-originated) SMS. If it's a STOP keyword, opt the
+    sender out by suppressing their number for the **sending account** — the account
+    whose campaign most recently sent SMS to that number. Returns the action taken
+    (`"suppressed"` / `"already_suppressed"`) or None (not a STOP, or no prior send)."""
+    number = (from_number or "").strip()
+    if not number or not is_stop_keyword(text):
+        return None
+
+    # Attribute the opt-out to whoever last messaged this number.
+    msg = await db.scalar(
+        select(Message)
+        .where(Message.channel == "sms", Message.recipient == number)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    )
+    if msg is None:
+        return None
+    campaign = await db.get(Campaign, msg.campaign_id)
+    if campaign is None:
+        return None
+
+    created = await add_suppression(
+        db, campaign.account_id, "sms", number, reason="unsubscribe"
+    )
+    if commit:
+        await db.commit()
+    return "suppressed" if created else "already_suppressed"
