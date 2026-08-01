@@ -153,6 +153,14 @@ services:
     networks: [internal]
     mem_limit: 512m
     restart: always
+    # Override the image's HEALTHCHECK (curl :3101) — the worker runs arq, not the
+    # web server. `arq --check` exits 0 when the worker's Redis health record is fresh.
+    healthcheck:
+      test: ["CMD", "arq", "--check", "app.workers.WorkerSettings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   web:
     build: { context: ./frontend, dockerfile: Dockerfile.prod }
