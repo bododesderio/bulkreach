@@ -15,6 +15,17 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.middleware import SecurityHeadersMiddleware
 
+# --- Error tracking (Sentry) — no-op unless SENTRY_DSN is set ---
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=False,  # never ship request bodies / PII
+    )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +54,42 @@ app.add_middleware(
 
 @app.get("/health", tags=["system"])
 async def health() -> JSONResponse:
+    """Liveness — the process is up. Cheap; never touches dependencies."""
     return JSONResponse({"status": "ok", "service": "bulkreach-api", "version": "2.0.0"})
+
+
+@app.get("/health/ready", tags=["system"])
+async def health_ready() -> JSONResponse:
+    """Readiness — can we actually serve traffic? Pings the core datastores
+    (Postgres + Redis). Returns 503 if either is unreachable so orchestrators
+    and the deploy smoke-test can gate on real capability, not just liveness.
+    ClickHouse/MinIO are intentionally excluded — they are feature-gated and the
+    app degrades gracefully without them."""
+    from sqlalchemy import text  # local import keeps module import light
+
+    from app.core.database import LiveSessionLocal
+    from app.core.redis import redis
+
+    checks: dict[str, str] = {}
+
+    try:
+        async with LiveSessionLocal() as db:
+            await db.execute(text("SELECT 1"))
+        checks["postgres"] = "ok"
+    except Exception as exc:  # noqa: BLE001 — report, don't leak the traceback
+        checks["postgres"] = f"error: {type(exc).__name__}"
+
+    try:
+        await redis.ping()
+        checks["redis"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["redis"] = f"error: {type(exc).__name__}"
+
+    ready = all(v == "ok" for v in checks.values())
+    return JSONResponse(
+        {"status": "ready" if ready else "not_ready", "checks": checks},
+        status_code=200 if ready else 503,
+    )
 
 
 # --- Routers (registered per milestone) ---
