@@ -94,7 +94,6 @@ const campaign: DomainMap = {
   completed: { label: 'Completed', color: C.green },
   sent: { label: 'Sent', color: C.green },
   paused: { label: 'Paused', color: C.amber },
-  paused_quota_exceeded: { label: 'Paused · quota', color: C.amber },
   failed: { label: 'Failed', color: C.red },
   bounced: { label: 'Bounced', color: C.red },
   cancelled: { label: 'Cancelled', color: C.red },

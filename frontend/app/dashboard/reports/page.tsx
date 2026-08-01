@@ -15,7 +15,7 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusPill } from "@/components/admin/StatusPill";
+import { StatusBadge } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -32,19 +32,6 @@ const fmtDate = (iso: string) =>
     month: "short",
     year: "numeric",
   });
-
-const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
-  draft: { color: "#9CA3AF" },
-  scheduled: { color: "#6366F1" },
-  queued: { color: "#00D4AA", pulse: true },
-  sending: { color: "#00D4AA", pulse: true },
-  sent: { color: "#10B981" },
-  completed: { color: "#10B981" },
-  paused: { color: "#F59E0B" },
-  paused_quota_exceeded: { color: "#F59E0B" },
-  failed: { color: "#EF4444" },
-  cancelled: { color: "#EF4444" },
-};
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -115,10 +102,7 @@ export default function ReportsPage() {
     {
       key: "status",
       label: "Status",
-      render: (c) => {
-        const sc = STATUS_COLOR[c.status.toLowerCase()] ?? { color: "#9CA3AF" };
-        return <StatusPill label={c.status} color={sc.color} pulse={sc.pulse} />;
-      },
+      render: (c) => <StatusBadge domain="campaign" status={c.status} />,
     },
     {
       key: "actions",
