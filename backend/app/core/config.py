@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # --- Core ---
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     SECRET_KEY: str = Field(..., min_length=32)
+
+    # --- Observability (Sentry) ---
+    # Blank → Sentry is a no-op (dev/test). Set the DSN in prod to enable.
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+    # Uptime-Kuma push URL for the ARQ worker heartbeat (blank → disabled).
+    KUMA_PUSH_URL: str = ""
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "BulkReach"
     BASE_URL: str = "https://api.bulkreach.ug"

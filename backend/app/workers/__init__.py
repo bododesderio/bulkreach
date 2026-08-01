@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """ARQ worker (Section 3.3) — background dispatch + scheduled-campaign promotion.
 
 Run:  arq app.workers.WorkerSettings
@@ -151,6 +153,21 @@ async def archive_retention(ctx: dict) -> dict:
     return result
 
 
+async def worker_heartbeat(ctx: dict) -> None:
+    """Cron (every minute): ping the Uptime-Kuma push URL so a stalled worker is
+    detected quickly. No-op unless KUMA_PUSH_URL is set. Monitoring must never
+    take the worker down, so all failures are swallowed."""
+    if not settings.KUMA_PUSH_URL:
+        return
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as c:
+            await c.get(settings.KUMA_PUSH_URL, params={"status": "up", "msg": "ok"})
+    except Exception:  # noqa: BLE001 — heartbeat is best-effort
+        logger.warning("worker: heartbeat ping failed")
+
+
 async def _startup(ctx: dict) -> None:
     logger.info("BulkReach dispatch worker online.")
 
@@ -171,6 +188,8 @@ class WorkerSettings:
         # Archive ingestion + retention run nightly (EAT ≈ UTC+3).
         cron(archive_ingest, hour={settings.ARCHIVE_INGESTION_HOUR}, minute={0}),
         cron(archive_retention, hour={settings.ARCHIVE_RETENTION_HOUR}, minute={0}),
+        # Liveness heartbeat to Uptime-Kuma (no-op unless KUMA_PUSH_URL is set).
+        cron(worker_heartbeat, second={0}),
     ]
     redis_settings = redis_settings()
     on_startup = _startup
