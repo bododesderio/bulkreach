@@ -1,18 +1,33 @@
 # Project Context
 Last updated: 2026-08-01
 
-## Current task — ✅ Phase 4 frontend polish (2026-08-01)
-All four audit Tracks A–D. tsc + `next build` green. On branch `feat/phase4-frontend-polish` (not pushed).
-- **A** — `components/ui/` shared layer (Card/Modal/DataState/Spinner) + `lib/status.ts` single source
-  of truth (9 domains) behind `<StatusBadge>`; 10 pages migrated, conflicting/blank badges fixed.
-  Mock purged: admin overview → live `/admin/managed`+`/admin/health`, `LiveTicker` → live
-  `/admin/overview`, fake sparklines removed, 5 dead components deleted, `seed-data.ts` 421→150 lines.
-- **B** — React Query full sweep: `lib/hooks.ts` (`useApiQuery`/`useApiMutation`) over the `api()`
-  choke point; ~25 pages converted; SSE/checkout-poll/PDF downloads kept imperative; keys tuned.
-- **C** — unified `AppShell`/`AppSidebar` (two 180-line sidebars → config); **admin mobile drawer**
-  (via `store/ui.ts`); per-page admin topbars + period toggle preserved; universal reduced-motion.
-- **D** — `next-themes` removed (unused; dark mode deferred to a token-migration phase).
-Deferred: managed-portal shell. NOT browser-verified yet. See [[bulkreach-phase4-frontend]].
+## Current state — ✅ ALL 6 audit phases complete; single `main`; green (2026-08-01)
+The full audit master plan (docs/AUDIT-2026-07-31.md) is closed. Repo collapsed to a **single
+`main` branch** (no feature branches, local or remote); commit directly to `main` going forward.
+
+Phases (all merged to `main`):
+- **1** scale-hardening · **2** DLR + suppression · **3** security — merged earlier.
+- **4** frontend polish (#3) — shared `components/ui` (Card/Modal/DataState/StatusBadge + `lib/status`),
+  mock purge (admin overview live), React Query sweep (~25 pages, `lib/hooks`), unified `AppShell` +
+  admin mobile drawer (`store/ui`), `next-themes` removed. Browser-verified. [[bulkreach-phase4-frontend]]
+- **5** ops readiness (#5) — `/health/ready`, Sentry (be+fe, gated), worker heartbeat, secret
+  fail-closed, backup script, monitoring compose, `infra/OPERATIONS.md`. [[bulkreach-phase5-ops]]
+- **6** domain exceptions (#6) — `app/domain/exceptions.py`; the worker now pauses+notifies a
+  scheduled campaign that hits the quota gate instead of silently dropping it. [[bulkreach-phase6-domain]]
+- **fix** worker healthcheck (#4, `arq --check`).
+
+Verified green: backend **112 pytest**; frontend `npm ci` + `tsc` + prod `next build`; **prod Docker
+stack** (`docker compose -f docker-compose.prod.yml`) builds from `main` and runs all 7 containers
+healthy (`/health/ready` → ready, worker healthy). Stack currently **stopped** (start with
+`docker compose --env-file .env.production -f docker-compose.prod.yml start`).
+
+⚠️ **GitHub Actions removed** (commit `4be0647`): the account is **billing-locked**, so every CI run
+failed at job-setup and emailed a failure notice. No `.github/workflows` — gates run locally, deploy
+is manual (infra/OPERATIONS.md §2). Re-add a workflow only if Actions billing is restored. (The
+separate `bododesderio/ForUs` repo also emails failures — remove its workflows there.)
+
+Local-only: `.env.production` (gitignored) holds generated dev-grade secrets for local builds — NOT
+real prod secrets. Real secrets + DNS + VPS deploy remain operator tasks in infra/OPERATIONS.md.
 
 ## Prior task — ✅ Full audit (10 lenses + live E2E) + hardening + docs (2026-07-31)
 Ran a ten-lens senior-engineer audit as 7 parallel agents (architecture/tech-lead, performance,
@@ -228,148 +243,24 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
 - 2026-07-23: Build proceeds in verified milestones; no placeholders, honest checkpoints per user prompt.
 
 ## Known issues
-- Full requirements (weasyprint/camelot/pandas) not yet installed in venv — only core web deps for M0 import check.
-- Docker stack not yet brought up (no daemon verification this session).
+- GitHub Actions billing-locked (account) → CI workflow removed; gates are local, deploy manual.
+- Frontend `next lint` tree not clean (lint was advisory before the workflow was removed) — hygiene backlog.
+- `paused_quota_exceeded` appears in the frontend campaign status vocab but the DB `status` column is
+  VARCHAR(20) (21 chars) so it can never be stored; the worker uses `"paused"` — clean up the dead label.
+- `.env.production` is local-only generated secrets, not real prod values.
 
-## Next steps — RESUME HERE (2026-07-26 end of day)
-Branch feat/m4a-reports. All payments work committed & pushed EXCEPT the custom checkout FRONTEND.
+## Next steps (2026-08-01)
+All 6 audit phases done + merged to `main`; prod Docker stack builds & runs healthy. Remaining, ranked:
+1. Operator/VPS (see infra/OPERATIONS.md): resolve GitHub billing; set real `.env.production` secrets +
+   DNS; deploy to the VPS; install the nightly backup cron + rehearse a restore; bring up monitoring;
+   add swap.
+2. Frontend polish backlog: make `next lint` clean; managed-portal shell (Phase-4 Track-C leftover);
+   remove the dead `paused_quota_exceeded` status label.
+3. DLR polish (Phase-2 leftover): surface delivered/bounced counts in the campaign UI + PDF; inbound-SMS
+   STOP handling.
+4. Optional Phase-6 hygiene: break the ~40 function-local import cycles (relocate notifications/quota to
+   a lower layer) — pure hygiene, real regression risk; do as its own tested refactor.
 
-DONE & committed today (2026-07-26):
-- Multi-provider payments (Flutterwave/Pesapal/MTN MoMo/Airtel) + admin config UI + client checkout (4aaf42f)
-- Production hardening: token refresh cache, retry/backoff, refunds, stale reconciler (ARQ cron),
-  webhook+checkout rate limits, admin /payments + /subscriptions lists + refund (2f2c087)
-- Superadmin Plan Manager API — CRUD plans, drives pricing/checkout live (42b5aaa)
-- Mode-driven checkout backend: CheckoutIntent mode = inline|ussd_push|redirect|simulated (2e4c147)
-- Pesapal proven against REAL API (auth ok; user's creds are PRODUCTION not sandbox — rotate them).
-  Browser-verified: admin payments config, client checkout (simulated), refund flow, admin lists.
-
-✅ DONE & committed 2026-07-27 (M4 payments frontend fully complete):
-- Custom checkout FRONTEND (7c74778): /dashboard/billing/checkout branches on CheckoutIntent mode
-  (simulated poll / ussd_push STK / Flutterwave Inline card overlay / redirect); billing dashboard
-  wired to live plans+history. Browser-verified simulated MTN MoMo E2E (checkout→success, sub activated).
-- Plan Manager UI (0797838): /admin/settings/plans full CRUD wired to /admin/plans superadmin API +
-  sidebar "Plans" link. Browser-verified create/edit/delete (subs-guard). Prod build 34/34 routes, tsc clean.
-
-✅ M5 admin portal + managed-service workflow DONE 2026-07-27 (3c7066d backend, c4725a2 frontend):
-7 live superadmin APIs replaced admin seed data; interactive managed workflow (briefed→report_issued);
-account suspend/activate; real Postgres/Redis/provider health. All browser-verified, zero console errors.
-See [[bulkreach-m5-admin]] memory (incl. date_trunc GROUP-BY gotcha + admin auth-store hydration fix).
-
-✅ M6 Data Archive DONE 2026-07-27 (8487965 backend, 8549ac8 frontend): ingestion/retention/anonymiser/
-erasure/legal-holds/access-log/export + live /admin/archive, browser-verified. ClickHouse 7yr-TTL + AWS
-Glacier are infra-gated honest no-ops (no CH/MinIO container locally). See [[bulkreach-m6-archive]].
-
-✅ M8 DONE 2026-07-27 (e011caa tests+hardening, af25fe7 E2E) — ALL milestones complete. See
-[[bulkreach-m8-tests]]. Backend: 23 pytest (in-process ASGI vs brtest) — `cd backend && source .venv/bin/
-activate && python -m pytest tests/test_m8_*.py` (clear rl:login first if login 429s). Frontend E2E: both
-servers up, then `cd frontend && npm run test:e2e` (4 tests). Security audit hardening applied — biggest:
-account suspend now truly blocks login/refresh/token use (was a no-op).
-
-✅ Follow-up done 2026-07-27 (9be302b): managed "Issue report" now generates + emails the branded
-WeasyPrint client PDF (reuses M4a renderer), stores it, records a client_success Report, and exposes
-GET /admin/managed/{id}/report/download + a UI Download button + campaign-link picker. 25/25 backend tests.
-
-GAP-CLOSING (post-build, vs Auth/Subscription/Payment mega-prompt — dependency order, see [[bulkreach-gap-closing]]):
-✅ Slice 1 (quota enforcement, 73baefa), 2a (auth design system, 27e7b3e), 2b (multi-step signup +
-   email OTP + onboarding — backend 34a186c, frontend a91d705) all DONE. Client dashboard reorganised
-   like admin + usage bar. Suite 34/34, build 37 routes. Full Playwright pass green (public+client+admin).
-   ✅ 2c team invites DONE (backend 16a9a5d, frontend e149dd2): invitation_tokens + invite/preview/accept
-   endpoints + /invite/[token] page + team settings UI. Browser-verified. Suite 38/38.
-   NEXT slices: 2d managed-portal; 3 invoices/proration/auto-renew/VAT; then notifications, CMS,
-   managed 15-state pipeline. See [[bulkreach-gap-closing]].
-✅ Deploy artifacts DONE (cb51154): prod Dockerfiles + docker-compose.prod + nginx + GO-LIVE; boot-verified.
-
-✅ Follow-up done 2026-07-27 (5694f42): GET /admin/users staff directory + managed manager picker
-(assign any staff, not just self). Seeded 2nd staff: ops@bulkreach.ug / OpsPass123! (superadmin) in brtest.
-
-✅ Full Docker stack DONE 2026-07-27 (95f9c1b): docker-compose.dev.yml (pg/redis/clickhouse/minio).
-ClickHouse analytics (delivery_events, real 7yr TTL) + MinIO exports now RUN FOR REAL — ingest pushes
-events (verified 14), exports write real S3 objects, /admin/health lights both up, glacier_transition
-flips storage_class. Start infra: `docker compose -f docker-compose.dev.yml up -d`. See [[bulkreach-m6-archive]].
-
-NEXT (productionisation): deploy — production Dockerfiles (api/worker/web) + docker-compose.prod +
-nginx/TLS + env/secrets checklist; real provider creds + KYC (MoMo/Airtel/Flutterwave/Pesapal); then
-ship to a VPS. True AWS Glacier object-tiering needs an AWS S3 lifecycle policy (MinIO has no Glacier tier).
-
-Servers left up: backend :3101 (bg), frontend :3100 (bg), brtest-pg 55432 + brtest-redis 63799.
-Test superadmin: super@bulkreach.ug / SuperPass123!. Test DB has leftover tagged plans (Growth-xxxx) — cosmetic.
-
-## Older next steps (M3, superseded — kept for reference)
-M3 Campaigns BACKEND complete & verified. Frontend campaign lifecycle DONE:
-1. ✅ DONE (PR #1, branch feat/campaigns-list-detail): composer Send wired to POST /campaigns → /send
-   with live SSE progress (fetch-reader, not EventSource — Bearer auth); campaigns list (GET /campaigns,
-   auto-refresh while live) + detail [id] (KPI stats, live progress, per-message delivery table).
-   Shared code in frontend/lib/campaigns.ts. Client-side merge-tag validation mirrors backend.
-   Initial repo commit also pushed to main (c84a933).
-2. NEXT → M4 Reports (analytics + client-success PDF via WeasyPrint — NOT yet installed) + Flutterwave payments/webhook.
-3. M5 Admin backend (replace admin seed data with real superadmin API), M6 Archive subsystem, M8 tests.
-
-Note: merge PR #1 before starting M4 (or keep building on the branch).
-
-## M3 Campaigns backend — how to run / verify
-- Endpoints (all under /api/v1/campaigns, JWT-auth): GET /providers, POST "" (create draft),
-  GET "" (list), GET/PATCH/DELETE /{id}, POST /{id}/preview|send|schedule|cancel,
-  GET /{id}/messages, GET /{id}/progress (SSE text/event-stream).
-- Providers configured via env; "auto" picks first configured. SMS_PROVIDER/EMAIL_PROVIDER +
-  per-provider keys in app/core/config.py. When none configured (dev) → labelled SIMULATOR.
-- Dev dispatch env: DISPATCH_INLINE=true runs dispatch in-process (no separate worker needed);
-  DISPATCH_FORCE_SIMULATOR=true forces simulator; SIMULATOR_FAILURE_RATE tunes retry exercise.
-- Production dispatch: leave DISPATCH_INLINE unset and run the ARQ worker:
-  `PYTHONPATH=. arq app.workers.WorkerSettings` (same env as the API). Cron promotes scheduled campaigns.
-- Migration b2c4e6f80a12 (messages table) applied to brtest-pg. Deps added: arq, aiosmtplib (uv pip).
-- New files: app/services/dispatch/{base,sms_providers,email_providers,progress,engine}.py,
-  app/services/campaign_service.py, app/schemas/campaign.py, app/api/v1/campaigns.py, app/workers/__init__.py,
-  app/models/campaign.py (Message model). Test: scratchpad/test_m3.py (all checks pass).
-
-## Admin liveliness build — what shipped (2026-07-25)
-- lib/seed-data.ts expanded (+230 lines): seedAccounts, seedSubscriptions, seedPayments, seedPaymentMethods,
-  seedRevenueSeries, seedRevenueTotals (period-keyed), seedAdminCampaigns, seedAuditLog, seedHealthServices,
-  seedHealthIncidents, seedThroughputSeries, seedManagedPipeline, seedArchive*, seedActivity, seedKPIsByPeriod.
-- New shared primitives (components/admin/): CountUp, AnimatedSparkline (pathLength draw-in), StatCard,
-  DataTable<T> (staggered rows), StatusPill/StatusDot (pulse), AreaTrend + Donut (recharts), LiveTicker,
-  DemoBadge. Topbar now supports controlled period (period/onPeriodChange/showPeriod).
-- 9 admin pages built by 3 parallel frontend-builder agents against scratchpad/ADMIN_SPEC.md.
-- Client pages enriched: /dashboard/campaigns (livelier honest empty state), /dashboard/reports (sample
-  report preview), NEW /dashboard/campaigns/new (working composer: live audience, merge-tag insert, live
-  preview, SMS segments; Send disabled til M3).
-- RSC gotcha fixed: pages passing a fn prop (format) to a client chart (AreaTrend/Donut) MUST be 'use client'.
-
-## Older next steps (superseded — kept for reference)
-User asked: "continue wiring everything and make pages more lively esp admin." Audit done, ready to build.
-
-### Findings (frontend/)
-- Admin sidebar (components/admin/Sidebar.tsx) links to 9 sections; only 2 pages exist
-  (app/admin/page.tsx, app/admin/settings/page.tsx). These 8 routes 404 → BUILD THEM:
-  /admin/accounts, /admin/subscriptions, /admin/managed, /admin/revenue, /admin/payments,
-  /admin/campaigns, /admin/audit-log, /admin/health, /admin/archive (archive is 'special' teal link).
-- Admin uses SEED DATA only (lib/seed-data.ts, 189 lines) — no superadmin backend exists yet (M5).
-  Keep it seed-driven but make it feel alive. Be honest it's seed data.
-- Client stubs to enrich: app/dashboard/campaigns/page.tsx + reports/page.tsx = empty-state only.
-  (contacts + dashboard overview ARE wired to live backend.)
-- Backend has ONLY auth + contacts routes (/api/v1/auth/*, /api/v1/contacts/*). No campaigns/
-  admin/payments/reports endpoints → full live wiring = M3/M4/M5 backend work, not doable frontend-only.
-- Installed & ready: framer-motion ^11, recharts ^2.14, tailwindcss-animate. Reveal.tsx = CSS fade-up
-  (animate-fade-up + hover-lift utilities in globals.css). Topbar period toggle has state but doesn't filter.
-- Admin components to reuse: KPICard, Sparkline (static SVG polyline), RevenueBars, QueueList,
-  HealthList, ClientsTable, Reveal/RevealGroup/RevealItem. lib/api.ts = api()/apiUpload() client.
-
-### Plan for tomorrow
-1. Expand lib/seed-data.ts: full datasets for accounts, subscriptions, payments, revenue time-series,
-   campaigns, audit log, expanded health. Add helpers for filtering by period.
-2. Build the 8 missing admin pages (rich tables + recharts charts + Reveal stagger). Parallel agents OK.
-3. LIVELINESS pass (esp admin): animated count-up KPI numbers, sparkline draw-in animation,
-   pulsing "live/operational" dots, a live activity ticker/feed, hover lift, working period toggle
-   that re-filters, animated recharts. Use framer-motion.
-4. Client side: make campaigns/reports pages livelier + interactive (still empty-state honest since
-   no backend, but animated + a real /dashboard/campaigns/new composer shell if time).
-5. Rebuild with NODE_ENV=production, browser-verify each new admin page (0 console errors), screenshot.
-
-### Servers (may need restart tomorrow)
-- Frontend: `cd frontend && API_PROXY_URL=http://localhost:3101/api npx next dev -p 3100`
-- Backend: containers brtest-pg (55432) + brtest-redis (63799) — `docker start brtest-pg brtest-redis`;
-  then from backend/ w/ .venv active + env (DATABASE_URL/ARCHIVE_DATABASE_URL/REDIS_URL/SECRET_KEY):
-  `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8010`. Routes under /api/v1, health at /health.
-- Test account created this session: verify+m7@bulkreach.ug / TestPass123! (Trial plan, owner).
-
-## Older next steps
-- M3 Campaigns (composer /dashboard/campaigns/new, dispatch SMS+email, ARQ worker, retry, SSE progress).
+Rebuild/run the local stack:
+  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+Local gates: `cd backend && source .venv/bin/activate && pytest tests/ -q` · `cd frontend && npm ci && npm run typecheck && NODE_ENV=production npm run build`
