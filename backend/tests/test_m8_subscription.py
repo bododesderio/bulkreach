@@ -1,10 +1,12 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """M8 — subscription quota enforcement (Section K)."""
 from __future__ import annotations
 
 import uuid
 
 import pytest
-from fastapi import HTTPException
+from app.domain.exceptions import SendNotAllowed
 
 from app.core.database import LiveSessionLocal
 from app.models.account import Account
@@ -50,10 +52,10 @@ async def test_trial_account_state_and_gate(client):
         remaining = acct.trial_messages_remaining
         camp = Campaign(account_id=acct.id, name="gate", type="sms", status="draft")
 
-        with pytest.raises(HTTPException) as ei:
+        with pytest.raises(SendNotAllowed) as ei:
             await enforce.enforce_send(db, acct, camp, remaining + 1)
-        assert ei.value.status_code == 402
-        assert ei.value.detail["code"] == "MONTHLY_QUOTA_EXCEEDED"
+        assert ei.value.http_status == 402
+        assert ei.value.code == "MONTHLY_QUOTA_EXCEEDED"
 
         await enforce.enforce_send(db, acct, camp, 1)
         assert acct.trial_messages_remaining == remaining - 1

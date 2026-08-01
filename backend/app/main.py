@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.middleware import SecurityHeadersMiddleware
+from app.domain.exceptions import DomainError
 
 # --- Error tracking (Sentry) — no-op unless SENTRY_DSN is set ---
 if settings.SENTRY_DSN:
@@ -41,6 +42,16 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+@app.exception_handler(DomainError)
+async def _domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
+    """Translate domain (business-rule) errors to HTTP. Preserves the historic
+    contract of the send gate: `{"detail": {"code": ..., ...}}` at 402."""
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={"detail": {"code": exc.code, **exc.detail}},
+    )
+
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
