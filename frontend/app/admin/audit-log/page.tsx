@@ -148,7 +148,7 @@ export default function AuditLogPage() {
     () => api<AuditLogResponse>('/admin/audit-log?limit=100', { auth: true }),
   );
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
   const total = data?.total ?? 0;
   const loading = isLoading;
 

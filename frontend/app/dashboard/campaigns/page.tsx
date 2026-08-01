@@ -92,7 +92,7 @@ export default function CampaignsPage() {
     },
   );
 
-  const campaigns = data?.items ?? [];
+  const campaigns = useMemo(() => data?.items ?? [], [data]);
   const listCount = data?.listCount ?? 0;
 
   const summary = useMemo(() => {

@@ -76,7 +76,7 @@ export default function CampaignDetailPage() {
     { enabled: !!user },
   );
   const campaign = data?.campaign ?? null;
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => data?.messages ?? [], [data]);
   const notFound = isError;
 
   async function downloadReport() {

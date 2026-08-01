@@ -223,7 +223,7 @@ export default function ArchivePage() {
   );
 
   const overview   = data?.overview   ?? null;
-  const retention  = data?.retention  ?? [];
+  const retention  = useMemo(() => data?.retention ?? [], [data]);
   const rules      = data?.rules      ?? [];
   const contacts   = data?.contacts   ?? [];
   const legalHolds = data?.legalHolds ?? [];

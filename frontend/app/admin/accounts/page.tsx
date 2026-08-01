@@ -88,7 +88,7 @@ export default function AccountsPage() {
     () => api<AccountsResponse>('/admin/accounts?limit=200', { auth: true }),
   );
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
   const stats = data?.stats ?? null;
   const loading = isLoading;
 
