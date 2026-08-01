@@ -9,8 +9,13 @@ venv/
 # Env / secrets
 .env
 .env.local
+.env*
+!.env.example
 backend/.env
 frontend/.env.local
+
+# Sentry
+.sentryclirc
 
 # Node / Next
 node_modules/
