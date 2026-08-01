@@ -244,22 +244,21 @@ WeasyPrint · Next.js14 · TypeScript · Tailwind · shadcn/ui.
 
 ## Known issues
 - GitHub Actions billing-locked (account) → CI workflow removed; gates are local, deploy manual.
-- Frontend `next lint` tree not clean (lint was advisory before the workflow was removed) — hygiene backlog.
-- `paused_quota_exceeded` appears in the frontend campaign status vocab but the DB `status` column is
-  VARCHAR(20) (21 chars) so it can never be stored; the worker uses `"paused"` — clean up the dead label.
+  (Also affects the separate `bododesderio/ForUs` repo — remove its workflows there.)
 - `.env.production` is local-only generated secrets, not real prod values.
 
 ## Next steps (2026-08-01)
-All 6 audit phases done + merged to `main`; prod Docker stack builds & runs healthy. Remaining, ranked:
-1. Operator/VPS (see infra/OPERATIONS.md): resolve GitHub billing; set real `.env.production` secrets +
-   DNS; deploy to the VPS; install the nightly backup cron + rehearse a restore; bring up monitoring;
-   add swap.
-2. Frontend polish backlog: make `next lint` clean; managed-portal shell (Phase-4 Track-C leftover);
-   remove the dead `paused_quota_exceeded` status label.
-3. DLR polish (Phase-2 leftover): surface delivered/bounced counts in the campaign UI + PDF; inbound-SMS
-   STOP handling.
-4. Optional Phase-6 hygiene: break the ~40 function-local import cycles (relocate notifications/quota to
-   a lower layer) — pure hygiene, real regression risk; do as its own tested refactor.
+All 6 audit phases done + merged to `main`; prod Docker stack builds & runs healthy. Post-phase polish
+also done: `next lint` clean, DLR delivered/bounced in the campaign UI, inbound-SMS STOP/START opt-out+
+opt-in, all inline status maps on StatusBadge, dead `paused_quota_exceeded` removed.
+
+Only remaining is **operator/VPS** (infra/OPERATIONS.md): resolve GitHub billing; set real
+`.env.production` secrets + DNS; deploy to the VPS; install the nightly backup cron + rehearse a
+restore; bring up monitoring; add swap.
+
+Deliberately NOT doing (decided 2026-08-01): managed-portal keeps its bespoke chrome (the nav-rail
+AppShell would look out of place on a 3-route client portal); the ~40 function-local import cycles
+are left as-is (pure hygiene, real regression risk, no functional gain).
 
 Rebuild/run the local stack:
   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
