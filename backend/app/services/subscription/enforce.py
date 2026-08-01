@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.exceptions import SendNotAllowed
 from app.models.account import Account
 from app.models.billing import Plan, Subscription
 from app.models.campaign import Campaign
@@ -22,7 +22,9 @@ from app.services.subscription import quota
 
 
 def _402(code: str, **detail):
-    return HTTPException(status.HTTP_402_PAYMENT_REQUIRED, detail={"code": code, **detail})
+    # Domain error (not HTTPException): the API handler maps it to 402, and the
+    # ARQ worker can catch it to react instead of silently dropping a campaign.
+    return SendNotAllowed(code, detail=detail)
 
 
 class Limits:

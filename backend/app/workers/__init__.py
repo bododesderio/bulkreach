@@ -17,6 +17,7 @@ from arq.connections import RedisSettings
 
 from app.core.config import settings
 from app.core.database import ArchiveSessionLocal, LiveSessionLocal
+from app.domain.exceptions import SendNotAllowed
 from app.services import campaign_service
 from app.services.dispatch import close_http, dispatch_campaign
 
@@ -74,12 +75,42 @@ async def promote_scheduled(ctx: dict) -> int:
             ).scalars()
         )
         for campaign in due:
+            cid, cname, acct_id = campaign.id, campaign.name, campaign.account_id
             try:
                 await campaign_service.materialise_and_queue(db, campaign)
                 await db.commit()
+            except SendNotAllowed as exc:
+                # The scheduled send hit the subscription/quota gate. Surface it —
+                # pause the campaign and notify the account — instead of silently
+                # dropping it (the historic bug: the worker swallowed this error).
+                await db.rollback()
+                # "paused" (not the 21-char "paused_quota_exceeded" — the status
+                # column is VARCHAR(20)) also removes it from the scheduled re-query
+                # so the worker won't re-gate + re-notify on every tick.
+                campaign.status = "paused"
+                await db.commit()
+                from app.services.notifications import notify
+
+                await notify(
+                    db,
+                    account_id=acct_id,
+                    type="campaign.paused",
+                    level="warning",
+                    title="Scheduled campaign could not send",
+                    body=(
+                        f"“{cname}” was paused because your plan limit was reached "
+                        "when it was due to send. Free up quota or upgrade, then send "
+                        "it again."
+                    ),
+                    link=f"/dashboard/campaigns/{cid}",
+                    meta={"code": exc.code, **exc.detail},
+                )
+                await db.commit()
+                logger.warning("worker: scheduled campaign %s gated (%s)", cid, exc.code)
+                continue
             except Exception:  # noqa: BLE001 — one bad campaign must not stall the poller
                 await db.rollback()
-                logger.exception("worker: failed to promote campaign %s", campaign.id)
+                logger.exception("worker: failed to promote campaign %s", cid)
                 continue
             await enqueue_dispatch(campaign.id)
             promoted += 1
