@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError, apiDownload } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 import {
   type CampaignDetail,
   type MessageOut,
@@ -31,7 +32,7 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import CountUp from "@/components/admin/CountUp";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusPill } from "@/components/admin/StatusPill";
+import { StatusBadge } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -50,51 +51,33 @@ const fmtDateTime = (iso: string | null) =>
 const FILTERS = ["all", "sent", "failed", "pending"] as const;
 type Filter = (typeof FILTERS)[number];
 
-const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
-  draft: { color: "#9CA3AF" },
-  scheduled: { color: "#6366F1" },
-  queued: { color: "#00D4AA", pulse: true },
-  sending: { color: "#00D4AA", pulse: true },
-  sent: { color: "#10B981" },
-  completed: { color: "#10B981" },
-  paused: { color: "#F59E0B" },
-  paused_quota_exceeded: { color: "#F59E0B" },
-  failed: { color: "#EF4444" },
-  bounced: { color: "#EF4444" },
-  cancelled: { color: "#EF4444" },
-};
-
-const MSG_STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
-  sent: { color: "#10B981" },
-  delivered: { color: "#10B981" },
-  failed: { color: "#EF4444" },
-  pending: { color: "#9CA3AF" },
-  queued: { color: "#00D4AA", pulse: true },
-};
-
-function campaignPill(status: string) {
-  const c = STATUS_COLOR[status.toLowerCase()] ?? { color: "#9CA3AF" };
-  return (
-    <StatusPill
-      label={status.replace(/_/g, " ")}
-      color={c.color}
-      pulse={c.pulse}
-    />
-  );
-}
-
 export default function CampaignDetailPage() {
   const { user } = useAuth();
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
-  const [messages, setMessages] = useState<MessageOut[]>([]);
-  const [notFound, setNotFound] = useState(false);
   const [live, setLive] = useState<Progress | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [downloading, setDownloading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Load campaign + messages (React Query also drives the post-dispatch refetch).
+  const { data, isError, refetch } = useApiQuery(
+    ["dashboard", "campaign", id],
+    async () => {
+      const [detail, msgs] = await Promise.all([
+        api<CampaignDetail>(`/campaigns/${id}`, { auth: true }),
+        api<PaginatedMessages>(`/campaigns/${id}/messages?page_size=200`, {
+          auth: true,
+        }),
+      ]);
+      return { campaign: detail, messages: msgs.items };
+    },
+    { enabled: !!user },
+  );
+  const campaign = data?.campaign ?? null;
+  const messages = data?.messages ?? [];
+  const notFound = isError;
 
   async function downloadReport() {
     setDownloading(true);
@@ -107,50 +90,32 @@ export default function CampaignDetailPage() {
     }
   }
 
-  // Load campaign + messages (also used to refresh after dispatch settles).
-  async function refresh() {
-    const [detail, msgs] = await Promise.all([
-      api<CampaignDetail>(`/campaigns/${id}`, { auth: true }),
-      api<PaginatedMessages>(`/campaigns/${id}/messages?page_size=200`, {
-        auth: true,
-      }),
-    ]);
-    setCampaign(detail);
-    setMessages(msgs.items);
-    return detail;
-  }
-
+  // Stream live progress while the campaign is dispatching; on a terminal event
+  // clear the live overlay and refetch once for final stats + messages.
   useEffect(() => {
-    if (!user) return;
+    if (!campaign || !isLive(campaign.status)) return;
     let active = true;
-
-    refresh()
-      .then((detail) => {
-        if (!active || !isLive(detail.status)) return;
-        // Stream live progress, then refresh once for final stats + messages.
-        const ctrl = new AbortController();
-        abortRef.current = ctrl;
-        streamProgress(
-          id,
-          (p) => {
-            if (!active) return;
-            setLive(p);
-            if (TERMINAL.has(p.status)) {
-              setLive(null);
-              refresh().catch(() => {});
-            }
-          },
-          ctrl.signal,
-        ).catch(() => {});
-      })
-      .catch(() => active && setNotFound(true));
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    streamProgress(
+      id,
+      (p) => {
+        if (!active) return;
+        setLive(p);
+        if (TERMINAL.has(p.status)) {
+          setLive(null);
+          refetch();
+        }
+      },
+      ctrl.signal,
+    ).catch(() => {});
 
     return () => {
       active = false;
-      abortRef.current?.abort();
+      ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, id]);
+  }, [campaign?.status, id]);
 
   const counts = useMemo(() => {
     const c = { all: messages.length, sent: 0, failed: 0, pending: 0 };
@@ -232,23 +197,16 @@ export default function CampaignDetailPage() {
     {
       key: "status",
       label: "Status",
-      render: (m) => {
-        const mc = MSG_STATUS_COLOR[m.status] ?? { color: "#9CA3AF" };
-        return (
-          <span className="inline-flex flex-wrap items-center gap-1.5">
-            <StatusPill
-              label={m.status}
-              color={mc.color}
-              pulse={mc.pulse}
-            />
-            {m.error_reason && (
-              <span className="text-[10.5px] text-text-muted">
-                {m.error_reason}
-              </span>
-            )}
-          </span>
-        );
-      },
+      render: (m) => (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <StatusBadge domain="message" status={m.status} />
+          {m.error_reason && (
+            <span className="text-[10.5px] text-text-muted">
+              {m.error_reason}
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       key: "provider",
@@ -284,7 +242,7 @@ export default function CampaignDetailPage() {
             <h2 className="font-display text-[20px] font-extrabold text-navy">
               {campaign.name}
             </h2>
-            {campaignPill(campaign.status)}
+            <StatusBadge domain="campaign" status={campaign.status} />
           </div>
           <button
             type="button"

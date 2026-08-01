@@ -4,8 +4,8 @@
  */
 'use client';
 
-import { Menu } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import { NavMenuButton } from '@/components/ui';
 
 interface TopbarProps {
   title: string;
@@ -14,8 +14,6 @@ interface TopbarProps {
   plan: string;
   /** Used to derive the avatar initials. */
   email: string;
-  /** Shows the hamburger (mobile) when provided. */
-  onMenuClick?: () => void;
 }
 
 function initials(email: string): string {
@@ -31,7 +29,6 @@ export default function Topbar({
   accountName,
   plan,
   email,
-  onMenuClick,
 }: TopbarProps) {
   return (
     <header
@@ -40,16 +37,7 @@ export default function Topbar({
     >
       {/* Left: mobile menu + title/subtitle */}
       <div className="flex items-center gap-3">
-        {onMenuClick && (
-          <button
-            onClick={onMenuClick}
-            className="flex items-center justify-center rounded-[7px] border bg-transparent transition-colors hover:bg-bg lg:hidden"
-            style={{ width: '32px', height: '32px' }}
-            aria-label="Toggle navigation"
-          >
-            <Menu size={16} className="text-text-md" />
-          </button>
-        )}
+        <NavMenuButton />
         <div>
           <div
             className="font-display font-extrabold text-[17px] text-navy leading-tight"

@@ -1,9 +1,14 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TrendingUp, Banknote, AlertCircle, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar, { Period } from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
@@ -44,27 +49,20 @@ const cardBase = 'bg-white border rounded-[11px] p-4';
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function RevenuePage() {
   const [period, setPeriod] = useState<Period>('Month');
-  const [data, setData] = useState<RevenueResponse | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (p: Period) => {
-    setLoading(true);
-    try {
-      const res = await api<RevenueResponse>(
-        `/admin/revenue?period=${periodParam(p)}`,
-        { auth: true },
-      );
-      setData(res);
-    } catch {
-      toast.error('Failed to load revenue data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error } = useApiQuery(
+    ['admin', 'revenue', period],
+    () =>
+      api<RevenueResponse>(`/admin/revenue?period=${periodParam(period)}`, {
+        auth: true,
+      }),
+  );
+
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData(period);
-  }, [fetchData, period]);
+    if (error) toast.error('Failed to load revenue data');
+  }, [error]);
 
   const totals = data?.totals;
   const series = data?.series ?? [];
@@ -114,7 +112,6 @@ export default function RevenuePage() {
                   change="Monthly recurring revenue"
                   changeType="up"
                   icon={TrendingUp}
-                  sparklineKey="revenue"
                 />
               </RevealItem>
               <RevealItem lift>
@@ -129,7 +126,6 @@ export default function RevenuePage() {
                   change="Settled this period"
                   changeType="up"
                   icon={Banknote}
-                  sparklineKey="revenue"
                 />
               </RevealItem>
               <RevealItem lift>
@@ -157,7 +153,6 @@ export default function RevenuePage() {
                   change="Per active account"
                   changeType="up"
                   icon={Users}
-                  sparklineKey="clients"
                 />
               </RevealItem>
             </RevealGroup>

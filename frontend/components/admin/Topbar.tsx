@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/store/auth';
+import { NavMenuButton } from '@/components/ui';
 
 export type Period = 'Today' | 'Month' | 'Quarter';
 const PERIODS: Period[] = ['Today', 'Month', 'Quarter'];
@@ -52,12 +53,15 @@ export default function Topbar({
         padding: '0 22px',
       }}
     >
-      {/* Left: title + subtitle */}
-      <div>
-        <div className="font-display font-extrabold text-[17px] text-navy leading-tight">
-          {title}
+      {/* Left: mobile menu + title + subtitle */}
+      <div className="flex items-center gap-3">
+        <NavMenuButton />
+        <div>
+          <div className="font-display font-extrabold text-[17px] text-navy leading-tight">
+            {title}
+          </div>
+          <div className="text-[11px] text-text-muted">{subtitle}</div>
         </div>
-        <div className="text-[11px] text-text-muted">{subtitle}</div>
       </div>
 
       {/* Right: period toggle + bell + avatar */}

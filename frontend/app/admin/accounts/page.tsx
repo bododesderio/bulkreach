@@ -10,12 +10,13 @@ import { useRouter } from 'next/navigation';
 import { Users, CheckCircle, Clock, Ban, Search, LogIn, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import { useAuth } from '@/store/auth';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
@@ -54,13 +55,6 @@ interface ImpersonateResponse {
 }
 
 // ── config ────────────────────────────────────────────────────────────────────
-const STATUS_CFG: Record<string, { label: string; color: string; pulse: boolean }> = {
-  active:    { label: 'Active',    color: '#10B981', pulse: true  },
-  trial:     { label: 'Trial',     color: '#00D4AA', pulse: false },
-  past_due:  { label: 'Past due',  color: '#F59E0B', pulse: false },
-  suspended: { label: 'Suspended', color: '#9CA3AF', pulse: false },
-};
-
 type FilterStatus = AccountStatus | 'all';
 
 const CHIPS: { label: string; value: FilterStatus }[] = [
@@ -85,62 +79,55 @@ const fmtDate = (iso: string) => {
 export default function AccountsPage() {
   const router = useRouter();
   const startImpersonation = useAuth((s) => s.startImpersonation);
-  const [items, setItems]               = useState<AdminAccount[]>([]);
-  const [stats, setStats]               = useState<AccountStats | null>(null);
-  const [loading, setLoading]           = useState(true);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [search, setSearch]             = useState('');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<AccountsResponse>('/admin/accounts?limit=200', { auth: true });
-      setItems(data.items);
-      setStats(data.stats);
-    } catch {
-      toast.error('Failed to load accounts');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error, refetch } = useApiQuery(
+    ['admin', 'accounts'],
+    () => api<AccountsResponse>('/admin/accounts?limit=200', { auth: true }),
+  );
+
+  const items = data?.items ?? [];
+  const stats = data?.stats ?? null;
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load accounts');
+  }, [error]);
 
   const handleSuspend = useCallback(async (row: AdminAccount) => {
     if (!window.confirm(`Suspend "${row.name}"? They will lose access immediately.`)) return;
     setActionPending(row.id);
     try {
-      const updated = await api<AdminAccount>(`/admin/accounts/${row.id}/suspend`, {
+      await api<AdminAccount>(`/admin/accounts/${row.id}/suspend`, {
         method: 'POST',
         auth: true,
       });
-      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      await refetch();
       toast.success(`${row.name} suspended`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to suspend account');
     } finally {
       setActionPending(null);
     }
-  }, []);
+  }, [refetch]);
 
   const handleActivate = useCallback(async (row: AdminAccount) => {
     setActionPending(row.id);
     try {
-      const updated = await api<AdminAccount>(`/admin/accounts/${row.id}/activate`, {
+      await api<AdminAccount>(`/admin/accounts/${row.id}/activate`, {
         method: 'POST',
         auth: true,
       });
-      setItems((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      await refetch();
       toast.success(`${row.name} activated`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to activate account');
     } finally {
       setActionPending(null);
     }
-  }, []);
+  }, [refetch]);
 
   const handleImpersonate = useCallback(async (row: AdminAccount) => {
     if (row.status === 'suspended') {
@@ -245,14 +232,7 @@ export default function AccountsPage() {
       {
         key: 'status',
         label: 'Status',
-        render: (row) => {
-          const c = STATUS_CFG[row.status] ?? {
-            label: row.status,
-            color: '#9CA3AF',
-            pulse: false,
-          };
-          return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-        },
+        render: (row) => <StatusBadge domain="account" status={row.status} />,
       },
       {
         key: 'actions',
@@ -343,7 +323,6 @@ export default function AccountsPage() {
                   label="TOTAL CLIENTS"
                   value={stats.total}
                   icon={Users}
-                  sparklineKey="clients"
                   change="All organisations"
                   changeType="up"
                 />

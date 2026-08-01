@@ -5,7 +5,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   CreditCard,
@@ -15,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import { useAuth } from '@/store/auth';
 import { type CampaignOut, type PaginatedCampaigns } from '@/lib/campaigns';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
@@ -22,6 +22,7 @@ import StatCard from '@/components/admin/StatCard';
 import CountUp from '@/components/admin/CountUp';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
@@ -70,71 +71,52 @@ function usageBarColor(pct: number): string {
   return '#00D4AA';
 }
 
-const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
-  draft: { color: '#9CA3AF' },
-  scheduled: { color: '#6366F1' },
-  queued: { color: '#00D4AA', pulse: true },
-  sending: { color: '#00D4AA', pulse: true },
-  sent: { color: '#10B981' },
-  completed: { color: '#10B981' },
-  paused: { color: '#F59E0B' },
-  paused_quota_exceeded: { color: '#F59E0B' },
-  failed: { color: '#EF4444' },
-  cancelled: { color: '#EF4444' },
-};
-
-function statusPill(status: string) {
-  const c = STATUS_COLOR[status.toLowerCase()] ?? { color: '#9CA3AF' };
-  return <StatusPill label={status.replace(/_/g, ' ')} color={c.color} pulse={c.pulse} />;
-}
-
-const ACCOUNT_STATUS_COLOR: Record<string, string> = {
-  active: '#10B981',
-  trial: '#F59E0B',
-  past_due: '#F59E0B',
-  suspended: '#EF4444',
-  cancelled: '#EF4444',
-};
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, account } = useAuth();
 
-  const [quota, setQuota]           = useState<QuotaResponse | null>(null);
-  const [quotaError, setQuotaError] = useState(false);
-  const [listCount, setListCount]   = useState<number | null>(null);
-  const [campaigns, setCampaigns]   = useState<CampaignOut[] | null>(null);
-  const [totalCampaigns, setTotalCampaigns] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-
-    api<QuotaApi>('/subscription/quota', { auth: true })
-      .then((q) =>
-        setQuota({
-          used: q.monthly_used ?? 0,
-          limit: q.monthly_limit ?? null,
-          is_trial: !!q.is_trial,
-          trial_limit: q.monthly_limit ?? 0,
-          monthly_resets_at: q.monthly_resets_at ?? null,
-        }),
-      )
-      .catch(() => setQuotaError(true));
-
-    api<ContactList[]>('/contacts/lists', { auth: true })
-      .then((lists) => setListCount(lists.length))
-      .catch(() => setListCount(0));
-
-    api<PaginatedCampaigns>('/campaigns?page=1&page_size=100', { auth: true })
-      .then((res) => {
-        setCampaigns(res.items);
-        setTotalCampaigns(res.total);
+  const { data } = useApiQuery(
+    ['dashboard', 'home'],
+    async () => {
+      const quotaP = api<QuotaApi>('/subscription/quota', { auth: true })
+        .then(
+          (q): { quota: QuotaResponse; quotaError: boolean } => ({
+            quota: {
+              used: q.monthly_used ?? 0,
+              limit: q.monthly_limit ?? null,
+              is_trial: !!q.is_trial,
+              trial_limit: q.monthly_limit ?? 0,
+              monthly_resets_at: q.monthly_resets_at ?? null,
+            },
+            quotaError: false,
+          }),
+        )
+        .catch(
+          (): { quota: QuotaResponse | null; quotaError: boolean } => ({
+            quota: null,
+            quotaError: true,
+          }),
+        );
+      const listP = api<ContactList[]>('/contacts/lists', { auth: true })
+        .then((lists) => lists.length)
+        .catch(() => 0);
+      const campP = api<PaginatedCampaigns>('/campaigns?page=1&page_size=100', {
+        auth: true,
       })
-      .catch(() => {
-        setCampaigns([]);
-        setTotalCampaigns(0);
-      });
-  }, [user]);
+        .then((res) => ({ items: res.items, total: res.total }))
+        .catch(() => ({ items: [] as CampaignOut[], total: 0 }));
+
+      const [q, listCount, campaigns] = await Promise.all([quotaP, listP, campP]);
+      return { quota: q.quota, quotaError: q.quotaError, listCount, campaigns };
+    },
+    { enabled: !!user },
+  );
+
+  const quota          = data?.quota ?? null;
+  const quotaError     = data?.quotaError ?? false;
+  const listCount      = data ? data.listCount : null;
+  const campaigns      = data ? data.campaigns.items : null;
+  const totalCampaigns = data ? data.campaigns.total : null;
 
   if (!user || !account) return null;
 
@@ -173,7 +155,7 @@ export default function DashboardPage() {
       key: 'status',
       label: 'Status',
       align: 'right',
-      render: (c) => statusPill(c.status),
+      render: (c) => <StatusBadge domain="campaign" status={c.status} />,
     },
   ];
 
@@ -192,11 +174,7 @@ export default function DashboardPage() {
             bg="rgba(0,212,170,0.12)"
             dot={false}
           />
-          <StatusPill
-            label={account.status}
-            color={ACCOUNT_STATUS_COLOR[account.status] ?? '#9CA3AF'}
-            pulse={account.status === 'active'}
-          />
+          <StatusBadge domain="account" status={account.status} />
         </div>
       </Reveal>
 
@@ -313,11 +291,7 @@ export default function DashboardPage() {
               {account.plan}
             </div>
             <div className="mt-1.5">
-              <StatusPill
-                label={account.status}
-                color={ACCOUNT_STATUS_COLOR[account.status] ?? '#9CA3AF'}
-                pulse={account.status === 'active'}
-              />
+              <StatusBadge domain="account" status={account.status} />
             </div>
             <div className="mt-auto pt-3">
               <Link

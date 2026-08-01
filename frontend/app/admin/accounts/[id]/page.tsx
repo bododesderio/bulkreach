@@ -4,16 +4,17 @@
  */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Calendar, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery, useApiMutation } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import { Reveal } from '@/components/admin/Reveal';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 import FormGrid, { FormActions, FormCard } from '@/components/admin/FormGrid';
 import FormField from '@/components/admin/FormField';
 import DataTable from '@/components/admin/DataTable';
@@ -105,22 +106,6 @@ interface PlanForm {
 const cardBase = 'bg-white border rounded-[11px] p-4';
 const cardLg = 'bg-white border rounded-[11px] p-6';
 
-const STATUS_CFG: Record<string, { label: string; color: string; pulse: boolean }> = {
-  active:    { label: 'Active',    color: '#10B981', pulse: true  },
-  trial:     { label: 'Trial',     color: '#00D4AA', pulse: false },
-  trialing:  { label: 'Trial',     color: '#00D4AA', pulse: false },
-  past_due:  { label: 'Past due',  color: '#F59E0B', pulse: false },
-  suspended: { label: 'Suspended', color: '#9CA3AF', pulse: false },
-  cancelled: { label: 'Cancelled', color: '#EF4444', pulse: false },
-  failed:    { label: 'Failed',    color: '#EF4444', pulse: false },
-  success:   { label: 'Success',   color: '#10B981', pulse: false },
-  pending:   { label: 'Pending',   color: '#F59E0B', pulse: false },
-  sent:      { label: 'Sent',      color: '#10B981', pulse: false },
-  draft:     { label: 'Draft',     color: '#9CA3AF', pulse: false },
-  scheduled: { label: 'Scheduled', color: '#6366F1', pulse: false },
-  running:   { label: 'Running',   color: '#00D4AA', pulse: true  },
-};
-
 const EMPTY_FORM: PlanForm = {
   plan_id: '',
   custom_messages_per_month: '',
@@ -187,79 +172,86 @@ export default function AccountDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const [detail, setDetail]       = useState<AccountDetailResponse | null>(null);
-  const [plans, setPlans]         = useState<AdminPlan[]>([]);
-  const [loading, setLoading]     = useState(true);
   const [form, setForm]           = useState<PlanForm>(EMPTY_FORM);
-  const [saving, setSaving]       = useState(false);
   const [lastResult, setLastResult] = useState<AssignPlanResult | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [detailData, plansData] = await Promise.all([
+  const { data, isLoading: loading, isError, error } = useApiQuery(
+    ['admin', 'account', id],
+    async () => {
+      const [detail, plans] = await Promise.all([
         api<AccountDetailResponse>(`/admin/accounts/${id}`, { auth: true }),
         api<AdminPlan[]>('/admin/plans', { auth: true }),
       ]);
-      setDetail(detailData);
-      setPlans(plansData);
-      // Seed plan dropdown with the account's current plan, if any
-      setForm((prev) => ({
-        ...prev,
-        plan_id: detailData.subscription?.plan_id ?? plansData[0]?.id ?? '',
-      }));
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to load account');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+      return { detail, plans };
+    },
+  );
+
+  const detail = data?.detail ?? null;
+  const plans = data?.plans ?? [];
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    if (isError) {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to load account');
+    }
+  }, [isError, error]);
+
+  // Seed plan dropdown with the account's current plan, if any
+  useEffect(() => {
+    if (!data) return;
+    setForm((prev) => ({
+      ...prev,
+      plan_id: data.detail.subscription?.plan_id ?? data.plans[0]?.id ?? '',
+    }));
+  }, [data]);
+
+  const assignMutation = useApiMutation<AssignPlanResult, Record<string, unknown>>(
+    (payload) =>
+      api<AssignPlanResult>(`/admin/accounts/${id}/plan`, {
+        method: 'POST',
+        auth: true,
+        body: JSON.stringify(payload),
+      }),
+    {
+      invalidate: [['admin', 'account', id]],
+      onSuccess: (result) => {
+        setLastResult(result);
+        toast.success(`Plan assigned: ${result.plan_name}`);
+      },
+      onError: (err) => {
+        toast.error(err instanceof ApiError ? err.message : 'Failed to assign plan');
+      },
+    },
+  );
+  const saving = assignMutation.isPending;
 
   function update<K extends keyof PlanForm>(key: K, value: PlanForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleAssign() {
+  function handleAssign() {
     if (!form.plan_id) {
       toast.error('Select a plan first');
       return;
     }
-    setSaving(true);
     setLastResult(null);
-    try {
-      const payload: Record<string, unknown> = {
-        plan_id: form.plan_id,
-        period_days: Math.max(1, form.period_days),
-      };
 
-      const cmpm = parseOptInt(form.custom_messages_per_month);
-      if (cmpm !== null) payload.custom_messages_per_month = cmpm;
+    const payload: Record<string, unknown> = {
+      plan_id: form.plan_id,
+      period_days: Math.max(1, form.period_days),
+    };
 
-      const cdl = parseOptInt(form.custom_daily_limit);
-      if (cdl !== null) payload.custom_daily_limit = cdl;
+    const cmpm = parseOptInt(form.custom_messages_per_month);
+    if (cmpm !== null) payload.custom_messages_per_month = cmpm;
 
-      const cpx = parseOptInt(form.custom_price_ugx);
-      if (cpx !== null) payload.custom_price_ugx = cpx;
+    const cdl = parseOptInt(form.custom_daily_limit);
+    if (cdl !== null) payload.custom_daily_limit = cdl;
 
-      if (form.note.trim()) payload.note = form.note.trim();
+    const cpx = parseOptInt(form.custom_price_ugx);
+    if (cpx !== null) payload.custom_price_ugx = cpx;
 
-      const result = await api<AssignPlanResult>(`/admin/accounts/${id}/plan`, {
-        method: 'POST',
-        auth: true,
-        body: JSON.stringify(payload),
-      });
-      setLastResult(result);
-      toast.success(`Plan assigned: ${result.plan_name}`);
-      await fetchAll();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to assign plan');
-    } finally {
-      setSaving(false);
-    }
+    if (form.note.trim()) payload.note = form.note.trim();
+
+    assignMutation.mutate(payload);
   }
 
   // ── column definitions ────────────────────────────────────────────────────
@@ -283,10 +275,7 @@ export default function AccountDetailPage() {
     {
       key: 'status',
       label: 'Status',
-      render: (row) => {
-        const c = STATUS_CFG[row.status] ?? { label: row.status, color: '#9CA3AF', pulse: false };
-        return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-      },
+      render: (row) => <StatusBadge domain="campaign" status={row.status} />,
     },
     {
       key: 'messages_sent',
@@ -333,10 +322,7 @@ export default function AccountDetailPage() {
     {
       key: 'status',
       label: 'Status',
-      render: (row) => {
-        const c = STATUS_CFG[row.status] ?? { label: row.status, color: '#9CA3AF', pulse: false };
-        return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-      },
+      render: (row) => <StatusBadge domain="payment" status={row.status} />,
     },
     {
       key: 'created_at',
@@ -374,7 +360,6 @@ export default function AccountDetailPage() {
   }
 
   const { account, subscription, recent_campaigns, recent_payments, users_count } = detail;
-  const statusCfg = STATUS_CFG[account.status] ?? { label: account.status, color: '#9CA3AF', pulse: false };
 
   return (
     <>
@@ -401,11 +386,7 @@ export default function AccountDetailPage() {
                 <h1 className="font-display font-extrabold text-[18px] text-navy leading-tight">
                   {account.name}
                 </h1>
-                <StatusPill
-                  label={statusCfg.label}
-                  color={statusCfg.color}
-                  pulse={statusCfg.pulse}
-                />
+                <StatusBadge domain="account" status={account.status} />
                 {/* Plan pill */}
                 <span
                   style={{
@@ -485,14 +466,7 @@ export default function AccountDetailPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
                 <KVItem label="Plan" value={subscription.plan_name} />
                 <KVItem label="Status">
-                  {(() => {
-                    const c = STATUS_CFG[subscription.status] ?? {
-                      label: subscription.status,
-                      color: '#9CA3AF',
-                      pulse: false,
-                    };
-                    return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-                  })()}
+                  <StatusBadge domain="subscription" status={subscription.status} />
                 </KVItem>
                 <KVItem label="Period ends" value={fmtDate(subscription.current_period_end)} />
                 <KVItem

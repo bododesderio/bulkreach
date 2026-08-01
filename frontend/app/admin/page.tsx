@@ -1,16 +1,19 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, TrendingUp, Send, Zap, UserPlus, CreditCard, Megaphone, Cpu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar, { Period } from '@/components/admin/Topbar';
 import KPICard from '@/components/admin/KPICard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
-import { StatusDot } from '@/components/admin/StatusPill';
-import QueueList from '@/components/admin/QueueList';
-import HealthList from '@/components/admin/HealthList';
+import { StatusDot, StatusBadge } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type ActivityKind = 'signup' | 'payment' | 'campaign' | 'managed' | 'system';
@@ -45,6 +48,46 @@ interface OverviewResponse {
   revenue_by_plan: PlanRevenue[];
   activity: ActivityItem[];
 }
+
+interface HealthService {
+  name: string;
+  category: string;
+  status: 'operational' | 'degraded' | 'down';
+  latency_ms: number | null;
+  detail: string;
+}
+interface HealthResponse {
+  overall: 'operational' | 'degraded' | 'down';
+  services: HealthService[];
+  checked_at: string;
+}
+
+interface ManagedQueueItem {
+  id: string;
+  account_name: string | null;
+  campaign_name: string | null;
+  channel: 'sms' | 'email' | 'both' | null;
+  status: string;
+  updated_at: string;
+}
+interface ManagedResponse {
+  items: ManagedQueueItem[];
+}
+
+/** Pipeline states that are still awaiting operator/client action. */
+const QUEUE_ACTIONABLE = new Set([
+  'requested',
+  'briefed',
+  'assigned',
+  'audience_pending',
+  'audience_ready',
+  'drafting',
+  'internal_review',
+  'awaiting_approval',
+  'changes_requested',
+  'approved',
+  'scheduled',
+]);
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const periodParam = (p: Period): string => p.toLowerCase();
@@ -85,31 +128,37 @@ const cardBase = 'bg-white border rounded-[11px] p-4';
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<Period>('Month');
-  const [data, setData] = useState<OverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async (p: Period) => {
-    setLoading(true);
-    try {
-      const res = await api<OverviewResponse>(
-        `/admin/overview?period=${periodParam(p)}`,
-        { auth: true },
-      );
-      setData(res);
-    } catch {
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading: loading, isError } = useApiQuery(
+    ['admin', 'overview', period],
+    async () => {
+      const [overview, healthRes, managedRes] = await Promise.all([
+        api<OverviewResponse>(`/admin/overview?period=${periodParam(period)}`, { auth: true }),
+        api<HealthResponse>('/admin/health', { auth: true }).catch(() => null),
+        api<ManagedResponse>('/admin/managed', { auth: true }).catch(() => null),
+      ]);
+      return {
+        overview,
+        health: healthRes?.services ?? [],
+        queue: (managedRes?.items ?? [])
+          .filter((m) => QUEUE_ACTIONABLE.has(m.status))
+          .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+          .slice(0, 5),
+      };
+    },
+  );
 
   useEffect(() => {
-    fetchData(period);
-  }, [fetchData, period]);
+    if (isError) toast.error('Failed to load dashboard data');
+  }, [isError]);
 
-  const kpis = data?.kpis;
-  const plans = data?.revenue_by_plan ?? [];
-  const activity = data?.activity ?? [];
+  const overview = data?.overview ?? null;
+  const health = data?.health ?? [];
+  const queue = data?.queue ?? [];
+
+  const kpis = overview?.kpis;
+  const plans = overview?.revenue_by_plan ?? [];
+  const activity = overview?.activity ?? [];
 
   // Normalise bar widths relative to the highest-MRR plan
   const maxMrr = plans.reduce((m, p) => Math.max(m, p.mrr_ugx), 0);
@@ -145,7 +194,6 @@ export default function AdminDashboardPage() {
                   value={String(kpis.total_clients)}
                   change={`+${kpis.new_clients} new this ${period.toLowerCase()}`}
                   changeType="up"
-                  sparklineKey="clients"
                   icon={Users}
                 />
               </RevealItem>
@@ -160,7 +208,6 @@ export default function AdminDashboardPage() {
                       ? 'warn'
                       : 'up'
                   }
-                  sparklineKey="revenue"
                   icon={TrendingUp}
                 />
               </RevealItem>
@@ -175,7 +222,6 @@ export default function AdminDashboardPage() {
                       ? 'warn'
                       : 'up'
                   }
-                  sparklineKey="messages"
                   icon={Send}
                 />
               </RevealItem>
@@ -185,7 +231,6 @@ export default function AdminDashboardPage() {
                   value={String(kpis.managed_queue_pending)}
                   change="Pending approval"
                   changeType="warn"
-                  sparklineKey="queue"
                   icon={Zap}
                   warn
                 />
@@ -239,7 +284,28 @@ export default function AdminDashboardPage() {
                 <div className="text-[11px] text-text-muted mb-4">
                   {kpis.managed_queue_pending} campaigns pending action
                 </div>
-                <QueueList />
+                {queue.length === 0 ? (
+                  <div className="py-4 text-[12px] text-text-muted">Queue is clear.</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {queue.map((m) => (
+                      <div
+                        key={m.id}
+                        className="bg-bg border rounded-[7px] px-[11px] py-[9px] flex items-center gap-[9px]"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[12.5px] font-semibold text-navy truncate">
+                            {m.campaign_name || m.account_name || 'Untitled campaign'}
+                          </div>
+                          <div className="text-[10.5px] text-text-muted mt-0.5 truncate">
+                            {m.account_name || '—'}
+                          </div>
+                        </div>
+                        <StatusBadge domain="managed" status={m.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Reveal>
             </div>
 
@@ -250,7 +316,27 @@ export default function AdminDashboardPage() {
                   Provider health
                 </div>
                 <div className="text-[11px] text-text-muted mb-4">Real-time platform status</div>
-                <HealthList />
+                {health.length === 0 ? (
+                  <div className="py-4 text-[12px] text-text-muted">No health data available.</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {health.map((svc) => (
+                      <div
+                        key={svc.name}
+                        className="bg-bg border rounded-[7px] px-3 py-[9px] flex justify-between items-center gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[12px] font-semibold text-navy truncate">{svc.name}</div>
+                          <div className="text-[10.5px] text-text-muted truncate">
+                            {svc.detail}
+                            {svc.latency_ms != null ? ` · ${svc.latency_ms}ms` : ''}
+                          </div>
+                        </div>
+                        <StatusBadge domain="health" status={svc.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Reveal>
 
               <Reveal delay={0.36} lift className={cardBase}>

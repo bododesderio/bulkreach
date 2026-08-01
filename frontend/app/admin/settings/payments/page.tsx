@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import Topbar from '@/components/admin/Topbar';
@@ -8,6 +12,7 @@ import FormGrid, { FormActions, FormCard } from '@/components/admin/FormGrid';
 import FormField from '@/components/admin/FormField';
 import { Reveal } from '@/components/admin/Reveal';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery, useApiMutation } from '@/lib/hooks';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -83,8 +88,6 @@ function Toggle({
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function PaymentProvidersPage() {
-  const [loading, setLoading] = useState(true);
-  const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [routing, setRouting] = useState<RoutingConfig>({
     routing: {},
     default_currency: 'UGX',
@@ -96,50 +99,50 @@ export default function PaymentProvidersPage() {
   const [localCreds, setLocalCreds] = useState<Record<string, Record<string, string>>>({});
   const [routingForm, setRoutingForm] = useState<Record<string, string>>({});
 
-  const [saving, setSaving] = useState<string | null>(null);
-  const [savingRouting, setSavingRouting] = useState(false);
-
   // ── data loading ────────────────────────────────────────────────────────────
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [provData, routData] = await Promise.all([
+  const { data, isLoading: loading, isError, error } = useApiQuery(
+    ['admin', 'payments', 'config'],
+    async () => {
+      const [providers, routing] = await Promise.all([
         api<ProviderConfig[]>('/admin/payments/providers', { auth: true }),
         api<RoutingConfig>('/admin/payments/routing', { auth: true }),
       ]);
+      return { providers, routing };
+    },
+  );
 
-      setProviders(provData);
-      setRouting(routData);
-      setRoutingForm(routData.routing);
-
-      const enabled: Record<string, boolean> = {};
-      const modes: Record<string, 'test' | 'live'> = {};
-      const creds: Record<string, Record<string, string>> = {};
-      for (const p of provData) {
-        enabled[p.slug] = p.enabled;
-        modes[p.slug] = p.mode;
-        creds[p.slug] = { ...p.credentials };
-      }
-      setLocalEnabled(enabled);
-      setLocalMode(modes);
-      setLocalCreds(creds);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load providers');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const providers = data?.providers ?? [];
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (isError) {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to load providers');
+    }
+  }, [isError, error]);
+
+  // Seed local edit state whenever fresh config arrives
+  useEffect(() => {
+    if (!data) return;
+    setRouting(data.routing);
+    setRoutingForm(data.routing.routing);
+
+    const enabled: Record<string, boolean> = {};
+    const modes: Record<string, 'test' | 'live'> = {};
+    const creds: Record<string, Record<string, string>> = {};
+    for (const p of data.providers) {
+      enabled[p.slug] = p.enabled;
+      modes[p.slug] = p.mode;
+      creds[p.slug] = { ...p.credentials };
+    }
+    setLocalEnabled(enabled);
+    setLocalMode(modes);
+    setLocalCreds(creds);
+  }, [data]);
 
   // ── save handlers ───────────────────────────────────────────────────────────
 
-  async function saveProvider(slug: string) {
-    setSaving(slug);
-    try {
+  const saveProviderMutation = useApiMutation<unknown, string>(
+    (slug) => {
       const provider = providers.find((p) => p.slug === slug);
       const rawCreds = localCreds[slug] ?? {};
 
@@ -156,7 +159,7 @@ export default function PaymentProvidersPage() {
         }
       }
 
-      await api(`/admin/payments/providers/${slug}`, {
+      return api(`/admin/payments/providers/${slug}`, {
         method: 'PUT',
         auth: true,
         body: JSON.stringify({
@@ -165,24 +168,30 @@ export default function PaymentProvidersPage() {
           credentials,
         }),
       });
-      toast.success(`${provider?.display_name ?? slug} saved`);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Save failed');
-    } finally {
-      setSaving(null);
-    }
+    },
+    {
+      invalidate: [['admin', 'payments', 'config']],
+      onSuccess: (_d, slug) => {
+        const provider = providers.find((p) => p.slug === slug);
+        toast.success(`${provider?.display_name ?? slug} saved`);
+      },
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Save failed'),
+    },
+  );
+  const saving = saveProviderMutation.isPending ? saveProviderMutation.variables ?? null : null;
+
+  function saveProvider(slug: string) {
+    saveProviderMutation.mutate(slug);
   }
 
-  async function saveRouting() {
-    setSavingRouting(true);
-    try {
+  const routingMutation = useApiMutation<unknown, void>(
+    () => {
       // Omit empty-string keys (leave unrouted)
       const cleaned: Record<string, string> = {};
       for (const [method, slug] of Object.entries(routingForm)) {
         if (slug) cleaned[method] = slug;
       }
-      await api('/admin/payments/routing', {
+      return api('/admin/payments/routing', {
         method: 'PUT',
         auth: true,
         body: JSON.stringify({
@@ -190,13 +199,17 @@ export default function PaymentProvidersPage() {
           default_currency: routing.default_currency,
         }),
       });
-      toast.success('Routing saved');
-      await load();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Save failed');
-    } finally {
-      setSavingRouting(false);
-    }
+    },
+    {
+      invalidate: [['admin', 'payments', 'config']],
+      onSuccess: () => toast.success('Routing saved'),
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Save failed'),
+    },
+  );
+  const savingRouting = routingMutation.isPending;
+
+  function saveRouting() {
+    routingMutation.mutate();
   }
 
   // ── render ──────────────────────────────────────────────────────────────────

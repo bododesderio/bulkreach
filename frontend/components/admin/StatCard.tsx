@@ -1,8 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import type { LucideIcon } from 'lucide-react';
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import CountUp from './CountUp';
-import AnimatedSparkline from './AnimatedSparkline';
-import { seedSparklines } from '@/lib/seed-data';
 
 interface StatCardProps {
   label: string;
@@ -14,12 +16,10 @@ interface StatCardProps {
   change?: string;
   changeType?: 'up' | 'down' | 'warn';
   icon: LucideIcon;
-  sparklineKey?: keyof typeof seedSparklines;
-  sparklineDelay?: number;
   warn?: boolean;
 }
 
-/** KPI card with an animated count-up value and self-drawing sparkline. */
+/** KPI card with an animated count-up value. */
 export default function StatCard({
   label,
   value,
@@ -30,11 +30,8 @@ export default function StatCard({
   change,
   changeType = 'up',
   icon: Icon,
-  sparklineKey,
-  sparklineDelay = 0,
   warn = false,
 }: StatCardProps) {
-  const spark = sparklineKey ? seedSparklines[sparklineKey] : null;
   const ChangeIcon =
     changeType === 'up' ? TrendingUp : changeType === 'down' ? TrendingDown : AlertTriangle;
   const changeColor =
@@ -68,18 +65,6 @@ export default function StatCard({
         <div className={`inline-flex items-center gap-[3px] text-[10.5px] font-semibold mt-1.5 ${changeColor}`}>
           <ChangeIcon size={12} />
           <span>{change}</span>
-        </div>
-      )}
-
-      {spark && (
-        <div className="mt-2">
-          <AnimatedSparkline
-            points={spark.points}
-            color={spark.color}
-            dotCx={spark.dot.cx}
-            dotCy={spark.dot.cy}
-            delay={sparklineDelay}
-          />
         </div>
       )}
     </div>

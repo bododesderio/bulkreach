@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FileText, Zap, CheckCircle2, Layers, Plus, X, UserPlus, Download,
   Pause, Play, Ban, Send, Pencil, Clock,
@@ -11,6 +15,7 @@ import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import { StatusPill } from '@/components/admin/StatusPill';
 import { api, apiDownload, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import { useAuth } from '@/store/auth';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
@@ -494,8 +499,6 @@ function ManagedCard({
 
 export default function ManagedPage() {
   const { user, loadMe } = useAuth();
-  const [data, setData] = useState<ManagedResponse | null>(null);
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // New-brief modal
@@ -514,30 +517,27 @@ export default function ManagedPage() {
   });
   const [savingCopy, setSavingCopy] = useState(false);
 
-  const [campaigns, setCampaigns] = useState<CampaignLite[]>([]);
-  const [staff, setStaff] = useState<StaffUser[]>([]);
-
-  const load = useCallback(async () => {
-    try {
+  // ── mount data load (React Query): pipeline + linkable campaigns + staff ──────
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'managed'],
+    async () => {
       const [res, camps, users] = await Promise.all([
         api<ManagedResponse>('/admin/managed', { auth: true }),
         api<{ items: CampaignLite[] }>('/admin/campaigns?limit=500', { auth: true }),
         api<StaffUser[]>('/admin/users', { auth: true }),
       ]);
-      setData(res);
-      setCampaigns(camps.items);
-      setStaff(users);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load managed queue');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return { managed: res, campaigns: camps.items, staff: users };
+    },
+  );
 
+  const managed = data?.managed ?? null;
+  const campaigns = data?.campaigns ?? [];
+  const staff = data?.staff ?? [];
+
+  // Bootstrap the current user (used by "assign to me"); not part of the data load.
   useEffect(() => {
-    load();
     if (!user) loadMe();
-  }, [load, user, loadMe]);
+  }, [user, loadMe]);
 
   // ── Action handlers ───────────────────────────────────────────────────────
 
@@ -548,7 +548,7 @@ export default function ManagedPage() {
         method: 'PATCH', auth: true, body: JSON.stringify({ status: next }),
       });
       toast.success(`${m.account_name ?? 'Job'} → ${STATUS_CFG[next].label}`);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Status update failed');
     } finally {
@@ -580,7 +580,7 @@ export default function ManagedPage() {
       });
       toast.success('Copy saved');
       setEditingCopy(null);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Save failed');
     } finally {
@@ -593,7 +593,7 @@ export default function ManagedPage() {
     try {
       await api(`/admin/managed/${m.id}/request-approval`, { method: 'POST', auth: true });
       toast.success('Copy sent to client for approval');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Could not send for approval');
     } finally {
@@ -609,7 +609,7 @@ export default function ManagedPage() {
         method: 'PATCH', auth: true, body: JSON.stringify({ account_manager_id: userId }),
       });
       toast.success('Manager assigned');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Assign failed');
     } finally {
@@ -633,7 +633,7 @@ export default function ManagedPage() {
         method: 'PATCH', auth: true, body: JSON.stringify({ account_manager_id: uid }),
       });
       toast.success('Assigned to you');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Assign failed');
     } finally {
@@ -649,7 +649,7 @@ export default function ManagedPage() {
         method: 'PATCH', auth: true, body: JSON.stringify({ campaign_id: campaignId }),
       });
       toast.success('Campaign linked');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Link failed');
     } finally {
@@ -665,7 +665,7 @@ export default function ManagedPage() {
     try {
       await api(endpoint, { method: 'POST', auth: true });
       toast.success(m.on_hold ? 'Job resumed' : 'Job put on hold');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Hold action failed');
     } finally {
@@ -679,7 +679,7 @@ export default function ManagedPage() {
     try {
       await api(`/admin/managed/${m.id}/cancel`, { method: 'POST', auth: true });
       toast.success('Job cancelled');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Cancel failed');
     } finally {
@@ -692,7 +692,7 @@ export default function ManagedPage() {
     try {
       await api(`/admin/managed/${m.id}/report`, { method: 'POST', auth: true });
       toast.success(`Report issued — ${m.account_name ?? 'campaign'}`);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Could not issue report');
     } finally {
@@ -738,7 +738,7 @@ export default function ManagedPage() {
       });
       toast.success('Brief created');
       setCreating(false);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Create failed');
     } finally {
@@ -748,7 +748,7 @@ export default function ManagedPage() {
 
   // ── Derived stats ─────────────────────────────────────────────────────────
 
-  const items = data?.items ?? [];
+  const items = managed?.items ?? [];
 
   const totalCount = items.length;
   const inProdCount = items.filter((m) => IN_PROD_STATES.has(m.status) && !m.cancelled).length;

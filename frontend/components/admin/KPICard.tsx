@@ -1,14 +1,15 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import { TrendingUp, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { seedSparklines } from '@/lib/seed-data';
-import Sparkline from './Sparkline';
 
 interface KPICardProps {
   label: string;
   value: string;
   change: string;
   changeType: 'up' | 'warn';
-  sparklineKey: keyof typeof seedSparklines;
   icon: LucideIcon;
   warn?: boolean;
   valueSize?: number;
@@ -19,13 +20,10 @@ export default function KPICard({
   value,
   change,
   changeType,
-  sparklineKey,
   icon: Icon,
   warn = false,
   valueSize,
 }: KPICardProps) {
-  const sparkline = seedSparklines[sparklineKey];
-
   return (
     <div
       className="bg-white border rounded-[11px] p-4"
@@ -60,16 +58,6 @@ export default function KPICard({
             <span className="text-amber">{change}</span>
           </>
         )}
-      </div>
-
-      {/* Sparkline */}
-      <div className="mt-2">
-        <Sparkline
-          points={sparkline.points}
-          color={sparkline.color}
-          dotCx={sparkline.dot.cx}
-          dotCy={sparkline.dot.cy}
-        />
       </div>
     </div>
   );

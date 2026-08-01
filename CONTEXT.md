@@ -1,7 +1,20 @@
 # Project Context
-Last updated: 2026-07-31
+Last updated: 2026-08-01
 
-## Current task — ✅ Full audit (10 lenses + live E2E) + hardening + docs (2026-07-31)
+## Current task — ✅ Phase 4 frontend polish (2026-08-01)
+All four audit Tracks A–D. tsc + `next build` green. On branch `feat/phase4-frontend-polish` (not pushed).
+- **A** — `components/ui/` shared layer (Card/Modal/DataState/Spinner) + `lib/status.ts` single source
+  of truth (9 domains) behind `<StatusBadge>`; 10 pages migrated, conflicting/blank badges fixed.
+  Mock purged: admin overview → live `/admin/managed`+`/admin/health`, `LiveTicker` → live
+  `/admin/overview`, fake sparklines removed, 5 dead components deleted, `seed-data.ts` 421→150 lines.
+- **B** — React Query full sweep: `lib/hooks.ts` (`useApiQuery`/`useApiMutation`) over the `api()`
+  choke point; ~25 pages converted; SSE/checkout-poll/PDF downloads kept imperative; keys tuned.
+- **C** — unified `AppShell`/`AppSidebar` (two 180-line sidebars → config); **admin mobile drawer**
+  (via `store/ui.ts`); per-page admin topbars + period toggle preserved; universal reduced-motion.
+- **D** — `next-themes` removed (unused; dark mode deferred to a token-migration phase).
+Deferred: managed-portal shell. NOT browser-verified yet. See [[bulkreach-phase4-frontend]].
+
+## Prior task — ✅ Full audit (10 lenses + live E2E) + hardening + docs (2026-07-31)
 Ran a ten-lens senior-engineer audit as 7 parallel agents (architecture/tech-lead, performance,
 security, frontend, devops, bug-hunt, live Playwright) against a running seeded stack. Deliverables
 in **docs/**: `AUDIT-2026-07-31.md` (unified ranked findings + fixed-vs-planned + 6-phase master

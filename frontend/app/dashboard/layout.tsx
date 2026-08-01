@@ -10,6 +10,7 @@ import { Eye } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
+import { AppShell } from "@/components/ui";
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Overview",
@@ -33,7 +34,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { user, account, loading, loadMe, logout, stopImpersonation } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
@@ -49,8 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/managed-portal");
     }
   }, [user, router]);
-  useEffect(() => setMobileOpen(false), [pathname]);
-
   if (loading || !user || !account) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
@@ -74,70 +72,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.replace("/admin/accounts");
   }
 
-  return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen shrink-0 lg:block">
-        <Sidebar plan={account.plan} onLogout={handleLogout} />
-      </aside>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 h-full">
-            <Sidebar plan={account.plan} onLogout={handleLogout} />
-          </aside>
-        </div>
-      )}
-
-      {/* Content column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Sticky header cluster: impersonation banner (if any) + topbar move together */}
-        <div className="sticky top-0 z-20">
-          {user.impersonated_by && (
-            <div
-              className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium"
-              style={{
-                background: "#FFFBEB",
-                borderBottom: "2px solid #F59E0B",
-                color: "#92400E",
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <Eye className="h-4 w-4 shrink-0" style={{ color: "#D97706" }} aria-hidden />
-                <span>
-                  Viewing <strong>{account.name}</strong> as {user.impersonated_by}
-                </span>
-              </span>
-              <button
-                onClick={handleExitImpersonation}
-                disabled={exiting}
-                className="shrink-0 rounded-md px-3 py-1 font-semibold transition disabled:opacity-50"
-                style={{
-                  background: "#FDE68A",
-                  color: "#92400E",
-                  border: "1px solid #F59E0B",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FCD34D"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FDE68A"; }}
-              >
-                {exiting ? "Exiting…" : "Exit"}
-              </button>
-            </div>
-          )}
-          <Topbar
-            title={title}
-            subtitle={subtitle}
-            accountName={account.name}
-            plan={account.plan}
-            email={user.email}
-            onMenuClick={() => setMobileOpen(true)}
-          />
-        </div>
-
-        <main className="p-[18px]">{children}</main>
-      </div>
+  const banner = user.impersonated_by ? (
+    <div
+      className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium"
+      style={{ background: "#FFFBEB", borderBottom: "2px solid #F59E0B", color: "#92400E" }}
+    >
+      <span className="flex items-center gap-2">
+        <Eye className="h-4 w-4 shrink-0" style={{ color: "#D97706" }} aria-hidden />
+        <span>
+          Viewing <strong>{account.name}</strong> as {user.impersonated_by}
+        </span>
+      </span>
+      <button
+        onClick={handleExitImpersonation}
+        disabled={exiting}
+        className="shrink-0 rounded-md px-3 py-1 font-semibold transition disabled:opacity-50"
+        style={{ background: "#FDE68A", color: "#92400E", border: "1px solid #F59E0B" }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FCD34D"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FDE68A"; }}
+      >
+        {exiting ? "Exiting…" : "Exit"}
+      </button>
     </div>
+  ) : undefined;
+
+  return (
+    <AppShell
+      sidebar={<Sidebar plan={account.plan} onLogout={handleLogout} />}
+      banner={banner}
+      topbar={
+        <Topbar
+          title={title}
+          subtitle={subtitle}
+          accountName={account.name}
+          plan={account.plan}
+          email={user.email}
+        />
+      }
+      mainClassName="p-[18px]"
+    >
+      {children}
+    </AppShell>
   );
 }

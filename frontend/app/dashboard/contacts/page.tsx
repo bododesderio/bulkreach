@@ -4,11 +4,12 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { FileText, Trash2, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 import { api, apiUpload } from "@/lib/api";
+import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
@@ -38,45 +39,76 @@ interface ImportResult {
 
 export default function ContactsPage() {
   const { user } = useAuth();
-  const [lists, setLists] = useState<ContactList[] | null>(null);
   const [tab, setTab] = useState<"upload" | "paste">("upload");
   const [pasteName, setPasteName] = useState("");
   const [pasteText, setPasteText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [lastImport, setLastImport] = useState<ImportResult | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      setLists(await api<ContactList[]>("/contacts/lists", { auth: true }));
-    } catch {
-      setLists([]);
-    }
-  }, []);
-  useEffect(() => {
-    if (user) refresh();
-  }, [user, refresh]);
+  const { data: listsData } = useApiQuery(
+    ["dashboard", "contacts"],
+    () =>
+      api<ContactList[]>("/contacts/lists", { auth: true }).catch(
+        () => [] as ContactList[],
+      ),
+    { enabled: !!user },
+  );
+  const lists = listsData ?? null;
 
-  const onDrop = useCallback(
-    async (files: File[]) => {
-      if (!files.length) return;
-      setBusy(true);
-      try {
-        const form = new FormData();
-        form.append("file", files[0]);
-        form.append("name", files[0].name);
-        const res = await apiUpload<ImportResult>("/contacts/upload", form);
+  const importMut = useApiMutation(
+    async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("name", file.name);
+      return apiUpload<ImportResult>("/contacts/upload", form);
+    },
+    {
+      invalidate: [["dashboard", "contacts"]],
+      onSuccess: (res, file) => {
         setLastImport(res);
         toast.success(
-          `Imported ${res.list.valid_contacts} contacts from ${files[0].name}`,
+          `Imported ${res.list.valid_contacts} contacts from ${file.name}`,
         );
-        refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Upload failed");
-      } finally {
-        setBusy(false);
-      }
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Upload failed"),
     },
-    [refresh],
+  );
+
+  const pasteMut = useApiMutation(
+    (vars: { name: string; text: string }) =>
+      api<ImportResult>("/contacts/paste", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify(vars),
+      }),
+    {
+      invalidate: [["dashboard", "contacts"]],
+      onSuccess: (res) => {
+        setLastImport(res);
+        setPasteText("");
+        setPasteName("");
+        toast.success(`Imported ${res.list.valid_contacts} contacts`);
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Import failed"),
+    },
+  );
+
+  const deleteMut = useApiMutation(
+    (id: string) => api(`/contacts/lists/${id}`, { method: "DELETE", auth: true }),
+    {
+      invalidate: [["dashboard", "contacts"]],
+      onSuccess: () => toast.success("List deleted"),
+      onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+    },
+  );
+
+  const busy = importMut.isPending || pasteMut.isPending;
+
+  const onDrop = useCallback(
+    (files: File[]) => {
+      if (!files.length) return;
+      importMut.mutate(files[0]);
+    },
+    [importMut],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -94,38 +126,16 @@ export default function ContactsPage() {
     disabled: busy,
   });
 
-  async function submitPaste() {
+  function submitPaste() {
     if (!pasteText.trim() || !pasteName.trim()) {
       toast.error("Enter a name and some contacts");
       return;
     }
-    setBusy(true);
-    try {
-      const res = await api<ImportResult>("/contacts/paste", {
-        method: "POST",
-        auth: true,
-        body: JSON.stringify({ name: pasteName, text: pasteText }),
-      });
-      setLastImport(res);
-      setPasteText("");
-      setPasteName("");
-      toast.success(`Imported ${res.list.valid_contacts} contacts`);
-      refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Import failed");
-    } finally {
-      setBusy(false);
-    }
+    pasteMut.mutate({ name: pasteName, text: pasteText });
   }
 
-  async function remove(id: string) {
-    try {
-      await api(`/contacts/lists/${id}`, { method: "DELETE", auth: true });
-      toast.success("List deleted");
-      refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
-    }
+  function remove(id: string) {
+    deleteMut.mutate(id);
   }
 
   const listColumns: Column<ContactList>[] = [
