@@ -5,7 +5,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   MessageSquare,
   Mail,
@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 import {
   type CampaignOut,
   type PaginatedCampaigns,
@@ -24,33 +25,9 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusPill } from "@/components/admin/StatusPill";
+import { StatusBadge } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
-
-const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
-  draft: { color: "#9CA3AF" },
-  scheduled: { color: "#6366F1" },
-  queued: { color: "#00D4AA", pulse: true },
-  sending: { color: "#00D4AA", pulse: true },
-  sent: { color: "#10B981" },
-  completed: { color: "#10B981" },
-  paused: { color: "#F59E0B" },
-  paused_quota_exceeded: { color: "#F59E0B" },
-  failed: { color: "#EF4444" },
-  cancelled: { color: "#EF4444" },
-};
-
-function statusPill(status: string) {
-  const c = STATUS_COLOR[status.toLowerCase()] ?? { color: "#9CA3AF" };
-  return (
-    <StatusPill
-      label={status.replace(/_/g, " ")}
-      color={c.color}
-      pulse={c.pulse}
-    />
-  );
-}
 
 const STEPS = [
   {
@@ -97,47 +74,35 @@ const fmtDate = (iso: string) =>
 
 export default function CampaignsPage() {
   const { user } = useAuth();
-  const [campaigns, setCampaigns] = useState<CampaignOut[] | null>(null);
-  const [listCount, setListCount] = useState<number | null>(null);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
+  const { data, isLoading } = useApiQuery(
+    ["dashboard", "campaigns"],
+    async () => {
+      const [page, lists] = await Promise.all([
+        api<PaginatedCampaigns>("/campaigns?page_size=100", { auth: true }),
+        api<unknown[]>("/contacts/lists", { auth: true }),
+      ]);
+      return { items: page.items, listCount: lists.length };
+    },
+    {
+      enabled: !!user,
+      // Poll while any campaign is still sending; stop once all settle.
+      refetchInterval: (query) =>
+        query.state.data?.items.some((c) => isLive(c.status)) ? 3000 : false,
+    },
+  );
 
-    const load = async () => {
-      try {
-        const [page, lists] = await Promise.all([
-          api<PaginatedCampaigns>("/campaigns?page_size=100", { auth: true }),
-          api<unknown[]>("/contacts/lists", { auth: true }),
-        ]);
-        if (!active) return;
-        setCampaigns(page.items);
-        setListCount(lists.length);
-        if (page.items.some((c) => isLive(c.status))) {
-          pollRef.current = setTimeout(load, 3000);
-        }
-      } catch {
-        if (active) setCampaigns([]);
-      }
-    };
-
-    load();
-    return () => {
-      active = false;
-      if (pollRef.current) clearTimeout(pollRef.current);
-    };
-  }, [user]);
+  const campaigns = data?.items ?? [];
+  const listCount = data?.listCount ?? 0;
 
   const summary = useMemo(() => {
-    const list = campaigns ?? [];
-    const delivered = list.reduce((n, c) => n + sentOf(c), 0);
-    const failed = list.reduce((n, c) => n + failedOf(c), 0);
-    return { count: list.length, delivered, failed };
+    const delivered = campaigns.reduce((n, c) => n + sentOf(c), 0);
+    const failed = campaigns.reduce((n, c) => n + failedOf(c), 0);
+    return { count: campaigns.length, delivered, failed };
   }, [campaigns]);
 
-  const hasContacts = (listCount ?? 0) > 0;
-  const loading = campaigns === null;
+  const hasContacts = listCount > 0;
+  const loading = isLoading;
   const empty = !loading && campaigns.length === 0;
 
   const campaignColumns: Column<CampaignOut>[] = [
@@ -174,7 +139,7 @@ export default function CampaignsPage() {
     {
       key: "status",
       label: "Status",
-      render: (c) => statusPill(c.status),
+      render: (c) => <StatusBadge domain="campaign" status={c.status} />,
     },
     {
       key: "delivered",

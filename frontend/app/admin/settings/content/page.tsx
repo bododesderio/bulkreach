@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Topbar from '@/components/admin/Topbar';
@@ -8,6 +12,7 @@ import FormGrid, { FormActions, FormCard } from '@/components/admin/FormGrid';
 import FormField from '@/components/admin/FormField';
 import { Reveal } from '@/components/admin/Reveal';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -248,30 +253,17 @@ function Modal({
 // ── FAQs tab ──────────────────────────────────────────────────────────────────
 
 function FaqsTab({ active }: { active: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [rows, setRows] = useState<Faq[]>([]);
   const [editing, setEditing] = useState<Faq | 'new' | null>(null);
   const [form, setForm] = useState<FaqForm>(EMPTY_FAQ);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<Faq[]>('/admin/content/faqs', { auth: true });
-      setRows(data);
-      setLoaded(true);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load FAQs');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active && !loaded) load();
-  }, [active, loaded, load]);
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'content', 'faqs'],
+    () => api<Faq[]>('/admin/content/faqs', { auth: true }),
+    { enabled: active },
+  );
+  const rows = data ?? [];
 
   function openNew() {
     setForm(EMPTY_FAQ);
@@ -299,7 +291,7 @@ function FaqsTab({ active }: { active: boolean }) {
         toast.success('FAQ updated');
       }
       setEditing(null);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Save failed');
     } finally {
@@ -313,7 +305,7 @@ function FaqsTab({ active }: { active: boolean }) {
     try {
       await api(`/admin/content/faqs/${r.id}`, { method: 'DELETE', auth: true });
       toast.success('FAQ deleted');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Delete failed');
     } finally {
@@ -408,30 +400,17 @@ function FaqsTab({ active }: { active: boolean }) {
 // ── Features tab ──────────────────────────────────────────────────────────────
 
 function FeaturesTab({ active }: { active: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [rows, setRows] = useState<Feature[]>([]);
   const [editing, setEditing] = useState<Feature | 'new' | null>(null);
   const [form, setForm] = useState<FeatureForm>(EMPTY_FEATURE);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<Feature[]>('/admin/content/features', { auth: true });
-      setRows(data);
-      setLoaded(true);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load features');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active && !loaded) load();
-  }, [active, loaded, load]);
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'content', 'features'],
+    () => api<Feature[]>('/admin/content/features', { auth: true }),
+    { enabled: active },
+  );
+  const rows = data ?? [];
 
   function openNew() {
     setForm(EMPTY_FEATURE);
@@ -460,7 +439,7 @@ function FeaturesTab({ active }: { active: boolean }) {
         toast.success('Feature updated');
       }
       setEditing(null);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Save failed');
     } finally {
@@ -474,7 +453,7 @@ function FeaturesTab({ active }: { active: boolean }) {
     try {
       await api(`/admin/content/features/${r.id}`, { method: 'DELETE', auth: true });
       toast.success(`"${r.title}" deleted`);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Delete failed');
     } finally {
@@ -567,30 +546,17 @@ function FeaturesTab({ active }: { active: boolean }) {
 // ── Testimonials tab ──────────────────────────────────────────────────────────
 
 function TestimonialsTab({ active }: { active: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [rows, setRows] = useState<Testimonial[]>([]);
   const [editing, setEditing] = useState<Testimonial | 'new' | null>(null);
   const [form, setForm] = useState<TestimonialForm>(EMPTY_TESTIMONIAL);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<Testimonial[]>('/admin/content/testimonials', { auth: true });
-      setRows(data);
-      setLoaded(true);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load testimonials');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active && !loaded) load();
-  }, [active, loaded, load]);
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'content', 'testimonials'],
+    () => api<Testimonial[]>('/admin/content/testimonials', { auth: true }),
+    { enabled: active },
+  );
+  const rows = data ?? [];
 
   function openNew() {
     setForm(EMPTY_TESTIMONIAL);
@@ -619,7 +585,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
         toast.success('Testimonial updated');
       }
       setEditing(null);
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Save failed');
     } finally {
@@ -633,7 +599,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
     try {
       await api(`/admin/content/testimonials/${r.id}`, { method: 'DELETE', auth: true });
       toast.success('Testimonial deleted');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Delete failed');
     } finally {
@@ -727,30 +693,17 @@ function TestimonialsTab({ active }: { active: boolean }) {
 // ── Page copy (Sections) tab ──────────────────────────────────────────────────
 
 function SectionsTab({ active }: { active: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [rows, setRows] = useState<Section[]>([]);
   const [editing, setEditing] = useState<Section | 'new' | null>(null);
   const [form, setForm] = useState<SectionForm>(EMPTY_SECTION);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<Section[]>('/admin/content/sections', { auth: true });
-      setRows(data);
-      setLoaded(true);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load page copy');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active && !loaded) load();
-  }, [active, loaded, load]);
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'content', 'sections'],
+    () => api<Section[]>('/admin/content/sections', { auth: true }),
+    { enabled: active },
+  );
+  const rows = data ?? [];
 
   function openNew() {
     setForm(EMPTY_SECTION);
@@ -780,7 +733,7 @@ function SectionsTab({ active }: { active: boolean }) {
         toast.success('Page copy updated');
       }
       setEditing(null);
-      await load();
+      await refetch();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : 'Save failed';
       toast.error(msg);
@@ -795,7 +748,7 @@ function SectionsTab({ active }: { active: boolean }) {
     try {
       await api(`/admin/content/sections/${r.id}`, { method: 'DELETE', auth: true });
       toast.success('Entry deleted');
-      await load();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Delete failed');
     } finally {

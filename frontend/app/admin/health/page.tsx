@@ -1,12 +1,19 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Activity, RefreshCw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
-import { StatusPill, StatusDot } from '@/components/admin/StatusPill';
+import { StatusDot } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
+import { resolveStatus } from '@/lib/status';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -28,19 +35,6 @@ interface HealthResponse {
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
-// ── status config ─────────────────────────────────────────────────────────────
-const STATUS_COLOR: Record<HealthStatus, string> = {
-  operational: '#10B981',
-  degraded:    '#F59E0B',
-  down:        '#EF4444',
-};
-
-const STATUS_LABEL: Record<HealthStatus, string> = {
-  operational: 'Operational',
-  degraded:    'Degraded',
-  down:        'Incident',
-};
-
 const fmtCheckedAt = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
     day:    '2-digit',
@@ -58,8 +52,7 @@ interface OverallStatusCardProps {
 }
 
 function OverallStatusCard({ overall, operationalCount, totalCount }: OverallStatusCardProps) {
-  const color = STATUS_COLOR[overall] ?? '#9CA3AF';
-  const label = STATUS_LABEL[overall] ?? overall;
+  const { color, label } = resolveStatus('health', overall);
   return (
     <div className="bg-white border rounded-[11px] p-4 h-full">
       <div className="flex items-center justify-between mb-1">
@@ -94,24 +87,16 @@ function SkeletonCard() {
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function HealthPage() {
-  const [data, setData] = useState<HealthResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isFetching, error, refetch } = useApiQuery(
+    ['admin', 'health'],
+    () => api<HealthResponse>('/admin/health', { auth: true }),
+  );
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await api<HealthResponse>('/admin/health', { auth: true });
-      setData(result);
-    } catch {
-      toast.error('Failed to load system health');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loading = isFetching;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load system health');
+  }, [error]);
 
   const services = data?.services ?? [];
   const operationalCount = services.filter((s) => s.status === 'operational').length;
@@ -139,7 +124,7 @@ export default function HealthPage() {
             {data?.checked_at ? `Last checked ${fmtCheckedAt(data.checked_at)}` : ' '}
           </div>
           <button
-            onClick={fetchData}
+            onClick={() => refetch()}
             disabled={loading}
             className="flex items-center gap-1.5 text-[11px] font-semibold rounded-[6px] border px-3 py-1.5 hover:border-teal hover:text-navy transition-colors text-text-muted disabled:opacity-50"
             aria-label="Refresh health data"
@@ -209,8 +194,7 @@ export default function HealthPage() {
           ) : (
             <RevealGroup className="flex flex-col" stagger={0.06}>
               {services.map((svc, idx) => {
-                const color = STATUS_COLOR[svc.status] ?? '#9CA3AF';
-                const label = STATUS_LABEL[svc.status] ?? svc.status;
+                const color = resolveStatus('health', svc.status).color;
                 return (
                   <RevealItem key={svc.name}>
                     <div
@@ -251,11 +235,7 @@ export default function HealthPage() {
 
                       {/* Status pill */}
                       <div className="w-24 flex justify-end">
-                        <StatusPill
-                          label={label}
-                          color={color}
-                          pulse={svc.status === 'operational' || svc.status === 'degraded'}
-                        />
+                        <StatusBadge domain="health" status={svc.status} />
                       </div>
                     </div>
                   </RevealItem>

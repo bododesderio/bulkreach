@@ -5,10 +5,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FileBarChart, Download, Loader2, Send, AlertTriangle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError, apiDownload } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 import { type ReportSummary, type CampaignSummaryRow } from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
@@ -48,22 +49,16 @@ const STATUS_COLOR: Record<string, { color: string; pulse?: boolean }> = {
 export default function ReportsPage() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<string>("30d");
-  const [data, setData] = useState<ReportSummary | null>(null);
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    setLoading(true);
-    api<ReportSummary>(`/reports/summary?period=${period}`, { auth: true })
-      .then((d) => active && setData(d))
-      .catch(() => active && setData(null))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [user, period]);
+  const { data, isLoading: loading } = useApiQuery(
+    ["dashboard", "reports", period],
+    () =>
+      api<ReportSummary>(`/reports/summary?period=${period}`, {
+        auth: true,
+      }).catch(() => null),
+    { enabled: !!user },
+  );
 
   const peak = useMemo(
     () => Math.max(1, ...(data?.daily.map((d) => d.delivered) ?? [1])),

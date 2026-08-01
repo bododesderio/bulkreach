@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, FormEvent } from 'react';
+import { useCallback, useMemo, useState, FormEvent } from 'react';
 import {
   Archive,
   Database,
@@ -15,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
@@ -159,16 +164,8 @@ const STATE_COLOR: Record<RetentionPeriod['state'], string> = {
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function ArchivePage() {
-  // ── data state ──────────────────────────────────────────────────────────────
-  const [overview,    setOverview]    = useState<Overview | null>(null);
-  const [retention,   setRetention]   = useState<RetentionPeriod[]>([]);
-  const [rules,       setRules]       = useState<RetentionRule[]>([]);
-  const [contacts,    setContacts]    = useState<MasterContact[]>([]);
-  const [legalHolds,  setLegalHolds]  = useState<LegalHold[]>([]);
-  const [erasures,    setErasures]    = useState<ErasureRequest[]>([]);
-  const [exports,     setExports]     = useState<ArchiveExport[]>([]);
-  const [accessLog,   setAccessLog]   = useState<AccessLogEntry[]>([]);
-  const [loading,     setLoading]     = useState(true);
+  // ── data is loaded via React Query further down (the query key depends on
+  //    contactQuery, which is declared in the form-state block below). ──────────
 
   // ── action busy flags ───────────────────────────────────────────────────────
   const [ingestBusy,        setIngestBusy]        = useState(false);
@@ -198,72 +195,41 @@ export default function ArchivePage() {
   const [ruleMonths,    setRuleMonths]    = useState('');
   const [ruleNeverDelete, setRuleNeverDelete] = useState(false);
 
-  // ── individual section fetchers ─────────────────────────────────────────────
+  // ── mount data load (React Query) ────────────────────────────────────────────
+  // Single query combining all sections. `contactQuery` is part of the key, so a
+  // contact search re-runs the load; action handlers call refetch() on success.
 
-  const fetchOverview = useCallback(async () => {
-    const d = await api<Overview>('/admin/archive/overview', { auth: true });
-    setOverview(d);
-  }, []);
-
-  const fetchContacts = useCallback(async (q = '') => {
-    const d = await api<MasterContact[]>(
-      `/admin/archive/contacts?q=${encodeURIComponent(q)}&limit=100`,
-      { auth: true },
-    );
-    setContacts(d);
-  }, []);
-
-  const fetchLegalHolds = useCallback(async () => {
-    const d = await api<LegalHold[]>('/admin/archive/legal-holds', { auth: true });
-    setLegalHolds(d);
-  }, []);
-
-  const fetchErasures = useCallback(async () => {
-    const d = await api<ErasureRequest[]>('/admin/archive/erasures', { auth: true });
-    setErasures(d);
-  }, []);
-
-  const fetchExports = useCallback(async () => {
-    const d = await api<ArchiveExport[]>('/admin/archive/exports', { auth: true });
-    setExports(d);
-  }, []);
-
-  const fetchRules = useCallback(async () => {
-    const d = await api<RetentionRule[]>('/admin/archive/retention/rules', { auth: true });
-    setRules(d);
-  }, []);
-
-  // ── parallel mount fetch ─────────────────────────────────────────────────────
-
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data, isLoading: loading, refetch } = useApiQuery(
+    ['admin', 'archive', contactQuery],
+    async () => {
       const [ov, ret, rul, con, holds, ers, log, exps] = await Promise.all([
         api<Overview>('/admin/archive/overview', { auth: true }),
         api<RetentionPeriod[]>('/admin/archive/retention', { auth: true }),
         api<RetentionRule[]>('/admin/archive/retention/rules', { auth: true }),
-        api<MasterContact[]>('/admin/archive/contacts?limit=100', { auth: true }),
+        api<MasterContact[]>(
+          `/admin/archive/contacts?q=${encodeURIComponent(contactQuery)}&limit=100`,
+          { auth: true },
+        ),
         api<LegalHold[]>('/admin/archive/legal-holds', { auth: true }),
         api<ErasureRequest[]>('/admin/archive/erasures', { auth: true }),
         api<AccessLogEntry[]>('/admin/archive/access-log?limit=100', { auth: true }),
         api<ArchiveExport[]>('/admin/archive/exports', { auth: true }),
       ]);
-      setOverview(ov);
-      setRetention(ret);
-      setRules(rul);
-      setContacts(con);
-      setLegalHolds(holds);
-      setErasures(ers);
-      setAccessLog(log);
-      setExports(exps);
-    } catch {
-      toast.error('Failed to load archive data');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        overview: ov, retention: ret, rules: rul, contacts: con,
+        legalHolds: holds, erasures: ers, accessLog: log, exports: exps,
+      };
+    },
+  );
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  const overview   = data?.overview   ?? null;
+  const retention  = data?.retention  ?? [];
+  const rules      = data?.rules      ?? [];
+  const contacts   = data?.contacts   ?? [];
+  const legalHolds = data?.legalHolds ?? [];
+  const erasures   = data?.erasures   ?? [];
+  const exports    = data?.exports    ?? [];
+  const accessLog  = data?.accessLog  ?? [];
 
   // ── action handlers ─────────────────────────────────────────────────────────
 
@@ -279,13 +245,13 @@ export default function ArchivePage() {
       toast.success(
         `Ingested: ${res.campaigns_ingested} campaigns · ${res.payments_ingested} payments · ${res.contacts_upserted} contacts`,
       );
-      await Promise.all([fetchOverview(), fetchContacts(contactQuery), fetchExports()]);
+      await refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Ingest failed');
     } finally {
       setIngestBusy(false);
     }
-  }, [fetchOverview, fetchContacts, fetchExports, contactQuery]);
+  }, [refetch]);
 
   const handleDryRun = useCallback(async () => {
     setDryRunBusy(true);
@@ -312,27 +278,23 @@ export default function ArchivePage() {
     if (!window.confirm(`Anonymise contact ${label}? This cannot be undone.`)) return;
     setAnonymising(contact.id);
     try {
-      const updated = await api<MasterContact>(
+      await api<MasterContact>(
         `/admin/archive/contacts/${contact.id}/anonymise`,
         { method: 'POST', auth: true },
       );
-      setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      await refetch();
       toast.success('Contact anonymised');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Anonymise failed');
     } finally {
       setAnonymising(null);
     }
-  }, []);
+  }, [refetch]);
 
-  const handleSearchContacts = useCallback(async () => {
-    try {
-      await fetchContacts(contactSearchInput);
-      setContactQuery(contactSearchInput);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Search failed');
-    }
-  }, [fetchContacts, contactSearchInput]);
+  const handleSearchContacts = useCallback(() => {
+    // Updating the search term re-runs the mount query (contactQuery is in the key).
+    setContactQuery(contactSearchInput);
+  }, [contactSearchInput]);
 
   const handlePlaceHold = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -354,13 +316,13 @@ export default function ArchivePage() {
       toast.success('Legal hold placed');
       setHoldResourceId('');
       setHoldReason('');
-      await fetchLegalHolds();
+      await refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to place hold');
     } finally {
       setHoldBusy(false);
     }
-  }, [holdResourceType, holdResourceId, holdReason, fetchLegalHolds]);
+  }, [holdResourceType, holdResourceId, holdReason, refetch]);
 
   const handleLiftHold = useCallback(async (hold: LegalHold) => {
     const reason = window.prompt('Reason for lifting this hold:');
@@ -369,18 +331,18 @@ export default function ArchivePage() {
     if (!window.confirm(`Lift hold on ${hold.resource_type} ${hold.resource_id}?`)) return;
     setLiftingHold(hold.id);
     try {
-      const updated = await api<LegalHold>(
+      await api<LegalHold>(
         `/admin/archive/legal-holds/${hold.id}/lift`,
         { method: 'POST', auth: true, body: JSON.stringify({ reason: reason.trim() }) },
       );
-      setLegalHolds((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+      await refetch();
       toast.success('Legal hold lifted');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to lift hold');
     } finally {
       setLiftingHold(null);
     }
-  }, []);
+  }, [refetch]);
 
   const handleNewErasure = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -403,31 +365,31 @@ export default function ArchivePage() {
       setErasurePhone('');
       setErasureEmail('');
       setErasureRequestedBy('');
-      await fetchErasures();
+      await refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create erasure request');
     } finally {
       setErasureBusy(false);
     }
-  }, [erasurePhone, erasureEmail, erasureRequestedBy, fetchErasures]);
+  }, [erasurePhone, erasureEmail, erasureRequestedBy, refetch]);
 
   const handleExecuteErasure = useCallback(async (req: ErasureRequest) => {
     const label = req.contact_phone ?? req.contact_email ?? req.id;
     if (!window.confirm(`Execute erasure for ${label}? This is irreversible.`)) return;
     setExecutingErasure(req.id);
     try {
-      const updated = await api<ErasureRequest>(
+      await api<ErasureRequest>(
         `/admin/archive/erasures/${req.id}/execute`,
         { method: 'POST', auth: true },
       );
-      setErasures((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      await refetch();
       toast.success('Erasure executed');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Erasure failed');
     } finally {
       setExecutingErasure(null);
     }
-  }, []);
+  }, [refetch]);
 
   const handleNewExport = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -439,13 +401,13 @@ export default function ArchivePage() {
         body: JSON.stringify({ domain: exportDomain }),
       });
       toast.success(`Export job created for ${exportDomain}`);
-      await fetchExports();
+      await refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create export');
     } finally {
       setExportBusy(false);
     }
-  }, [exportDomain, fetchExports]);
+  }, [exportDomain, refetch]);
 
   const handleSaveRule = useCallback(async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -466,13 +428,13 @@ export default function ArchivePage() {
       setRuleDomain('');
       setRuleMonths('');
       setRuleNeverDelete(false);
-      await fetchRules();
+      await refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to save rule');
     } finally {
       setRuleBusy(false);
     }
-  }, [ruleDomain, ruleMonths, ruleNeverDelete, fetchRules]);
+  }, [ruleDomain, ruleMonths, ruleNeverDelete, refetch]);
 
   // ── column definitions ────────────────────────────────────────────────────────
 

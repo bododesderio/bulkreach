@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Star, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Topbar from '@/components/admin/Topbar';
@@ -8,6 +12,7 @@ import FormGrid, { FormActions, FormCard } from '@/components/admin/FormGrid';
 import FormField from '@/components/admin/FormField';
 import { Reveal } from '@/components/admin/Reveal';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery, useApiMutation } from '@/lib/hooks';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -123,30 +128,50 @@ function StatusBadge({ status }: { status: string }) {
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function PlansPage() {
-  const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<AdminPlan[]>([]);
-
   // editor: null = closed, 'new' = create, otherwise the plan being edited
   const [editing, setEditing] = useState<AdminPlan | 'new' | null>(null);
   const [form, setForm] = useState<PlanForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<AdminPlan[]>('/admin/plans', { auth: true });
-      setPlans(data);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to load plans');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading: loading, isError, error } = useApiQuery(
+    ['admin', 'plans'],
+    () => api<AdminPlan[]>('/admin/plans', { auth: true }),
+  );
+  const plans = data ?? [];
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (isError) {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to load plans');
+    }
+  }, [isError, error]);
+
+  const saveMutation = useApiMutation<
+    unknown,
+    { payload: Record<string, unknown>; isNew: boolean; editId?: string; name: string }
+  >(
+    ({ payload, isNew, editId }) =>
+      isNew
+        ? api('/admin/plans', { method: 'POST', auth: true, body: JSON.stringify(payload) })
+        : api(`/admin/plans/${editId}`, { method: 'PATCH', auth: true, body: JSON.stringify(payload) }),
+    {
+      invalidate: [['admin', 'plans']],
+      onSuccess: (_d, vars) => {
+        toast.success(vars.isNew ? `Plan “${vars.name}” created` : `Plan “${vars.name}” updated`);
+        setEditing(null);
+      },
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Save failed'),
+    },
+  );
+  const saving = saveMutation.isPending;
+
+  const deleteMutation = useApiMutation<unknown, AdminPlan>(
+    (p) => api(`/admin/plans/${p.id}`, { method: 'DELETE', auth: true }),
+    {
+      invalidate: [['admin', 'plans']],
+      onSuccess: (_d, p) => toast.success(`Plan “${p.name}” deleted`),
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Delete failed'),
+    },
+  );
+  const deletingId = deleteMutation.isPending ? deleteMutation.variables?.id ?? null : null;
 
   function openNew() {
     setForm(EMPTY_FORM);
@@ -162,75 +187,48 @@ export default function PlansPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function save() {
+  function save() {
     if (!form.name.trim()) {
       toast.error('Plan name is required');
       return;
     }
-    setSaving(true);
-    try {
-      const bullets = form.bullets
-        .split('\n')
-        .map((b) => b.trim())
-        .filter(Boolean);
+    const bullets = form.bullets
+      .split('\n')
+      .map((b) => b.trim())
+      .filter(Boolean);
 
-      // Preserve any non-bullet feature keys (e.g. gates) when editing
-      const existingFeatures =
-        editing !== 'new' && editing ? { ...editing.features } : {};
-      const features = { ...existingFeatures, bullets };
+    // Preserve any non-bullet feature keys (e.g. gates) when editing
+    const existingFeatures =
+      editing !== 'new' && editing ? { ...editing.features } : {};
+    const features = { ...existingFeatures, bullets };
 
-      const payload = {
-        name: form.name.trim(),
-        price_ugx: Math.max(0, Math.round(form.price_ugx)),
-        messages_per_month: form.unlimited ? -1 : Math.max(0, Math.round(form.messages_per_month)),
-        batch_size: Math.max(1, Math.round(form.batch_size)),
-        period: form.period,
-        status: form.status,
-        featured: form.featured,
-        display_order: Math.round(form.display_order),
-        features,
-      };
+    const payload = {
+      name: form.name.trim(),
+      price_ugx: Math.max(0, Math.round(form.price_ugx)),
+      messages_per_month: form.unlimited ? -1 : Math.max(0, Math.round(form.messages_per_month)),
+      batch_size: Math.max(1, Math.round(form.batch_size)),
+      period: form.period,
+      status: form.status,
+      featured: form.featured,
+      display_order: Math.round(form.display_order),
+      features,
+    };
 
-      if (editing === 'new') {
-        await api('/admin/plans', {
-          method: 'POST',
-          auth: true,
-          body: JSON.stringify(payload),
-        });
-        toast.success(`Plan “${payload.name}” created`);
-      } else if (editing) {
-        await api(`/admin/plans/${editing.id}`, {
-          method: 'PATCH',
-          auth: true,
-          body: JSON.stringify(payload),
-        });
-        toast.success(`Plan “${payload.name}” updated`);
-      }
-      setEditing(null);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
+    saveMutation.mutate({
+      payload,
+      isNew: editing === 'new',
+      editId: editing !== 'new' && editing ? editing.id : undefined,
+      name: payload.name,
+    });
   }
 
-  async function remove(p: AdminPlan) {
+  function remove(p: AdminPlan) {
     if (p.subscriber_count > 0) {
       toast.error('Plan has active subscribers — hide it instead of deleting');
       return;
     }
     if (!window.confirm(`Delete the “${p.name}” plan? This cannot be undone.`)) return;
-    setDeletingId(p.id);
-    try {
-      await api(`/admin/plans/${p.id}`, { method: 'DELETE', auth: true });
-      toast.success(`Plan “${p.name}” deleted`);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Delete failed');
-    } finally {
-      setDeletingId(null);
-    }
+    deleteMutation.mutate(p);
   }
 
   const fmtMsgs = (n: number) => (n < 0 ? 'Unlimited' : n.toLocaleString());

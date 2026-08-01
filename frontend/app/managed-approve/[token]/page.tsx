@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import DOMPurify from "dompurify";
 import { api, ApiError } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,29 +42,25 @@ export default function ManagedApprovePage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
 
-  const [pageState, setPageState] = useState<PageState>("loading");
-  const [data, setData] = useState<ApprovalData | null>(null);
+  const [submitted, setSubmitted] =
+    useState<"approved" | "changes_requested" | null>(null);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
-  // On mount: fetch the approval record (no auth header needed)
-  useEffect(() => {
-    api<ApprovalData>(`/managed-approve/${token}`)
-      .then((d) => {
-        setData(d);
-        setPageState("review");
-      })
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 404) {
-          setPageState("invalid");
-        } else {
-          // Treat any other error as invalid so the client sees a friendly message
-          setPageState("invalid");
-        }
-      });
-  }, [token]);
+  // Fetch the approval record on mount (public — no auth header needed).
+  // Any load failure (404, expired, network) resolves to the friendly "invalid"
+  // state; retry is disabled so an invalid link shows immediately.
+  const { data, isLoading, isError } = useApiQuery(
+    ["managed-approve", token],
+    () => api<ApprovalData>(`/managed-approve/${token}`),
+    { enabled: !!token, retry: false },
+  );
+
+  // Page state machine: a submitted outcome wins; otherwise derive from the load.
+  const pageState: PageState =
+    submitted ?? (isLoading ? "loading" : isError || !data ? "invalid" : "review");
 
   // Focus the textarea when the change-request form is revealed
   function revealChangeForm() {
@@ -77,7 +74,7 @@ export default function ManagedApprovePage() {
     setSubmitting(true);
     try {
       await api(`/managed-approve/${token}/approve`, { method: "POST" });
-      setPageState("approved");
+      setSubmitted("approved");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not submit approval.");
     } finally {
@@ -98,7 +95,7 @@ export default function ManagedApprovePage() {
         method: "POST",
         body: JSON.stringify({ note }),
       });
-      setPageState("changes_requested");
+      setSubmitted("changes_requested");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not send change request.");
     } finally {

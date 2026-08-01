@@ -1,9 +1,14 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 
 interface NotificationItem {
   id: string;
@@ -37,25 +42,28 @@ function timeAgo(iso: string): string {
 export default function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(0);
-  const [items, setItems] = useState<NotificationItem[] | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const loadCount = useCallback(async () => {
-    try {
-      const r = await api<{ count: number }>('/notifications/unread-count', { auth: true });
-      setUnread(r.count);
-    } catch {
-      /* silent — the bell must never break the page */
-    }
-  }, []);
+  // Poll the unread count on a 30s interval. Errors are held in query state (not
+  // thrown), so the bell never breaks the page — it just falls back to 0.
+  const { data: unreadData, refetch: refetchUnread } = useApiQuery(
+    ['notifications', 'unread-count'],
+    () => api<{ count: number }>('/notifications/unread-count', { auth: true }),
+    { refetchInterval: 30000 },
+  );
+  const unread = unreadData?.count ?? 0;
 
-  // Poll the unread count.
-  useEffect(() => {
-    loadCount();
-    const t = setInterval(loadCount, 30000);
-    return () => clearInterval(t);
-  }, [loadCount]);
+  // Notification list — fetched when the dropdown is open.
+  const {
+    data: itemsData,
+    isLoading: itemsLoading,
+    refetch: refetchItems,
+  } = useApiQuery(
+    ['notifications', 'list'],
+    () => api<NotificationItem[]>('/notifications?limit=15', { auth: true }),
+    { enabled: open },
+  );
+  const items = itemsLoading ? null : (itemsData ?? []);
 
   // Close on outside click.
   useEffect(() => {
@@ -67,27 +75,16 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  async function toggle() {
-    const next = !open;
-    setOpen(next);
-    if (next) {
-      setItems(null);
-      try {
-        setItems(await api<NotificationItem[]>('/notifications?limit=15', { auth: true }));
-      } catch {
-        setItems([]);
-      }
-    }
+  function toggle() {
+    // Opening enables the list query, which fetches (or serves cached) items.
+    setOpen((o) => !o);
   }
 
   async function openItem(n: NotificationItem) {
     if (!n.read_at) {
       try {
         await api(`/notifications/${n.id}/read`, { method: 'POST', auth: true });
-        setItems((prev) =>
-          prev ? prev.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)) : prev,
-        );
-        setUnread((u) => Math.max(0, u - 1));
+        await Promise.all([refetchItems(), refetchUnread()]);
       } catch {
         /* ignore */
       }
@@ -101,8 +98,7 @@ export default function NotificationBell() {
   async function markAll() {
     try {
       await api('/notifications/read-all', { method: 'POST', auth: true });
-      setItems((prev) => (prev ? prev.map((x) => ({ ...x, read_at: x.read_at ?? new Date().toISOString() })) : prev));
-      setUnread(0);
+      await Promise.all([refetchItems(), refetchUnread()]);
     } catch {
       /* ignore */
     }

@@ -1,15 +1,20 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Zap, CheckCircle2, Calendar, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import LiveTicker from '@/components/admin/LiveTicker';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type CampaignStatus =
@@ -54,27 +59,6 @@ interface CampaignResponse {
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
-// ── status config ─────────────────────────────────────────────────────────────
-const CAMPAIGN_STATUS: Record<
-  CampaignStatus,
-  { label: string; color: string; pulse: boolean }
-> = {
-  draft:     { label: 'Draft',     color: '#9CA3AF', pulse: false },
-  queued:    { label: 'Queued',    color: '#9CA3AF', pulse: false },
-  scheduled: { label: 'Scheduled', color: '#6366F1', pulse: false },
-  sending:   { label: 'Sending',   color: '#00D4AA', pulse: true  },
-  completed: { label: 'Completed', color: '#10B981', pulse: false },
-  failed:    { label: 'Failed',    color: '#EF4444', pulse: false },
-  cancelled: { label: 'Cancelled', color: '#9CA3AF', pulse: false },
-};
-
-// ── channel badge config ──────────────────────────────────────────────────────
-const CHANNEL_CFG: Record<Channel, { label: string; color: string; bg: string }> = {
-  sms:   { label: 'SMS',         color: '#009980', bg: 'rgba(0,212,170,0.12)' },
-  email: { label: 'Email',       color: '#6366F1', bg: 'rgba(99,102,241,0.1)' },
-  both:  { label: 'SMS + Email', color: '#1B1F4A', bg: 'rgba(27,31,74,0.08)'  },
-};
-
 // ── table columns ─────────────────────────────────────────────────────────────
 const columns: Column<AdminCampaign>[] = [
   {
@@ -90,21 +74,7 @@ const columns: Column<AdminCampaign>[] = [
   {
     key: 'channel',
     label: 'Channel',
-    render: (row) => {
-      const c = CHANNEL_CFG[row.channel] ?? {
-        label: row.channel,
-        color: '#9CA3AF',
-        bg: 'rgba(156,163,175,0.1)',
-      };
-      return (
-        <span
-          className="inline-flex items-center rounded-full font-bold whitespace-nowrap"
-          style={{ background: c.bg, color: c.color, padding: '2px 8px', fontSize: '9.5px' }}
-        >
-          {c.label}
-        </span>
-      );
-    },
+    render: (row) => <StatusBadge domain="channel" status={row.channel} />,
   },
   {
     key: 'audience',
@@ -130,14 +100,7 @@ const columns: Column<AdminCampaign>[] = [
   {
     key: 'status',
     label: 'Status',
-    render: (row) => {
-      const s = CAMPAIGN_STATUS[row.status] ?? {
-        label: row.status,
-        color: '#9CA3AF',
-        pulse: false,
-      };
-      return <StatusPill label={s.label} color={s.color} pulse={s.pulse} />;
-    },
+    render: (row) => <StatusBadge domain="campaign" status={row.status} />,
   },
   {
     key: 'progress',
@@ -194,31 +157,26 @@ const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function CampaignsPage() {
-  const [items, setItems] = useState<AdminCampaign[]>([]);
-  const [stats, setStats] = useState<CampaignStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data, isLoading, error } = useApiQuery(
+    ['admin', 'campaigns', statusFilter],
+    () => {
       const qs = new URLSearchParams({ limit: '200' });
       if (statusFilter) qs.set('status_filter', statusFilter);
-      const data = await api<CampaignResponse>(`/admin/campaigns?${qs.toString()}`, {
+      return api<CampaignResponse>(`/admin/campaigns?${qs.toString()}`, {
         auth: true,
       });
-      setItems(data.items);
-      setStats(data.stats);
-    } catch {
-      toast.error('Failed to load campaigns');
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+    },
+  );
+
+  const items = data?.items ?? [];
+  const stats = data?.stats ?? null;
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load campaigns');
+  }, [error]);
 
   return (
     <>
@@ -239,7 +197,6 @@ export default function CampaignsPage() {
               change="Active dispatches"
               changeType="up"
               icon={Zap}
-              sparklineKey="messages"
             />
           </RevealItem>
           <RevealItem lift>
@@ -250,7 +207,6 @@ export default function CampaignsPage() {
               change="Finished campaigns"
               changeType="up"
               icon={CheckCircle2}
-              sparklineKey="messages"
             />
           </RevealItem>
           <RevealItem lift>
@@ -271,7 +227,6 @@ export default function CampaignsPage() {
               change="Total sent this period"
               changeType="up"
               icon={Send}
-              sparklineKey="messages"
             />
           </RevealItem>
         </RevealGroup>

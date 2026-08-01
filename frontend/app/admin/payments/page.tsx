@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   DollarSign,
   CheckCircle2,
@@ -10,12 +14,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import Donut from '@/components/admin/Donut';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type BackendPayStatus =
@@ -55,19 +60,6 @@ interface PaymentResponse {
   items: AdminPayment[];
   stats: PaymentStats;
 }
-
-// ── status config ─────────────────────────────────────────────────────────────
-const PAY_STATUS: Record<
-  BackendPayStatus,
-  { label: string; color: string; pulse: boolean }
-> = {
-  successful: { label: 'Successful', color: '#10B981', pulse: false },
-  pending:    { label: 'Pending',    color: '#F59E0B', pulse: true  },
-  created:    { label: 'Processing', color: '#F59E0B', pulse: true  },
-  failed:     { label: 'Failed',     color: '#EF4444', pulse: false },
-  timeout:    { label: 'Timeout',    color: '#EF4444', pulse: false },
-  refunded:   { label: 'Refunded',   color: '#9CA3AF', pulse: false },
-};
 
 // ── deterministic per-method donut colours ────────────────────────────────────
 const METHOD_COLOR_MAP: Record<string, string> = {
@@ -168,30 +160,21 @@ function RefundModal({
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function PaymentsPage() {
-  const [items, setItems] = useState<AdminPayment[]>([]);
-  const [stats, setStats] = useState<PaymentStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [confirmTx, setConfirmTx] = useState<string | null>(null);
   const [refunding, setRefunding] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<PaymentResponse>('/admin/payments/transactions', {
-        auth: true,
-      });
-      setItems(data.items);
-      setStats(data.stats);
-    } catch {
-      toast.error('Failed to load transactions');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error, refetch } = useApiQuery(
+    ['admin', 'payments'],
+    () => api<PaymentResponse>('/admin/payments/transactions', { auth: true }),
+  );
+
+  const items = data?.items ?? [];
+  const stats = data?.stats ?? null;
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load transactions');
+  }, [error]);
 
   async function handleRefund(txRef: string, reason: string) {
     setRefunding(txRef);
@@ -203,7 +186,7 @@ export default function PaymentsPage() {
       });
       toast.success('Refund initiated');
       setConfirmTx(null);
-      await fetchData();
+      await refetch();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Refund failed');
     } finally {
@@ -272,14 +255,7 @@ export default function PaymentsPage() {
     {
       key: 'status',
       label: 'Status',
-      render: (row) => {
-        const s = PAY_STATUS[row.status] ?? {
-          label: row.status,
-          color: '#9CA3AF',
-          pulse: false,
-        };
-        return <StatusPill label={s.label} color={s.color} pulse={s.pulse} />;
-      },
+      render: (row) => <StatusBadge domain="payment" status={row.status} />,
     },
     {
       key: 'created_at',
@@ -337,7 +313,6 @@ export default function PaymentsPage() {
                   decimals={1}
                   valueSize={22}
                   icon={DollarSign}
-                  sparklineKey="revenue"
                   change={`${stats.total} transactions`}
                   changeType="up"
                 />

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 
 // ── Flutterwave global declaration ────────────────────────────────────────────
 
@@ -141,14 +142,36 @@ function CheckoutInner() {
   const params = useSearchParams();
   const planId = params.get('plan') ?? '';
 
-  // Data
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [proration, setProration] = useState<Proration | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Data — plans + enabled payment methods, loaded in parallel.
+  const { data: loadData, isLoading: loading } = useApiQuery(
+    ['dashboard', 'checkout', planId],
+    async () => {
+      const [plans, methods] = await Promise.all([
+        api<Plan[]>('/payments/plans', { auth: true }).catch(() => [] as Plan[]),
+        api<PaymentMethod[]>('/payments/methods', { auth: true }).catch(
+          () => [] as PaymentMethod[],
+        ),
+      ]);
+      return { plans, methods };
+    },
+    { enabled: !!planId },
+  );
+  const plans = loadData?.plans ?? [];
+  const methods = loadData?.methods ?? [];
 
-  // Form
-  const [selectedMethod, setSelectedMethod] = useState<string>('');
+  // Proration: if the account is upgrading mid-cycle, the server credits unused time.
+  const { data: proration } = useApiQuery(
+    ['dashboard', 'proration', planId],
+    () =>
+      api<Proration>(`/billing/proration-preview?plan_id=${planId}`, {
+        auth: true,
+      }).catch(() => null),
+    { enabled: !!planId },
+  );
+
+  // Form — selection falls back to the first available method until the user picks.
+  const [selectedMethodState, setSelectedMethod] = useState<string>('');
+  const selectedMethod = selectedMethodState || methods[0]?.method || '';
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -172,38 +195,14 @@ function CheckoutInner() {
     }
   }, []);
 
-  // Load plans + methods in parallel
+  // Track mount so in-flight poll callbacks never setState after unmount.
   useEffect(() => {
     mountedRef.current = true;
-    if (!planId) {
-      setLoading(false);
-      return;
-    }
-    Promise.all([
-      api<Plan[]>('/payments/plans', { auth: true }),
-      api<PaymentMethod[]>('/payments/methods', { auth: true }),
-    ])
-      .then(([p, m]) => {
-        if (!mountedRef.current) return;
-        setPlans(p);
-        setMethods(m);
-        if (m.length > 0) setSelectedMethod(m[0].method);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (mountedRef.current) setLoading(false);
-      });
-
-    // Proration: if the account is upgrading mid-cycle, the server credits unused time.
-    api<Proration>(`/billing/proration-preview?plan_id=${planId}`, { auth: true })
-      .then((pr) => mountedRef.current && setProration(pr))
-      .catch(() => {});
-
     return () => {
       mountedRef.current = false;
       if (pollRef.current) clearTimeout(pollRef.current);
     };
-  }, [planId]);
+  }, []);
 
   const plan = plans.find((p) => p.id === planId) ?? null;
 

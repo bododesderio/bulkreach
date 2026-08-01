@@ -1,9 +1,14 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Info, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
@@ -136,27 +141,20 @@ const COLUMNS: Column<AuditEntry>[] = [
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function AuditLogPage() {
-  const [items, setItems]   = useState<AuditEntry[]>([]);
-  const [total, setTotal]   = useState(0);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('All');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<AuditLogResponse>('/admin/audit-log?limit=100', { auth: true });
-      setItems(data.items);
-      setTotal(data.total);
-    } catch {
-      toast.error('Failed to load audit log');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading, error } = useApiQuery(
+    ['admin', 'audit-log'],
+    () => api<AuditLogResponse>('/admin/audit-log?limit=100', { auth: true }),
+  );
+
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load audit log');
+  }, [error]);
 
   const criticalCount = useMemo(
     () => items.filter((e) => e.severity === 'critical').length,

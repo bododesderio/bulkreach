@@ -1,6 +1,10 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   TrendingUp,
   CheckCircle,
@@ -9,11 +13,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type SubStatus = 'active' | 'trial' | 'past_due' | 'cancelled';
@@ -42,17 +47,6 @@ interface SubResponse {
   items: AdminSub[];
   stats: SubStats;
 }
-
-// ── status config ─────────────────────────────────────────────────────────────
-const STATUS_CFG: Record<
-  SubStatus,
-  { label: string; color: string; pulse: boolean }
-> = {
-  active:    { label: 'Active',    color: '#10B981', pulse: true  },
-  trial:     { label: 'Trial',     color: '#00D4AA', pulse: false },
-  past_due:  { label: 'Past due',  color: '#F59E0B', pulse: false },
-  cancelled: { label: 'Cancelled', color: '#9CA3AF', pulse: false },
-};
 
 const fmtDate = (iso: string | null) => {
   if (!iso) return '—';
@@ -98,14 +92,7 @@ function buildColumns(): Column<AdminSub>[] {
     {
       key: 'status',
       label: 'Status',
-      render: (row) => {
-        const c = STATUS_CFG[row.status] ?? {
-          label: row.status,
-          color: '#9CA3AF',
-          pulse: false,
-        };
-        return <StatusPill label={c.label} color={c.color} pulse={c.pulse} />;
-      },
+      render: (row) => <StatusBadge domain="subscription" status={row.status} />,
     },
     {
       key: 'current_period_end',
@@ -123,26 +110,18 @@ const SUBS_COLS = buildColumns();
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function SubscriptionsPage() {
-  const [items, setItems] = useState<AdminSub[]>([]);
-  const [stats, setStats] = useState<SubStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error } = useApiQuery(
+    ['admin', 'subscriptions'],
+    () => api<SubResponse>('/admin/subscriptions', { auth: true }),
+  );
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api<SubResponse>('/admin/subscriptions', { auth: true });
-      setItems(data.items);
-      setStats(data.stats);
-    } catch {
-      toast.error('Failed to load subscriptions');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const items = data?.items ?? [];
+  const stats = data?.stats ?? null;
+  const loading = isLoading;
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (error) toast.error('Failed to load subscriptions');
+  }, [error]);
 
   const mrrM = stats ? stats.mrr_ugx / 1_000_000 : 0;
 
@@ -174,7 +153,6 @@ export default function SubscriptionsPage() {
                   suffix="M"
                   valueSize={22}
                   icon={TrendingUp}
-                  sparklineKey="revenue"
                   change="Active subscriptions"
                   changeType="up"
                 />

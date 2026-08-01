@@ -4,10 +4,11 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, FileText, LogOut, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import { StatusPill } from "@/components/admin/StatusPill";
@@ -35,7 +36,6 @@ const STAGE: Record<string, { label: string; color: string; pulse?: boolean }> =
 export default function ManagedPortalHome() {
   const router = useRouter();
   const { user, account, loading, loadMe, logout } = useAuth();
-  const [campaigns, setCampaigns] = useState<PortalCampaign[] | null>(null);
 
   useEffect(() => {
     if (!user) loadMe();
@@ -53,17 +53,14 @@ export default function ManagedPortalHome() {
     }
   }, [loading, user, router]);
 
-  const load = useCallback(async () => {
-    try {
-      setCampaigns(await api<PortalCampaign[]>("/managed-portal/campaigns", { auth: true }));
-    } catch {
-      setCampaigns([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.user_type === "managed_client" && !user.must_change_password) load();
-  }, [user, load]);
+  // Managed-client campaign list — fetched once the client is authenticated and
+  // has completed activation. `campaigns` stays null while loading (skeletons).
+  const { data, isLoading } = useApiQuery(
+    ["managed-portal", "campaigns"],
+    () => api<PortalCampaign[]>("/managed-portal/campaigns", { auth: true }),
+    { enabled: user?.user_type === "managed_client" && !user.must_change_password },
+  );
+  const campaigns = isLoading ? null : (data ?? []);
 
   if (!user || user.user_type !== "managed_client" || user.must_change_password) {
     return (

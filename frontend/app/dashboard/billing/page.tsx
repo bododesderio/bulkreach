@@ -4,15 +4,17 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle2, CreditCard, Download, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiDownload } from '@/lib/api';
+import { useApiQuery, useApiMutation } from '@/lib/hooks';
 import { useAuth } from '@/store/auth';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
@@ -76,62 +78,56 @@ const fmtDate = (iso: string) =>
     year: 'numeric',
   });
 
-const PAY_STATUS_COLOR: Record<PayStatus, { color: string; pulse?: boolean; label: string }> = {
-  successful: { color: '#10B981', label: 'Successful' },
-  pending:    { color: '#F59E0B', pulse: true,  label: 'Pending' },
-  created:    { color: '#F59E0B', pulse: true,  label: 'Processing' },
-  failed:     { color: '#EF4444', label: 'Failed' },
-  timeout:    { color: '#EF4444', label: 'Timeout' },
-};
-
-const INV_STATUS_COLOR: Record<string, string> = {
-  paid:      '#10B981',
-  open:      '#F59E0B',
-  pending:   '#F59E0B',
-  void:      '#9CA3AF',
-  cancelled: '#9CA3AF',
-  refunded:  '#9CA3AF',
-  overdue:   '#EF4444',
-  past_due:  '#EF4444',
-};
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
   const { account } = useAuth();
   const router = useRouter();
 
-  const [plans, setPlans]               = useState<Plan[]>([]);
-  const [history, setHistory]           = useState<PaymentOut[]>([]);
-  const [invoices, setInvoices]         = useState<InvoiceOut[]>([]);
-  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
-  const [loadingPlans, setLoadingPlans]         = useState(true);
-  const [loadingHistory, setLoadingHistory]     = useState(true);
-  const [loadingInvoices, setLoadingInvoices]   = useState(true);
-  const [downloading, setDownloading]   = useState<string | null>(null);
-  const [savingRenew, setSavingRenew]   = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    api<Plan[]>('/payments/plans', { auth: true })
-      .then((d) => active && setPlans(d))
-      .catch(() => {})
-      .finally(() => active && setLoadingPlans(false));
-    api<PaymentOut[]>('/payments/history', { auth: true })
-      .then((d) => active && setHistory(d))
-      .catch(() => {})
-      .finally(() => active && setLoadingHistory(false));
-    api<InvoiceOut[]>('/billing/invoices', { auth: true })
-      .then((d) => active && setInvoices(d))
-      .catch(() => {})
-      .finally(() => active && setLoadingInvoices(false));
-    api<SubscriptionState>('/billing/subscription', { auth: true })
-      .then((d) => active && setSubscription(d))
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { data, isLoading } = useApiQuery(
+    ['dashboard', 'billing'],
+    async () => {
+      const [plans, history, invoices, subscription] = await Promise.all([
+        api<Plan[]>('/payments/plans', { auth: true }).catch(() => [] as Plan[]),
+        api<PaymentOut[]>('/payments/history', { auth: true }).catch(
+          () => [] as PaymentOut[],
+        ),
+        api<InvoiceOut[]>('/billing/invoices', { auth: true }).catch(
+          () => [] as InvoiceOut[],
+        ),
+        api<SubscriptionState>('/billing/subscription', { auth: true }).catch(
+          () => null as SubscriptionState | null,
+        ),
+      ]);
+      return { plans, history, invoices, subscription };
+    },
+  );
+
+  const plans        = data?.plans ?? [];
+  const history      = data?.history ?? [];
+  const invoices     = data?.invoices ?? [];
+  const subscription = data?.subscription ?? null;
+  const loadingPlans = isLoading;
+  const loadingHistory = isLoading;
+  const loadingInvoices = isLoading;
+
+  const autoRenewMut = useApiMutation(
+    (next: boolean) =>
+      api<SubscriptionState>('/billing/auto-renew', {
+        method: 'PATCH',
+        auth: true,
+        body: JSON.stringify({ auto_renew: next }),
+      }),
+    {
+      invalidate: [['dashboard', 'billing']],
+      onSuccess: (_s, next) =>
+        toast.success(next ? 'Auto-renewal enabled' : 'Auto-renewal turned off'),
+      onError: () => toast.error('Could not update auto-renewal.'),
+    },
+  );
+  const savingRenew = autoRenewMut.isPending;
 
   async function downloadInvoice(inv: InvoiceOut) {
     setDownloading(inv.id);
@@ -144,21 +140,8 @@ export default function BillingPage() {
     }
   }
 
-  async function toggleAutoRenew(next: boolean) {
-    setSavingRenew(true);
-    try {
-      const s = await api<SubscriptionState>('/billing/auto-renew', {
-        method: 'PATCH',
-        auth: true,
-        body: JSON.stringify({ auto_renew: next }),
-      });
-      setSubscription(s);
-      toast.success(next ? 'Auto-renewal enabled' : 'Auto-renewal turned off');
-    } catch {
-      toast.error('Could not update auto-renewal.');
-    } finally {
-      setSavingRenew(false);
-    }
+  function toggleAutoRenew(next: boolean) {
+    autoRenewMut.mutate(next);
   }
 
   const currentPlanName = account?.plan ?? '';
@@ -208,10 +191,7 @@ export default function BillingPage() {
     {
       key: 'inv_status',
       label: 'Status',
-      render: (inv) => {
-        const color = INV_STATUS_COLOR[inv.status.toLowerCase()] ?? '#9CA3AF';
-        return <StatusPill label={inv.status} color={color} />;
-      },
+      render: (inv) => <StatusBadge domain="invoice" status={inv.status} />,
     },
     {
       key: 'download',
@@ -270,10 +250,7 @@ export default function BillingPage() {
       key: 'status',
       label: 'Status',
       align: 'right',
-      render: (p) => {
-        const cfg = PAY_STATUS_COLOR[p.status] ?? { color: '#9CA3AF', label: p.status };
-        return <StatusPill label={cfg.label} color={cfg.color} pulse={cfg.pulse} />;
-      },
+      render: (p) => <StatusBadge domain="payment" status={p.status} />,
     },
   ];
 

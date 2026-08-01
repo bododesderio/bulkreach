@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
+import { useApiQuery } from "@/lib/hooks";
 import {
   type Channel,
   type Progress,
@@ -96,8 +97,17 @@ function smsSegments(len: number): number {
 export default function CampaignComposerPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [lists, setLists] = useState<ContactList[] | null>(null);
-  const [listId, setListId] = useState<string>("");
+  const { data: listsData } = useApiQuery(
+    ["dashboard", "composer", "lists"],
+    () =>
+      api<ContactList[]>("/contacts/lists", { auth: true }).catch(
+        () => [] as ContactList[],
+      ),
+    { enabled: !!user },
+  );
+  const lists = listsData ?? null;
+  const [listIdState, setListId] = useState<string>("");
+  const listId = listIdState || lists?.[0]?.id || "";
   const [name, setName] = useState("");
   const [channel, setChannel] = useState<Channel>("sms");
   const [subject, setSubject] = useState("");
@@ -111,16 +121,6 @@ export default function CampaignComposerPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    api<ContactList[]>("/contacts/lists", { auth: true })
-      .then((l) => {
-        setLists(l);
-        if (l.length) setListId(l[0].id);
-      })
-      .catch(() => setLists([]));
-  }, [user]);
 
   // Tear down the SSE reader if the user navigates away mid-dispatch.
   useEffect(() => () => abortRef.current?.abort(), []);
