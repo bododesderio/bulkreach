@@ -51,7 +51,10 @@ export default function StatCard({
 
       <div
         className={`font-mono font-semibold leading-tight mt-1 ${warn ? 'text-error' : 'text-navy'}`}
-        style={{ fontSize: `${valueSize}px` }}
+        style={{
+          // Fluid: shrinks on narrow mobile cards, grows to the target on desktop.
+          fontSize: `clamp(${Math.round(valueSize * 0.7)}px, 5.2vw, ${valueSize}px)`,
+        }}
       >
         <CountUp
           value={value}

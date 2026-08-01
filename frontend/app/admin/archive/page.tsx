@@ -890,7 +890,7 @@ export default function ArchivePage() {
         {!loading && (
           <>
             {/* ── stats row 1 ──────────────────────────────────────────── */}
-            <RevealGroup className="grid grid-cols-3 gap-3 mb-3" stagger={0.06}>
+            <RevealGroup className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3" stagger={0.06}>
               <RevealItem lift>
                 <StatCard
                   label="Archived campaigns"
@@ -925,7 +925,7 @@ export default function ArchivePage() {
             </RevealGroup>
 
             {/* ── stats row 2 ──────────────────────────────────────────── */}
-            <RevealGroup className="grid grid-cols-3 gap-3 mb-3" stagger={0.06}>
+            <RevealGroup className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3" stagger={0.06}>
               <RevealItem lift>
                 <StatCard
                   label="Archived payments"

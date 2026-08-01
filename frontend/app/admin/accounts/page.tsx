@@ -317,7 +317,7 @@ export default function AccountsPage() {
         {!loading && stats && (
           <>
             {/* KPI row */}
-            <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
+            <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">
               <RevealItem lift>
                 <StatCard
                   label="TOTAL CLIENTS"

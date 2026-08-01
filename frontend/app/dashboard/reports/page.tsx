@@ -276,7 +276,7 @@ export default function ReportsPage() {
                     const pct = total ? (c.sent / total) * 100 : 0;
                     return (
                       <div key={c.label}>
-                        <div className="mb-1.5 flex items-center justify-between">
+                        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2">
                           <span className="text-[12px] font-semibold text-navy">{c.label}</span>
                           <span className="text-[10.5px] text-text-muted">
                             {c.sent.toLocaleString()} sent · {c.failed.toLocaleString()} failed

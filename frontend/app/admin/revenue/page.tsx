@@ -99,7 +99,7 @@ export default function RevenuePage() {
         {!loading && totals && (
           <>
             {/* KPI row — key on StatCard forces CountUp to remount + re-animate on period change */}
-            <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
+            <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">
               <RevealItem lift>
                 <StatCard
                   key={`mrr-${period}`}
@@ -158,7 +158,7 @@ export default function RevenuePage() {
             </RevealGroup>
 
             {/* Charts row: area trend (1.5fr) + method split donut (1fr) */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
+            <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1.5fr_1fr]">
               <Reveal delay={0.15} lift className={cardBase}>
                 <div className="font-display text-[14px] font-bold text-navy mb-0.5">
                   Revenue trend

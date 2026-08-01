@@ -46,30 +46,26 @@ export default function Topbar({
 
   return (
     <header
-      className="flex items-center justify-between bg-white"
-      style={{
-        height: '60px',
-        borderBottom: '1px solid var(--border)',
-        padding: '0 22px',
-      }}
+      className="flex h-[60px] items-center justify-between gap-2 bg-white px-3 md:px-[22px]"
+      style={{ borderBottom: '1px solid var(--border)' }}
     >
       {/* Left: mobile menu + title + subtitle */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <NavMenuButton />
-        <div>
-          <div className="font-display font-extrabold text-[17px] text-navy leading-tight">
+        <div className="min-w-0">
+          <div className="font-display font-extrabold text-[17px] text-navy leading-tight truncate">
             {title}
           </div>
-          <div className="text-[11px] text-text-muted">{subtitle}</div>
+          <div className="text-[11px] text-text-muted truncate">{subtitle}</div>
         </div>
       </div>
 
       {/* Right: period toggle + bell + avatar */}
-      <div className="flex items-center gap-[9px]">
-        {/* Period toggle group */}
+      <div className="flex shrink-0 items-center gap-[9px]">
+        {/* Period toggle group — hidden on phones (secondary; page defaults to Month) */}
         {showPeriod && (
         <div
-          className="flex items-center border rounded-[7px] p-0.5"
+          className="hidden items-center border rounded-[7px] p-0.5 md:flex"
           style={{ background: 'var(--bg)' }}
         >
           {PERIODS.map((p) => {

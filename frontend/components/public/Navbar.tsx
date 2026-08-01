@@ -1,8 +1,13 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client"
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Menu, X } from 'lucide-react'
 
 const navLinks = [
   { href: '/features', label: 'Features' },
@@ -13,6 +18,10 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => setOpen(false), [pathname])
 
   return (
     <header
@@ -31,7 +40,7 @@ export default function Navbar() {
           <span className="font-display text-[17px] font-extrabold text-navy">BulkReach</span>
         </Link>
 
-        {/* Center nav links */}
+        {/* Center nav links (desktop) */}
         <nav className="hidden md:flex items-center gap-6" aria-label="Main navigation">
           {navLinks.map(({ href, label }) => (
             <Link
@@ -47,24 +56,67 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right buttons */}
+        {/* Right side */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Log in — hidden on the smallest screens (lives in the mobile menu). */}
           <Link
             href="/login"
-            className="border-[1.5px] bg-transparent text-[13px] rounded-full px-[18px] py-2 transition hover:border-navy"
+            className="hidden sm:inline-flex border-[1.5px] bg-transparent text-[13px] rounded-full px-[18px] py-2 transition hover:border-navy"
             style={{ borderColor: 'var(--border)', color: 'var(--text-md)' }}
           >
             Log in
           </Link>
           <Link
             href="/signup"
-            className="bg-teal text-navy font-display font-bold px-[18px] py-2 rounded-full inline-flex items-center gap-1.5 text-[13px] transition hover:opacity-90"
+            className="bg-teal text-navy font-display font-bold px-[14px] sm:px-[18px] py-2 rounded-full inline-flex items-center gap-1.5 text-[13px] transition hover:opacity-90"
           >
             Get started
             <ArrowRight size={15} />
           </Link>
+          {/* Hamburger (mobile only) */}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="md:hidden flex items-center justify-center rounded-[8px] border w-9 h-9 transition hover:border-navy"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-md)' }}
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu panel */}
+      {open && (
+        <nav
+          className="md:hidden border-t"
+          style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
+          aria-label="Mobile navigation"
+        >
+          <div className="px-4 py-3 flex flex-col gap-1">
+            {navLinks.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`rounded-[8px] px-3 py-2.5 font-sans font-medium text-[14px] transition-colors hover:bg-white ${
+                  pathname === href ? 'text-navy' : ''
+                }`}
+                style={pathname !== href ? { color: 'var(--text-md)' } : undefined}
+              >
+                {label}
+              </Link>
+            ))}
+            <Link
+              href="/login"
+              className="sm:hidden rounded-[8px] px-3 py-2.5 font-sans font-medium text-[14px] transition-colors hover:bg-white"
+              style={{ color: 'var(--text-md)' }}
+            >
+              Log in
+            </Link>
+          </div>
+        </nav>
+      )}
     </header>
   )
 }

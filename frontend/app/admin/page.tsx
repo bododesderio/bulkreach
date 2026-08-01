@@ -187,7 +187,7 @@ export default function AdminDashboardPage() {
         {!loading && kpis && (
           <>
             {/* KPI grid — staggered entrance */}
-            <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
+            <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">
               <RevealItem lift>
                 <KPICard
                   label="TOTAL CLIENTS"
@@ -238,7 +238,7 @@ export default function AdminDashboardPage() {
             </RevealGroup>
 
             {/* Charts row */}
-            <div className="grid gap-3 mb-[18px]" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+            <div className="grid grid-cols-1 gap-3 mb-[18px] lg:[grid-template-columns:1.4fr_1fr]">
               <Reveal delay={0.15} lift className={cardBase}>
                 <div className="font-display text-[14px] font-bold text-navy mb-0.5">
                   Revenue by plan
@@ -310,7 +310,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Bottom row */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1.5fr' }}>
+            <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1fr_1.5fr]">
               <Reveal delay={0.3} lift className={cardBase}>
                 <div className="font-display text-[14px] font-bold text-navy mb-0.5">
                   Provider health

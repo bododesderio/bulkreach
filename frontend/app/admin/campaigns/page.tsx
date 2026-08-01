@@ -188,7 +188,7 @@ export default function CampaignsPage() {
 
       <div className="p-[18px]">
         {/* KPI row */}
-        <RevealGroup className="grid grid-cols-4 gap-3 mb-[18px]">
+        <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">
           <RevealItem lift>
             <StatCard
               label="SENDING NOW"
@@ -280,7 +280,7 @@ export default function CampaignsPage() {
         </Reveal>
 
         {/* Live activity ticker */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <Reveal delay={0.3} lift className={cardBase}>
             <LiveTicker />
           </Reveal>

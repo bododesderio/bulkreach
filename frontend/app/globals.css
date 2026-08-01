@@ -59,11 +59,31 @@
   * {
     border-color: hsl(var(--border-hsl));
   }
+  html {
+    /* Stop iOS/Android from auto-inflating text (a common overflow cause). */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-sans), Inter, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Mobile safety net: the page scrolls only up/down, never sideways. `clip`
+     * (not `hidden`) so it doesn't turn body into a scroll container and break
+     * position: sticky. Genuinely wide content (tables) scrolls inside its own
+     * `overflow-x-auto` box instead of pushing the whole page wide. */
+    overflow-x: clip;
+  }
+  /* Media never forces the layout wider than its container. */
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+  img {
+    height: auto;
   }
 }
 

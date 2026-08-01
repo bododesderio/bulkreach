@@ -135,7 +135,7 @@ export default function HealthPage() {
         </div>
 
         {/* KPI row — 3 cards */}
-        <RevealGroup className="grid grid-cols-3 gap-3 mb-[18px]">
+        <RevealGroup className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-[18px]">
           <RevealItem lift>
             {data ? (
               <OverallStatusCard

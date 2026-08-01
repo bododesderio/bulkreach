@@ -40,7 +40,11 @@ export default function KPICard({
       {/* Value */}
       <div
         className={`font-mono font-semibold text-navy leading-tight mt-1 ${warn ? 'text-error' : ''}`}
-        style={{ fontSize: valueSize ? `${valueSize}px` : '26px' }}
+        style={{
+          // Fluid: shrinks to fit a narrow mobile card, grows back to the target
+          // size on wider screens — so large values never overflow the tile.
+          fontSize: `clamp(${Math.round((valueSize ?? 26) * 0.7)}px, 5.2vw, ${valueSize ?? 26}px)`,
+        }}
       >
         {value}
       </div>

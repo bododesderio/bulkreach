@@ -528,7 +528,7 @@ export default function SettingsPage() {
             <div className="mb-3 font-display text-[14px] font-bold text-navy">Profile</div>
 
             {/* Read-only account overview */}
-            <dl className="mb-5 grid grid-cols-2 gap-x-6 gap-y-3 border-b pb-5">
+            <dl className="mb-5 grid grid-cols-1 gap-x-6 gap-y-3 border-b pb-5 sm:grid-cols-2">
               {(
                 [
                   ["Account email",       profileData?.email                              ?? account.email,                              true],
@@ -541,7 +541,7 @@ export default function SettingsPage() {
                   <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
                     {label}
                   </dt>
-                  <dd className={`mt-0.5 text-[12px] font-semibold text-navy ${raw ? "normal-case" : "capitalize"}`}>{value}</dd>
+                  <dd className={`mt-0.5 text-[12px] font-semibold text-navy ${raw ? "normal-case break-all" : "capitalize"}`}>{value}</dd>
                 </div>
               ))}
             </dl>
@@ -552,7 +552,7 @@ export default function SettingsPage() {
                 onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}
                 className="space-y-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="pf-name" className={labelClass}>Business name</label>
                     <input
@@ -577,7 +577,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="pf-phone" className={labelClass}>Phone</label>
                     <input

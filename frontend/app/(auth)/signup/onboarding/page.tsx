@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { useState } from "react";
@@ -97,7 +101,7 @@ export default function SignupOnboarding() {
       {q === 2 && (
         <div className="mt-6">
           <p className="text-[14px] font-semibold text-navy mb-3">What will you mainly send?</p>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {USE_CASES.map((o) => (
               <OnboardingCard key={o.key} icon={o.icon} label={o.label}
                 selected={useCases.includes(o.key)} onClick={() => toggleUseCase(o.key)} />

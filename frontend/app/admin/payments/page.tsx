@@ -303,7 +303,7 @@ export default function PaymentsPage() {
         {!loading && stats && (
           <>
             {/* KPI row */}
-            <RevealGroup className="grid grid-cols-5 gap-3 mb-[18px]">
+            <RevealGroup className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-[18px]">
               <RevealItem lift>
                 <StatCard
                   label="VOLUME (TOTAL)"
@@ -362,11 +362,9 @@ export default function PaymentsPage() {
 
             {/* Donut (conditional on having items) + transactions table */}
             <div
-              className="grid gap-3 mb-[18px]"
-              style={{
-                gridTemplateColumns:
-                  donutData.length > 0 ? '1fr 1.8fr' : '1fr',
-              }}
+              className={`grid grid-cols-1 gap-3 mb-[18px] ${
+                donutData.length > 0 ? 'lg:[grid-template-columns:1fr_1.8fr]' : ''
+              }`}
             >
               {donutData.length > 0 && (
                 <Reveal delay={0.15} lift className={cardBase}>
