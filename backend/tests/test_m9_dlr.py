@@ -180,7 +180,13 @@ async def test_inbound_stop_suppresses_for_sending_account():
         # Idempotent — a second STOP doesn't create a duplicate.
         assert await deliveries.handle_inbound_sms(db, from_number=number, text="stop", commit=True) == "already_suppressed"
 
-        # A non-STOP reply is ignored; an unknown number (never messaged) is a no-op.
+        # START opts them back in (removes the suppression) for the same account.
+        assert await deliveries.handle_inbound_sms(db, from_number=number, text="START", commit=True) == "resubscribed"
+        assert not await deliveries.is_suppressed(db, acct_id, "sms", number)
+        # A second START is a no-op (nothing to remove).
+        assert await deliveries.handle_inbound_sms(db, from_number=number, text="start", commit=True) == "not_suppressed"
+
+        # A non-STOP/START reply is ignored; an unknown number (never messaged) is a no-op.
         assert await deliveries.handle_inbound_sms(db, from_number=number, text="hello there", commit=True) is None
         never = f"+2567{uuid.uuid4().int % 10**8:08d}"
         assert await deliveries.handle_inbound_sms(db, from_number=never, text="STOP", commit=True) is None

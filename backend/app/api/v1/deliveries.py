@@ -53,14 +53,17 @@ async def inbound_sms_webhook(
     if not verified:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid webhook signature")
 
-    suppressed = 0
+    suppressed = resubscribed = 0
     for m in messages:
-        if await deliveries.handle_inbound_sms(
+        action = await deliveries.handle_inbound_sms(
             db, from_number=m["from"], text=m["text"], commit=False
-        ) == "suppressed":
+        )
+        if action == "suppressed":
             suppressed += 1
+        elif action == "resubscribed":
+            resubscribed += 1
     await db.commit()
-    return {"received": len(messages), "suppressed": suppressed}
+    return {"received": len(messages), "suppressed": suppressed, "resubscribed": resubscribed}
 
 
 @router.post("/{provider}", include_in_schema=False)

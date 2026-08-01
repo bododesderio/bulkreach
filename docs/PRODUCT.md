@@ -43,8 +43,9 @@ There are two ways a customer uses BulkReach:
   Africa's Talking, Mailgun signature-verified, SendGrid) transition each message to its true
   outcome (delivered/undelivered/bounced/complained). Hard bounces + spam complaints auto-add the
   recipient to a per-account **suppression list** that future campaigns skip (sender-reputation +
-  opt-out compliance); the list is viewable and editable. Inbound **STOP replies**
-  (`/webhooks/inbound/{provider}`) opt the sender out for the account that last messaged them.
+  opt-out compliance); the list is viewable and editable. Inbound **STOP/START replies**
+  (`/webhooks/inbound/{provider}`) opt the sender out (or back in) for the account that last
+  messaged them.
 - **Plans, quota & billing** — four plans (Starter/Growth/Business/Managed); monthly message
   quota + daily limits + concurrency + feature gates enforced in three layers (Redis counters);
   invoices/receipts with gapless numbering + Uganda 18% VAT + mid-cycle proration; auto-renewal

@@ -30,11 +30,37 @@ STOP_KEYWORDS = {
     "stop", "stopall", "unsubscribe", "unsub", "cancel", "end", "quit",
     "optout", "opt-out", "opt out",
 }
+# Reply keywords that opt a previously-suppressed recipient back in.
+START_KEYWORDS = {"start", "unstop", "resume", "optin", "opt-in", "opt in"}
 
 
 def is_stop_keyword(text: str | None) -> bool:
     """True if an inbound reply is an opt-out request (whole-message match)."""
     return (text or "").strip().lower() in STOP_KEYWORDS
+
+
+def is_start_keyword(text: str | None) -> bool:
+    """True if an inbound reply is an opt-in / resubscribe request."""
+    return (text or "").strip().lower() in START_KEYWORDS
+
+
+async def remove_suppression(
+    db: AsyncSession, account_id: UUID, channel: str, address: str
+) -> bool:
+    """Remove an address from the account's suppression list. Returns True if a row
+    was deleted."""
+    row = await db.scalar(
+        select(Suppression).where(
+            Suppression.account_id == account_id,
+            Suppression.channel == channel,
+            Suppression.address == _norm(channel, address),
+        ).limit(1)
+    )
+    if row is None:
+        return False
+    await db.delete(row)
+    await db.flush()
+    return True
 
 
 def _norm(channel: str, address: str) -> str:
@@ -132,15 +158,17 @@ async def record_delivery(
 async def handle_inbound_sms(
     db: AsyncSession, *, from_number: str, text: str, commit: bool = True
 ) -> str | None:
-    """Process an inbound (mobile-originated) SMS. If it's a STOP keyword, opt the
-    sender out by suppressing their number for the **sending account** — the account
-    whose campaign most recently sent SMS to that number. Returns the action taken
-    (`"suppressed"` / `"already_suppressed"`) or None (not a STOP, or no prior send)."""
+    """Process an inbound (mobile-originated) SMS. A STOP keyword opts the sender out;
+    a START keyword opts them back in. Either way the action targets the **sending
+    account** — the account whose campaign most recently sent SMS to that number.
+    Returns the action taken (`suppressed` / `already_suppressed` / `resubscribed` /
+    `not_suppressed`) or None (not a STOP/START, or the number has no prior send)."""
     number = (from_number or "").strip()
-    if not number or not is_stop_keyword(text):
+    stop, start = is_stop_keyword(text), is_start_keyword(text)
+    if not number or not (stop or start):
         return None
 
-    # Attribute the opt-out to whoever last messaged this number.
+    # Attribute the opt-out/opt-in to whoever last messaged this number.
     msg = await db.scalar(
         select(Message)
         .where(Message.channel == "sms", Message.recipient == number)
@@ -153,9 +181,15 @@ async def handle_inbound_sms(
     if campaign is None:
         return None
 
-    created = await add_suppression(
-        db, campaign.account_id, "sms", number, reason="unsubscribe"
-    )
+    if stop:
+        created = await add_suppression(
+            db, campaign.account_id, "sms", number, reason="unsubscribe"
+        )
+        action = "suppressed" if created else "already_suppressed"
+    else:  # start / opt back in
+        removed = await remove_suppression(db, campaign.account_id, "sms", number)
+        action = "resubscribed" if removed else "not_suppressed"
+
     if commit:
         await db.commit()
-    return "suppressed" if created else "already_suppressed"
+    return action
