@@ -334,10 +334,12 @@ export default function CampaignDetailPage() {
       )}
 
       {/* ── KPI tiles ─────────────────────────────────────────────────────── */}
-      <RevealGroup className="grid grid-cols-2 gap-3 lg:grid-cols-4" stagger={0.06}>
+      <RevealGroup className="grid grid-cols-2 gap-3 lg:grid-cols-3" stagger={0.06}>
         {[
           { label: "Recipients", value: stats?.total ?? 0, suffix: "" },
-          { label: "Delivered", value: stats?.sent ?? 0, suffix: "" },
+          { label: "Sent", value: stats?.sent ?? 0, suffix: "" },
+          { label: "Delivered", value: stats?.delivered ?? 0, suffix: "" },
+          { label: "Bounced", value: stats?.bounced ?? 0, suffix: "" },
           { label: "Failed", value: stats?.failed ?? 0, suffix: "" },
           { label: "Delivery rate", value: rate, suffix: "%" },
         ].map((s) => (

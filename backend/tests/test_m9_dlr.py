@@ -137,3 +137,27 @@ async def test_suppressions_crud(client, owner_headers):
 
     r = await client.delete(f"/api/v1/suppressions/{sid}", headers=owner_headers)
     assert r.status_code == 204
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_compute_stats_dlr_counts_survive_the_schema():
+    """compute_stats derives delivered/bounced from DLRs — and the CampaignStats
+    response schema must expose them (they were silently dropped before)."""
+    from app.schemas.campaign import CampaignStats
+    from app.services import campaign_service
+
+    async with LiveSessionLocal() as db:
+        acct_id = await _any_account_id(db)
+        pmid = f"pm-{uuid.uuid4().hex[:12]}"
+        camp, _ = await _mk_message(db, acct_id, "sms", "+256700000009", pmid)
+        await deliveries.record_delivery(
+            db, provider="africastalking", provider_message_id=pmid,
+            outcome="delivered", commit=True)
+
+        stats = await campaign_service.compute_stats(db, camp.id)
+        assert stats["delivered"] == 1
+        assert "bounced" in stats and "delivered_rate" in stats
+
+        # The API response model must retain the DLR counts, not drop them.
+        model = CampaignStats(**stats)
+        assert model.delivered == 1 and model.bounced == 0

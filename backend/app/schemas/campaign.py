@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Campaign schemas (Section 5.x campaigns API)."""
 from __future__ import annotations
 
@@ -63,7 +65,12 @@ class CampaignStats(BaseModel):
     sms_failed: int = 0
     email_sent: int = 0
     email_failed: int = 0
-    delivery_rate: float = 0.0  # sent / (sent+failed)
+    # DLR-derived (0 until delivery reports arrive): confirmed delivered vs hard
+    # bounces/complaints, and the share of accepted messages confirmed delivered.
+    delivered: int = 0
+    bounced: int = 0
+    delivery_rate: float = 0.0  # sent / (sent+failed) — provider acceptance
+    delivered_rate: float = 0.0  # delivered / sent — DLR-confirmed delivery
 
 
 class CampaignOut(BaseModel):

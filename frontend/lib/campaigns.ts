@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 "use client";
 
 import { getToken } from "@/lib/api";
@@ -37,7 +41,10 @@ export interface CampaignStats {
   sms_failed: number;
   email_sent: number;
   email_failed: number;
+  delivered: number;
+  bounced: number;
   delivery_rate: number;
+  delivered_rate: number;
 }
 
 export interface CampaignDetail extends CampaignOut {
