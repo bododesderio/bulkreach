@@ -12,7 +12,7 @@ import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusPill } from '@/components/admin/StatusPill';
+import { StatusBadge } from '@/components/ui';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
@@ -37,12 +37,6 @@ interface AuditLogResponse {
 }
 
 // ── config ────────────────────────────────────────────────────────────────────
-const SEVERITY_COLOR: Record<Severity, string> = {
-  info:     '#00D4AA',
-  warn:     '#F59E0B',
-  critical: '#EF4444',
-};
-
 const FILTERS = ['All', 'Info', 'Warn', 'Critical'] as const;
 type Filter = (typeof FILTERS)[number];
 
@@ -78,13 +72,7 @@ const COLUMNS: Column<AuditEntry>[] = [
   {
     key: 'severity',
     label: 'Severity',
-    render: (row) => (
-      <StatusPill
-        label={row.severity}
-        color={SEVERITY_COLOR[row.severity] ?? '#9CA3AF'}
-        pulse={row.severity === 'critical'}
-      />
-    ),
+    render: (row) => <StatusBadge domain="severity" status={row.severity} />,
   },
   {
     key: 'actor',

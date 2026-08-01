@@ -45,7 +45,8 @@ export type StatusDomain =
   | 'message'
   | 'managed'
   | 'health'
-  | 'channel';
+  | 'channel'
+  | 'severity';
 
 type DomainMap = Record<string, StatusEntry>;
 
@@ -142,6 +143,13 @@ const channel: DomainMap = {
   both: { label: 'SMS + Email', color: C.indigo, bg: 'rgba(99,102,241,0.10)' },
 };
 
+/** Audit-log entry severity. */
+const severity: DomainMap = {
+  info: { label: 'Info', color: C.teal },
+  warn: { label: 'Warn', color: C.amber },
+  critical: { label: 'Critical', color: C.red, pulse: true },
+};
+
 const DOMAINS: Record<StatusDomain, DomainMap> = {
   account,
   subscription,
@@ -152,6 +160,7 @@ const DOMAINS: Record<StatusDomain, DomainMap> = {
   managed,
   health,
   channel,
+  severity,
 };
 
 /** Title-case a raw status token for the unknown fallback. */
