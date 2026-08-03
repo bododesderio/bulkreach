@@ -157,17 +157,15 @@ async def estimate(db: AsyncSession, campaign: Campaign) -> dict:
 async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[int, int]:
     """Turn the chosen contact list into CampaignContact + Message rows and mark
     the campaign queued. Enforces MAX_RECIPIENTS and the trial message allowance."""
-    # Serialize concurrent sends of the same campaign: take a row lock and re-check
-    # status under it. Without this, a double-submit (double-click / retried request)
-    # could both read status="draft" and each materialise a full duplicate set of
-    # messages + reserve quota → every recipient sent twice.
-    campaign = (
-        await db.execute(
-            select(Campaign).where(Campaign.id == campaign.id).with_for_update()
-        )
-    ).scalar_one()
-    if campaign.status not in ("draft", "scheduled"):
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Campaign is already '{campaign.status}'.")
+    # Serialize concurrent sends of the same campaign: lock the row and read its
+    # current status in one shot. A second concurrent /send blocks here until the
+    # first commits, then reads status="queued" → 409 (prevents double-send). Reading
+    # a scalar (not loading the entity) avoids disturbing the flush below.
+    locked_status = await db.scalar(
+        select(Campaign.status).where(Campaign.id == campaign.id).with_for_update()
+    )
+    if locked_status not in ("draft", "scheduled"):
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Campaign is already '{locked_status}'.")
     if not campaign.contact_list_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Attach a contact list before sending.")
 
@@ -222,14 +220,17 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
 
         await enforce.enforce_send(db, account, campaign, message_count)
 
-    # Bulk-build all rows, then a SINGLE flush. IDs are generated app-side so the
-    # Message FK needs no per-contact flush round-trip (was O(n) flushes — up to
-    # 20k — at send time). SQLAlchemy topologically orders CampaignContact before
-    # Message on flush, satisfying the FK.
-    rows: list = []
+    # Bulk-build with app-side UUIDs (no per-contact flush round-trip — was O(n)
+    # flushes, up to 20k, at send time). Insert CampaignContacts FIRST and flush,
+    # THEN the Messages that FK to them: a single interleaved flush does NOT
+    # reliably order the two tables (there's no ORM relationship between Message and
+    # CampaignContact for the unit-of-work to sort on), which caused the Message FK
+    # to be inserted before its parent row.
+    cc_rows: list = []
+    msg_rows: list = []
     for contact, sms_ok, email_ok in targets:
         cc_id = uuid.uuid4()
-        rows.append(CampaignContact(
+        cc_rows.append(CampaignContact(
             id=cc_id,
             campaign_id=campaign.id,
             contact_id=contact.id,
@@ -238,18 +239,20 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
             merge_data=contact.raw_data or {},
         ))
         if sms_ok:
-            rows.append(Message(
+            msg_rows.append(Message(
                 campaign_id=campaign.id, campaign_contact_id=cc_id, channel="sms",
                 recipient=contact.phone, status="queued",
                 max_attempts=settings.MAX_RETRIES_PER_MESSAGE,
             ))
         if email_ok:
-            rows.append(Message(
+            msg_rows.append(Message(
                 campaign_id=campaign.id, campaign_contact_id=cc_id, channel="email",
                 recipient=contact.email, status="queued",
                 max_attempts=settings.MAX_RETRIES_PER_MESSAGE,
             ))
-    db.add_all(rows)
+    db.add_all(cc_rows)
+    await db.flush()          # parents persisted before children reference them
+    db.add_all(msg_rows)
 
     campaign.status = "queued"
     await db.flush()
