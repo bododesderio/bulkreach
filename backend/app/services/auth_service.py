@@ -64,9 +64,18 @@ async def register_account(
     return account, user
 
 
+# A valid bcrypt hash of a throwaway value. When the email is unknown we still run
+# a full verify against this so login response time doesn't reveal whether an
+# account exists (user-enumeration timing oracle).
+_DUMMY_HASH = hash_password("bulkreach-login-timing-guard")
+
+
 async def authenticate(db: AsyncSession, email: str, password: str) -> User:
     user = await db.scalar(select(User).where(User.email == email))
-    if not user or not verify_password(password, user.hashed_password) or not user.is_active:
+    # Always run bcrypt (against the real hash when present, else the dummy) so both
+    # branches cost the same; short-circuiting on `not user` would leak existence.
+    password_ok = verify_password(password, user.hashed_password if user else _DUMMY_HASH)
+    if not user or not password_ok or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
     # A suspended/deleted account blocks all of its users at login.
     account = await db.get(Account, user.account_id)

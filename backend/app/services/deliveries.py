@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.campaign import Campaign, Message
 from app.models.suppression import Suppression
+from app.services.parsers.contact_parser import normalise_phone
 
 # The terminal states a DLR can move a message into.
 DELIVERY_OUTCOMES = {"delivered", "undelivered", "bounced", "complained"}
@@ -163,10 +164,15 @@ async def handle_inbound_sms(
     account** — the account whose campaign most recently sent SMS to that number.
     Returns the action taken (`suppressed` / `already_suppressed` / `resubscribed` /
     `not_suppressed`) or None (not a STOP/START, or the number has no prior send)."""
-    number = (from_number or "").strip()
+    raw_number = (from_number or "").strip()
     stop, start = is_stop_keyword(text), is_start_keyword(text)
-    if not number or not (stop or start):
+    if not raw_number or not (stop or start):
         return None
+
+    # Recipients are stored in E.164 (contact import normalises them); the provider
+    # may post the MO number in a different shape (2567…, 07…, +2567…). Match on the
+    # canonical form so an opt-out is never silently dropped on a format mismatch.
+    number = normalise_phone(raw_number) or raw_number
 
     # Attribute the opt-out/opt-in to whoever last messaged this number.
     msg = await db.scalar(

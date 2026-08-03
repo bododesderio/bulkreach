@@ -35,14 +35,35 @@ _SG_MAP = {
 }
 
 
+def verify_callback_secret(provider: str, presented: str | None) -> bool:
+    """Outer gate for webhook callbacks (inbound SMS + DLR).
+
+    - `simulator`/`test`: allowed only outside production (never in prod).
+    - A configured `WEBHOOK_CALLBACK_SECRET`: the caller must present it
+      (query `?s=` / `X-Webhook-Secret` header), compared in constant time.
+    - No secret configured: allowed only outside production — fail-closed in
+      prod so an unconfigured deployment can't be spoofed.
+
+    Providers that sign their bodies (Mailgun) are *additionally* verified in
+    `parse()`; this secret is the primary gate for unsigned providers."""
+    provider = (provider or "").lower()
+    if provider in ("simulator", "test"):
+        return not settings.is_production
+    secret = settings.WEBHOOK_CALLBACK_SECRET
+    if not secret:
+        return not settings.is_production
+    return bool(presented) and hmac.compare_digest(str(presented), secret)
+
+
 def _verify_mailgun(payload: dict) -> bool:
-    """HMAC-SHA256(timestamp+token) with the Mailgun signing key. Opt-in: if no key
-    is configured (dev), accept — the authoritative record is the message lookup."""
+    """HMAC-SHA256(timestamp+token) with the Mailgun signing key. If no key is
+    configured, accept only outside production — in prod a missing key must
+    fail closed rather than wave forged events through."""
     key = settings.MAILGUN_API_KEY
     sig = (payload or {}).get("signature") or {}
     token, timestamp, signature = sig.get("token"), sig.get("timestamp"), sig.get("signature")
     if not key:
-        return True
+        return not settings.is_production
     if not (token and timestamp and signature):
         return False
     expected = hmac.new(

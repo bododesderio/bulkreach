@@ -423,6 +423,12 @@ async def impersonate_account(
     owner = await _account_owner(db, account_id)
     if owner is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Account has no user to impersonate")
+    if owner.role == "superadmin":
+        # Impersonating a superadmin-owned account would mint an /admin-capable
+        # token, breaking the "principal is non-superadmin" guarantee above.
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Cannot impersonate a superadmin account"
+        )
 
     token = create_impersonation_token(
         str(owner.id), imp=str(admin.id), imp_email=admin.email

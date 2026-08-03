@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from itertools import islice
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.config import settings
@@ -241,13 +241,32 @@ async def dispatch_campaign(
             else:
                 email_failed += 1
 
+        # Recompute the denormalized counters from the messages table rather than
+        # from this run's locals: if the worker died mid-campaign and ARQ re-invoked
+        # dispatch, this run only touched the *remaining* messages, so trusting the
+        # locals would clobber the totals with a partial count. Aggregating over the
+        # whole campaign is resume-safe (autoflush persists the pending failures above
+        # before the count runs).
+        agg = {
+            (ch, st): n
+            for ch, st, n in (
+                await db.execute(
+                    select(Message.channel, Message.status, func.count())
+                    .where(Message.campaign_id == campaign.id)
+                    .group_by(Message.channel, Message.status)
+                )
+            ).all()
+        }
+        sms_sent_total = agg.get(("sms", "sent"), 0)
+        email_sent_total = agg.get(("email", "sent"), 0)
+
         campaign.status = "completed"
         campaign.completed_at = _utcnow()
-        campaign.messages_sent = sent
-        campaign.sms_sent = sms_sent
-        campaign.sms_failed = sms_failed
-        campaign.email_sent = email_sent
-        campaign.email_failed = email_failed
+        campaign.messages_sent = sms_sent_total + email_sent_total
+        campaign.sms_sent = sms_sent_total
+        campaign.sms_failed = agg.get(("sms", "failed"), 0)
+        campaign.email_sent = email_sent_total
+        campaign.email_failed = agg.get(("email", "failed"), 0)
         campaign.elapsed_seconds = round(time.monotonic() - started, 3)
         await db.commit()
 

@@ -157,6 +157,12 @@ class Settings(BaseSettings):
     # the customer back to. Defaults to FRONTEND_URL when blank.
     PAYMENTS_CALLBACK_BASE_URL: str = ""
 
+    # Shared secret that inbound-SMS + DLR callback URLs must present (query
+    # ?s=… or X-Webhook-Secret header). These webhooks are unauthenticated by
+    # design; the secret is the gate for providers that don't sign their
+    # callbacks (Africa's Talking). Fail-closed in production when unset.
+    WEBHOOK_CALLBACK_SECRET: str = ""
+
     # Legacy Flutterwave env fallback (superseded by DB-stored provider config).
     FLUTTERWAVE_PUBLIC_KEY: str = ""
     FLUTTERWAVE_SECRET_KEY: str = ""

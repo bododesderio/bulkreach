@@ -88,11 +88,20 @@ async def reserve(account_id: UUID | str, n: int) -> tuple[int, int]:
     return int(res[0]), int(res[2])
 
 
+# Decrement each key by n, clamping at 0 so an over-release (double refund, or a
+# refund after a manual consume) can never drive a counter negative — a negative
+# `used` would corrupt quota_state / threshold math. KEEPTTL preserves the reset.
+_RELEASE_LUA = """
+for i = 1, #KEYS do
+  local v = redis.call('DECRBY', KEYS[i], ARGV[1])
+  if v < 0 then redis.call('SET', KEYS[i], 0, 'KEEPTTL') end
+end
+return 1
+"""
+
+
 async def release(account_id: UUID | str, n: int) -> None:
-    """Roll back a reservation of `n` messages on both counters."""
+    """Roll back a reservation of `n` messages on both counters, floored at 0."""
     if n <= 0:
         return
-    pipe = redis.pipeline()
-    pipe.incrby(_month_key(account_id), -n)
-    pipe.incrby(_day_key(account_id), -n)
-    await pipe.execute()
+    await redis.eval(_RELEASE_LUA, 2, _month_key(account_id), _day_key(account_id), n)

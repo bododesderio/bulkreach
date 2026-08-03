@@ -38,8 +38,11 @@ app = FastAPI(
     title=f"{settings.PROJECT_NAME} API",
     version="2.0.0",
     description="Bulk SMS & Email platform for Uganda / East Africa.",
-    docs_url="/docs",
-    openapi_url="/openapi.json",
+    # Interactive docs + the OpenAPI schema hand out a full route/parameter map;
+    # keep them off in production so they aren't a free recon surface.
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan,
 )
 

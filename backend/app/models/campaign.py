@@ -82,6 +82,9 @@ class Message(UUIDPk, TimestampMixin, Base):
         Index("ix_messages_campaign_status", "campaign_id", "status"),
         # DLR lookup: inbound callbacks resolve a message by its provider id.
         Index("ix_messages_provider_message_id", "provider_message_id"),
+        # Inbound-SMS opt-out lookup: resolve the most recent SMS to a recipient
+        # (WHERE channel='sms' AND recipient=? ORDER BY created_at DESC).
+        Index("ix_messages_recipient_created", "recipient", "created_at"),
     )
 
     campaign_id: Mapped[uuid.UUID] = mapped_column(

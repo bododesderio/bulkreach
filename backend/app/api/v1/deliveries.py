@@ -36,6 +36,16 @@ async def _read_body(request: Request) -> tuple[bytes, dict | None, dict | None]
     return raw, None, (dict(parse_qsl(raw.decode("utf-8", "replace"))) if raw else {})
 
 
+def _presented_secret(request: Request) -> str | None:
+    """The callback secret the caller supplied, via query (?s= / ?secret=) or the
+    X-Webhook-Secret header."""
+    return (
+        request.query_params.get("s")
+        or request.query_params.get("secret")
+        or request.headers.get("x-webhook-secret")
+    )
+
+
 @inbound_router.post("/{provider}", include_in_schema=False)
 async def inbound_sms_webhook(
     provider: str,
@@ -47,6 +57,9 @@ async def inbound_sms_webhook(
     ip = client_ip(request) or "0.0.0.0"
     if not await sliding_window_allow(f"inbound:webhook:{ip}", 300, 60):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests")
+
+    if not dlr_providers.verify_callback_secret(provider, _presented_secret(request)):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid webhook secret")
 
     raw, payload, form = await _read_body(request)
     verified, messages = dlr_providers.parse_inbound(provider, raw, payload, form)
@@ -75,6 +88,9 @@ async def dlr_webhook(
     ip = client_ip(request) or "0.0.0.0"
     if not await sliding_window_allow(f"dlr:webhook:{ip}", 300, 60):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests")
+
+    if not dlr_providers.verify_callback_secret(provider, _presented_secret(request)):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid webhook secret")
 
     raw, payload, form = await _read_body(request)
 

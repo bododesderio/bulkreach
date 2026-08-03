@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -285,6 +285,7 @@ async def logout(
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 async def forgot_password(
     data: ForgotPasswordRequest, request: Request,
+    background: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, str]:
     from sqlalchemy import select
@@ -304,7 +305,10 @@ async def forgot_password(
     if user:  # Never reveal whether the email exists
         token = auth_service.make_reset_token(user)
         link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-        await send_email(
+        # Send AFTER the response so both the exists / doesn't-exist branches return
+        # in constant time (no inline await → no timing oracle on the reset path).
+        background.add_task(
+            send_email,
             to=user.email,
             subject="Reset your BulkReach password",
             html=f'<p>Reset your password: <a href="{link}">{link}</a></p><p>This link expires in 1 hour.</p>',

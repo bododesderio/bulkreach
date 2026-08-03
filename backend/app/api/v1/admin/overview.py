@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin dashboard overview (superadmin): platform KPIs + revenue-by-plan +
 activity feed. All figures are live aggregates over the operational DB."""
 from __future__ import annotations
@@ -20,10 +22,13 @@ from app.schemas.admin import (
     OverviewResponse,
     RevenueByPlan,
 )
+from app.services.managed import pipeline
 
 router = APIRouter(prefix="/admin", tags=["admin:overview"])
 
-_MANAGED_TERMINAL = ("complete", "report_issued")
+# Terminal (non-pending) managed states — kept in lockstep with the pipeline's
+# own definition so the overview KPI and the /admin/managed page agree exactly.
+_MANAGED_TERMINAL = pipeline.TERMINAL
 
 # Map audit action prefixes → activity-feed kind for the ticker.
 _KIND = {
