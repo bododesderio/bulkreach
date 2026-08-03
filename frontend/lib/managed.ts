@@ -187,9 +187,6 @@ export interface Managed {
   audience: number | null;
   brief_text: string;
   status: Status;
-  account_manager_id: string | null;
-  account_manager_email: string | null;
-  approved_at: string | null;
   created_at: string;
   updated_at: string;
   report_ready: boolean;
@@ -197,9 +194,6 @@ export interface Managed {
   copy_sms: string | null;
   copy_email_subject: string | null;
   copy_email_body: string | null;
-  approval_sent_at: string | null;
-  approval_expires_at: string | null;
-  change_request_note: string | null;
   on_hold: boolean;
   cancelled: boolean;
 }

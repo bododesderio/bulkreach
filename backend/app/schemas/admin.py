@@ -136,20 +136,14 @@ class ManagedOut(BaseModel):
     audience: int | None
     brief_text: str
     status: str
-    account_manager_id: UUID | None
-    account_manager_email: str | None
-    approved_at: datetime | None
     created_at: datetime
     updated_at: datetime
     report_ready: bool = False
     report_url: str | None = None
-    # Draft copy + approval loop
+    # Draft copy the admin writes before the Campaign exists.
     copy_sms: str | None = None
     copy_email_subject: str | None = None
     copy_email_body: str | None = None
-    approval_sent_at: datetime | None = None
-    approval_expires_at: datetime | None = None
-    change_request_note: str | None = None
     on_hold: bool = False
     cancelled: bool = False
 
@@ -167,10 +161,9 @@ class ManagedCreate(BaseModel):
 
 class ManagedUpdate(BaseModel):
     status: str | None = None  # must be a valid pipeline transition
-    account_manager_id: UUID | None = None
     brief_text: str | None = None
     campaign_id: UUID | None = None  # link the campaign this managed job ran
-    # Draft copy the client will approve
+    # Draft copy the admin writes
     copy_sms: str | None = None
     copy_email_subject: str | None = None
     copy_email_body: str | None = None

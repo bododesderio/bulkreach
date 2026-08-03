@@ -20,7 +20,6 @@ interface PortalCampaign {
   brief_text: string;
   status: string;
   campaign_name: string | null;
-  approved_at: string | null;
   created_at: string;
 }
 

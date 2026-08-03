@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Managed-client portal API (Section I). A managed_client sees their own
 managed campaigns; the heavy workflow lives admin-side."""
 from __future__ import annotations
@@ -23,7 +25,6 @@ class PortalCampaign(BaseModel):
     brief_text: str
     status: str
     campaign_name: str | None
-    approved_at: datetime | None
     created_at: datetime
 
 
@@ -40,7 +41,7 @@ async def my_managed_campaigns(
     return [
         PortalCampaign(
             id=mc.id, brief_text=mc.brief_text, status=mc.status,
-            campaign_name=cname, approved_at=mc.approved_at, created_at=mc.created_at,
+            campaign_name=cname, created_at=mc.created_at,
         )
         for mc, cname in rows
     ]

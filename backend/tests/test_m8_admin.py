@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """M8 — admin portal: overview, accounts (suspend/activate), campaigns, audit,
 managed workflow, health, revenue, plan CRUD."""
 from __future__ import annotations
@@ -127,20 +129,21 @@ async def test_admin_users_lists_staff(client, super_headers):
     assert any(u["email"] == "super@bulkreach.ug" for u in users)
 
 
-async def test_managed_assign_manager_from_staff(client, super_headers):
-    staff = (await client.get("/api/v1/admin/users", headers=super_headers)).json()
+async def test_managed_has_no_assignment_or_approval_fields(client, super_headers):
+    """The admin runs jobs solo: no manager assignment, no client sign-off — the
+    managed payload no longer carries those (now-dropped) fields."""
     account_id = (await client.get(
         "/api/v1/admin/accounts?limit=1", headers=super_headers
     )).json()["items"][0]["id"]
     created = await client.post("/api/v1/admin/managed", headers=super_headers, json={
-        "account_id": account_id, "brief_text": "assign-manager test",
+        "account_id": account_id, "brief_text": "no-assignment test",
     })
-    mid = created.json()["id"]
-    r = await client.patch(f"/api/v1/admin/managed/{mid}", headers=super_headers,
-                           json={"account_manager_id": staff[0]["id"]})
-    assert r.status_code == 200
-    assert r.json()["account_manager_id"] == staff[0]["id"]
-    assert r.json()["account_manager_email"] == staff[0]["email"]
+    body = created.json()
+    for gone in (
+        "account_manager_id", "account_manager_email", "approved_at",
+        "approval_sent_at", "approval_expires_at", "change_request_note",
+    ):
+        assert gone not in body, f"{gone} should be gone from ManagedOut"
 
 
 async def test_managed_issue_report_generates_pdf(client, super_headers):

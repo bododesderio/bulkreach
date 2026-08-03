@@ -40,15 +40,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-async def _manager_emails(db: AsyncSession, ids: set[UUID]) -> dict[UUID, str]:
-    if not ids:
-        return {}
-    rows = (await db.execute(
-        select(User.id, User.email).where(User.id.in_(ids))
-    )).all()
-    return {uid: email for uid, email in rows}
-
-
 async def _report_ready_ids(db: AsyncSession, campaign_ids: set[UUID]) -> set[UUID]:
     """Campaign ids that already have a client-success report."""
     if not campaign_ids:
@@ -63,7 +54,7 @@ async def _report_ready_ids(db: AsyncSession, campaign_ids: set[UUID]) -> set[UU
 
 def _to_out(
     mc: ManagedCampaign, account_name: str | None, campaign: Campaign | None,
-    mgr_emails: dict[UUID, str], report_ready: bool,
+    report_ready: bool,
 ) -> ManagedOut:
     audience = None
     channel = None
@@ -76,15 +67,11 @@ def _to_out(
         id=mc.id, account_id=mc.account_id, account_name=account_name,
         campaign_id=mc.campaign_id, campaign_name=campaign_name, channel=channel,
         audience=audience, brief_text=mc.brief_text, status=mc.status,
-        account_manager_id=mc.account_manager_id,
-        account_manager_email=mgr_emails.get(mc.account_manager_id) if mc.account_manager_id else None,
-        approved_at=mc.approved_at, created_at=mc.created_at, updated_at=mc.updated_at,
+        created_at=mc.created_at, updated_at=mc.updated_at,
         report_ready=report_ready,
         report_url=f"/admin/managed/{mc.id}/report/download" if report_ready else None,
         copy_sms=mc.copy_sms, copy_email_subject=mc.copy_email_subject,
         copy_email_body=mc.copy_email_body,
-        approval_sent_at=mc.approval_sent_at, approval_expires_at=mc.approval_expires_at,
-        change_request_note=mc.change_request_note,
         on_hold=mc.on_hold, cancelled=mc.cancelled,
     )
 
@@ -106,14 +93,12 @@ async def list_managed(
         stmt = stmt.where(ManagedCampaign.status == status_filter)
     rows = (await db.execute(stmt.limit(min(limit, 500)))).all()
 
-    mgr_ids = {mc.account_manager_id for mc, _, _ in rows if mc.account_manager_id}
-    mgr_emails = await _manager_emails(db, mgr_ids)
     ready = await _report_ready_ids(
         db, {mc.campaign_id for mc, _, _ in rows if mc.campaign_id}
     )
 
     items = [
-        _to_out(mc, aname, camp, mgr_emails, mc.campaign_id in ready)
+        _to_out(mc, aname, camp, mc.campaign_id in ready)
         for mc, aname, camp in rows
     ]
     stats = {
@@ -128,11 +113,8 @@ async def list_managed(
 async def _load_one(db: AsyncSession, mc: ManagedCampaign) -> ManagedOut:
     account = await db.get(Account, mc.account_id)
     campaign = await db.get(Campaign, mc.campaign_id) if mc.campaign_id else None
-    mgr_emails = await _manager_emails(
-        db, {mc.account_manager_id} if mc.account_manager_id else set()
-    )
     ready = bool(await _report_ready_ids(db, {mc.campaign_id} if mc.campaign_id else set()))
-    return _to_out(mc, account.name if account else None, campaign, mgr_emails, ready)
+    return _to_out(mc, account.name if account else None, campaign, ready)
 
 
 @router.get("/{managed_id}", response_model=ManagedOut)
@@ -188,12 +170,6 @@ async def update_managed(
     if body.brief_text is not None:
         mc.brief_text = body.brief_text
         details["brief_text"] = "updated"
-    if body.account_manager_id is not None:
-        mgr = await db.get(User, body.account_manager_id)
-        if mgr is None:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Manager user not found")
-        mc.account_manager_id = body.account_manager_id
-        details["account_manager"] = mgr.email
     if body.campaign_id is not None:
         campaign = await db.get(Campaign, body.campaign_id)
         if campaign is None or campaign.account_id != mc.account_id:
@@ -218,8 +194,6 @@ async def update_managed(
             )
         mc.status = body.status
         details["status"] = body.status
-        if body.status == "approved" and mc.approved_at is None:
-            mc.approved_at = _now()
 
     if details:
         await record_audit(
