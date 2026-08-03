@@ -57,7 +57,8 @@ seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified
   nits. localStorage-token XSS exposure noted (architectural).
 
 ## Current state — ✅ ALL 6 audit phases complete; single `main`; green (2026-08-01)
-The full audit master plan (docs/AUDIT-2026-07-31.md) is closed. Repo collapsed to a **single
+The full audit master plan (was docs/AUDIT-2026-07-31.md, now removed) is closed. All product docs
+were consolidated into README.md (2026-08-03) and the docs/ folder deleted. Repo is a **single
 `main` branch** (no feature branches, local or remote); commit directly to `main` going forward.
 
 Phases (all merged to `main`):
@@ -87,8 +88,9 @@ real prod secrets. Real secrets + DNS + VPS deploy remain operator tasks in infr
 ## Prior task — ✅ Full audit (10 lenses + live E2E) + hardening + docs (2026-07-31)
 Ran a ten-lens senior-engineer audit as 7 parallel agents (architecture/tech-lead, performance,
 security, frontend, devops, bug-hunt, live Playwright) against a running seeded stack. Deliverables
-in **docs/**: `AUDIT-2026-07-31.md` (unified ranked findings + fixed-vs-planned + 6-phase master
-plan), `PRODUCT.md`, `USER-MANUAL.md`. Deploy drafts (CI/backup/monitoring) in `infra/deploy-drafts/`.
+were `AUDIT-2026-07-31.md` (unified ranked findings + fixed-vs-planned + 6-phase master plan),
+`PRODUCT.md`, `USER-MANUAL.md` — **all since consolidated into README.md and the docs/ folder removed
+(2026-08-03)**. Deploy drafts (CI/backup/monitoring) in `infra/deploy-drafts/`.
 Top corroborated findings: SSE DB-connection leak (Critical, 2 agents), quota TOCTOU (2 agents),
 `manually_assigned` survives settlement (a bug in the prior plan-controls slice).
 **Applied + verified fixes** (commits 1d4aa2d backend, a451246 frontend, 029a548 docs — pushed):
@@ -97,7 +99,7 @@ PDF url_fetcher, password-reset revokes sessions, signup/forgot rate limits, bil
 guards, hot-path index migration (e9a3c5b7d1f2); FE admin-layout auth guard, 3 legal-consent pages,
 error/not-found boundaries, amber impersonation banner, email lowercase, autocomplete, removed fake
 admin badges. **99 backend tests pass** (+5), tsc clean. Live "stalled dispatch" was env-only (worker
-wasn't running — dispatch is correct). NOT-yet-done work is the phased plan in AUDIT-2026-07-31.md
+wasn't running — dispatch is correct). NOT-yet-done work was the phased plan in the (now-removed) audit doc
 (Phase 1 scale-hardening: quota atomic reserve, bulk-insert recipients, admin query scoping, API-key
 fast lookup, auth cache; Phase 2 DLR/suppression; Phase 3 sec: jose→PyJWT, XSS, impersonation audit;
 Phase 4 FE: React Query/dark-mode/shared ui; Phase 5 ops: CI/backups/Sentry). See [[bulkreach-audit-masterplan]].
