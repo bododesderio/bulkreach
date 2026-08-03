@@ -5,6 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Users, TrendingUp, Send, Zap, UserPlus, CreditCard, Megaphone, Cpu } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -195,6 +196,7 @@ export default function AdminDashboardPage() {
                   change={`+${kpis.new_clients} new this ${period.toLowerCase()}`}
                   changeType="up"
                   icon={Users}
+                  href="/admin/accounts"
                 />
               </RevealItem>
               <RevealItem lift>
@@ -209,6 +211,7 @@ export default function AdminDashboardPage() {
                       : 'up'
                   }
                   icon={TrendingUp}
+                  href="/admin/revenue"
                 />
               </RevealItem>
               <RevealItem lift>
@@ -223,6 +226,7 @@ export default function AdminDashboardPage() {
                       : 'up'
                   }
                   icon={Send}
+                  href="/admin/campaigns"
                 />
               </RevealItem>
               <RevealItem lift>
@@ -233,6 +237,7 @@ export default function AdminDashboardPage() {
                   changeType="warn"
                   icon={Zap}
                   warn
+                  href="/admin/managed"
                 />
               </RevealItem>
             </RevealGroup>
@@ -240,8 +245,16 @@ export default function AdminDashboardPage() {
             {/* Charts row */}
             <div className="grid grid-cols-1 gap-3 mb-[18px] lg:[grid-template-columns:1.4fr_1fr]">
               <Reveal delay={0.15} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
-                  Revenue by plan
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-navy">
+                    Revenue by plan
+                  </div>
+                  <Link
+                    href="/admin/revenue"
+                    className="shrink-0 text-[11px] font-semibold text-teal hover:underline"
+                  >
+                    View all →
+                  </Link>
                 </div>
                 <div className="text-[11px] text-text-muted mb-4">
                   {period} · {kpis.total_clients} active accounts
@@ -250,7 +263,7 @@ export default function AdminDashboardPage() {
                   <div className="py-4 text-[12px] text-text-muted">No plan revenue data yet.</div>
                 ) : (
                   <div>
-                    {planBars.map((plan) => (
+                    {planBars.slice(0, 6).map((plan) => (
                       <div key={plan.name} className="mb-3">
                         <div className="flex justify-between items-baseline mb-1.5">
                           <span className="text-[12.5px] font-semibold text-navy">
@@ -273,13 +286,29 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
                     ))}
+                    {planBars.length > 6 && (
+                      <Link
+                        href="/admin/revenue"
+                        className="block pt-1 text-[11px] font-semibold text-teal hover:underline"
+                      >
+                        +{planBars.length - 6} more plans →
+                      </Link>
+                    )}
                   </div>
                 )}
               </Reveal>
 
               <Reveal delay={0.22} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
-                  Managed queue
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-navy">
+                    Managed queue
+                  </div>
+                  <Link
+                    href="/admin/managed"
+                    className="shrink-0 text-[11px] font-semibold text-teal hover:underline"
+                  >
+                    View all →
+                  </Link>
                 </div>
                 <div className="text-[11px] text-text-muted mb-4">
                   {kpis.managed_queue_pending} campaigns pending action
@@ -312,8 +341,16 @@ export default function AdminDashboardPage() {
             {/* Bottom row */}
             <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1fr_1.5fr]">
               <Reveal delay={0.3} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
-                  Provider health
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-navy">
+                    Provider health
+                  </div>
+                  <Link
+                    href="/admin/health"
+                    className="shrink-0 text-[11px] font-semibold text-teal hover:underline"
+                  >
+                    View all →
+                  </Link>
                 </div>
                 <div className="text-[11px] text-text-muted mb-4">Real-time platform status</div>
                 {health.length === 0 ? (
@@ -340,11 +377,19 @@ export default function AdminDashboardPage() {
               </Reveal>
 
               <Reveal delay={0.36} lift className={cardBase}>
-                <div className="flex items-center gap-2 mb-3">
-                  <StatusDot color="#10B981" pulse />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
-                    Live activity
-                  </span>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <StatusDot color="#10B981" pulse />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                      Live activity
+                    </span>
+                  </div>
+                  <Link
+                    href="/admin/audit-log"
+                    className="shrink-0 text-[11px] font-semibold text-teal hover:underline"
+                  >
+                    View all →
+                  </Link>
                 </div>
                 {activity.length === 0 ? (
                   <div className="py-4 text-[12px] text-text-muted">No activity recorded yet.</div>

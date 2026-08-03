@@ -259,6 +259,7 @@ export default function DashboardPage() {
               : `${listCount} lists imported`
             }
             changeType="up"
+            href="/dashboard/contacts"
           />
         </RevealItem>
 
@@ -275,6 +276,7 @@ export default function DashboardPage() {
               : `${totalCampaigns} campaigns created`
             }
             changeType="up"
+            href="/dashboard/campaigns"
           />
         </RevealItem>
 

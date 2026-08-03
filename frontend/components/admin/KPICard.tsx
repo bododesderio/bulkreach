@@ -2,7 +2,8 @@
  * @author Bodo Desderio <rooiboktechltd@gmail.com>
  * @copyright 2026 Rooibok Technologies. All rights reserved.
  */
-import { TrendingUp, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { TrendingUp, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface KPICardProps {
@@ -13,6 +14,8 @@ interface KPICardProps {
   icon: LucideIcon;
   warn?: boolean;
   valueSize?: number;
+  /** When set, the whole card becomes a link to this route. */
+  href?: string;
 }
 
 export default function KPICard({
@@ -23,26 +26,39 @@ export default function KPICard({
   icon: Icon,
   warn = false,
   valueSize,
+  href,
 }: KPICardProps) {
-  return (
-    <div
-      className="bg-white border rounded-[11px] p-4"
-      style={warn ? { borderColor: 'rgba(239,68,68,0.2)' } : undefined}
-    >
+  const clickable = Boolean(href);
+  const className = `group block h-full bg-white border rounded-[11px] p-4 ${
+    clickable
+      ? 'cursor-pointer transition-all hover:border-teal/60 hover:shadow-[0_8px_20px_-12px_rgba(27,31,74,0.25)]'
+      : ''
+  }`;
+  const style = warn ? { borderColor: 'rgba(239,68,68,0.2)' } : undefined;
+
+  const body = (
+    <>
       {/* Top row */}
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
           {label}
         </span>
-        <Icon size={15} className={warn ? 'text-error' : 'text-text-muted'} />
+        {clickable ? (
+          <ArrowUpRight
+            size={15}
+            className="text-text-muted transition-colors group-hover:text-teal"
+            aria-hidden
+          />
+        ) : (
+          <Icon size={15} className={warn ? 'text-error' : 'text-text-muted'} />
+        )}
       </div>
 
       {/* Value */}
       <div
         className={`font-mono font-semibold text-navy leading-tight mt-1 ${warn ? 'text-error' : ''}`}
         style={{
-          // Fluid: shrinks to fit a narrow mobile card, grows back to the target
-          // size on wider screens — so large values never overflow the tile.
+          // Fluid: shrinks to fit a narrow mobile card, grows back on wider screens.
           fontSize: `clamp(${Math.round((valueSize ?? 26) * 0.7)}px, 5.2vw, ${valueSize ?? 26}px)`,
         }}
       >
@@ -63,6 +79,16 @@ export default function KPICard({
           </>
         )}
       </div>
+    </>
+  );
+
+  return href ? (
+    <Link href={href} className={className} style={style} aria-label={`${label} — view details`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={className} style={style}>
+      {body}
     </div>
   );
 }

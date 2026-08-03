@@ -1,5 +1,5 @@
 # Project Context
-Last updated: 2026-08-01
+Last updated: 2026-08-03
 
 ## Current state — ✅ ALL 6 audit phases complete; single `main`; green (2026-08-01)
 The full audit master plan (docs/AUDIT-2026-07-31.md) is closed. Repo collapsed to a **single

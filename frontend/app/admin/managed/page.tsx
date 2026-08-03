@@ -517,6 +517,9 @@ export default function ManagedPage() {
   });
   const [savingCopy, setSavingCopy] = useState(false);
 
+  // Stat-card filter: click a KPI to narrow the board to that stage group.
+  const [statFilter, setStatFilter] = useState<'all' | 'in_prod' | 'awaiting' | 'complete'>('all');
+
   // ── mount data load (React Query): pipeline + linkable campaigns + staff ──────
   const { data, isLoading: loading, refetch } = useApiQuery(
     ['admin', 'managed'],
@@ -755,6 +758,25 @@ export default function ManagedPage() {
   const awaitingCount = items.filter((m) => m.status === 'awaiting_approval').length;
   const completeCount = items.filter((m) => COMPLETE_STATES.has(m.status)).length;
 
+  // Board honours the active stat-card filter; 'all' shows everything.
+  const matchesFilter = (m: Managed): boolean => {
+    switch (statFilter) {
+      case 'in_prod':
+        return IN_PROD_STATES.has(m.status) && !m.cancelled;
+      case 'awaiting':
+        return m.status === 'awaiting_approval';
+      case 'complete':
+        return COMPLETE_STATES.has(m.status);
+      default:
+        return true;
+    }
+  };
+  const visibleItems = statFilter === 'all' ? items : items.filter(matchesFilter);
+
+  // Clicking an active card clears the filter (toggle); otherwise set it.
+  const toggleFilter = (f: typeof statFilter) =>
+    setStatFilter((cur) => (cur === f ? 'all' : f));
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -783,6 +805,8 @@ export default function ManagedPage() {
               icon={Layers}
               change="All managed jobs"
               changeType="up"
+              onClick={() => setStatFilter('all')}
+              active={statFilter === 'all'}
             />
           </RevealItem>
           <RevealItem lift>
@@ -792,6 +816,8 @@ export default function ManagedPage() {
               icon={Zap}
               change="Pre-approval stages"
               changeType="up"
+              onClick={() => toggleFilter('in_prod')}
+              active={statFilter === 'in_prod'}
             />
           </RevealItem>
           <RevealItem lift>
@@ -802,6 +828,8 @@ export default function ManagedPage() {
               change="Client sign-off needed"
               changeType={awaitingCount > 0 ? 'warn' : 'up'}
               warn={awaitingCount > 0}
+              onClick={() => toggleFilter('awaiting')}
+              active={statFilter === 'awaiting'}
             />
           </RevealItem>
           <RevealItem lift>
@@ -811,6 +839,8 @@ export default function ManagedPage() {
               icon={CheckCircle2}
               change="Sent / reported / closed"
               changeType="up"
+              onClick={() => toggleFilter('complete')}
+              active={statFilter === 'complete'}
             />
           </RevealItem>
         </RevealGroup>
@@ -820,8 +850,20 @@ export default function ManagedPage() {
           <div className="font-display text-[14px] font-bold text-navy mb-0.5">
             Campaign pipeline
           </div>
-          <div className="text-[11px] text-text-muted">
-            {items.length} campaign{items.length !== 1 ? 's' : ''} &middot; 15-state kanban &middot; 5 lanes
+          <div className="text-[11px] text-text-muted flex items-center gap-2 flex-wrap">
+            <span>
+              {visibleItems.length} campaign{visibleItems.length !== 1 ? 's' : ''}
+              {statFilter !== 'all' && ` of ${items.length}`} &middot; 15-state kanban &middot; 5 lanes
+            </span>
+            {statFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setStatFilter('all')}
+                className="font-semibold text-teal hover:underline"
+              >
+                Clear filter ×
+              </button>
+            )}
           </div>
         </Reveal>
 
@@ -842,11 +884,25 @@ export default function ManagedPage() {
           >
             No managed campaigns yet. Create a brief to start the pipeline.
           </div>
+        ) : visibleItems.length === 0 ? (
+          <div
+            className="text-center py-10 text-[13px] text-text-muted border rounded-[10px]"
+            style={{ background: '#FAFBFE' }}
+          >
+            No campaigns match this filter.{' '}
+            <button
+              type="button"
+              onClick={() => setStatFilter('all')}
+              className="font-semibold text-teal hover:underline"
+            >
+              Show all
+            </button>
+          </div>
         ) : (
           <div className="overflow-x-auto pb-4">
             <div className="flex gap-3 min-w-fit items-start">
               {LANES.map((lane) => {
-                const laneCount = items.filter((m) => lane.states.includes(m.status)).length;
+                const laneCount = visibleItems.filter((m) => lane.states.includes(m.status)).length;
                 return (
                   <div
                     key={lane.key}
@@ -875,7 +931,7 @@ export default function ManagedPage() {
                     {/* State columns */}
                     <div className="flex gap-2 p-2">
                       {lane.states.map((state) => {
-                        const stateItems = items.filter((m) => m.status === state);
+                        const stateItems = visibleItems.filter((m) => m.status === state);
                         const sCfg = STATUS_CFG[state];
                         return (
                           <div key={state} className="w-[190px] flex-shrink-0">
