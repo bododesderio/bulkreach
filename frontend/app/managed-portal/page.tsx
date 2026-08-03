@@ -134,7 +134,11 @@ export default function ManagedPortalHome() {
           ) : (
             <RevealGroup className="space-y-3" stagger={0.05}>
               {campaigns.map((c) => {
-                const st = STAGE[c.status] ?? { label: c.status, color: "#9CA3AF" };
+                // Unknown/new backend stages: humanize the token rather than
+                // leaking snake_case (e.g. "awaiting_assets" → "Awaiting assets").
+                const humanize = (s: string) =>
+                  s.replace(/_/g, " ").replace(/^\w/, (ch) => ch.toUpperCase());
+                const st = STAGE[c.status] ?? { label: humanize(c.status), color: "#9CA3AF" };
                 return (
                   <RevealItem key={c.id} lift>
                     <div className={cardBase}>

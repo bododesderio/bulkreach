@@ -753,25 +753,23 @@ export default function ManagedPage() {
 
   const items = managed?.items ?? [];
 
+  // Single source of truth for each stat-card group, so the count tiles and the
+  // board filter can never drift. Cancelled jobs are excluded from every active
+  // group (a cancelled job is not "in production", "awaiting", or "complete").
+  const GROUP_PREDICATE: Record<Exclude<typeof statFilter, 'all'>, (m: Managed) => boolean> = {
+    in_prod: (m) => IN_PROD_STATES.has(m.status) && !m.cancelled,
+    awaiting: (m) => m.status === 'awaiting_approval' && !m.cancelled,
+    complete: (m) => COMPLETE_STATES.has(m.status) && !m.cancelled,
+  };
+
   const totalCount = items.length;
-  const inProdCount = items.filter((m) => IN_PROD_STATES.has(m.status) && !m.cancelled).length;
-  const awaitingCount = items.filter((m) => m.status === 'awaiting_approval').length;
-  const completeCount = items.filter((m) => COMPLETE_STATES.has(m.status)).length;
+  const inProdCount = items.filter(GROUP_PREDICATE.in_prod).length;
+  const awaitingCount = items.filter(GROUP_PREDICATE.awaiting).length;
+  const completeCount = items.filter(GROUP_PREDICATE.complete).length;
 
   // Board honours the active stat-card filter; 'all' shows everything.
-  const matchesFilter = (m: Managed): boolean => {
-    switch (statFilter) {
-      case 'in_prod':
-        return IN_PROD_STATES.has(m.status) && !m.cancelled;
-      case 'awaiting':
-        return m.status === 'awaiting_approval';
-      case 'complete':
-        return COMPLETE_STATES.has(m.status);
-      default:
-        return true;
-    }
-  };
-  const visibleItems = statFilter === 'all' ? items : items.filter(matchesFilter);
+  const visibleItems =
+    statFilter === 'all' ? items : items.filter(GROUP_PREDICATE[statFilter]);
 
   // Clicking an active card clears the filter (toggle); otherwise set it.
   const toggleFilter = (f: typeof statFilter) =>

@@ -1,168 +1,97 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
-import { useState } from 'react';
-import { toast } from 'sonner';
+import Link from 'next/link';
+import { Info } from 'lucide-react';
 import Topbar from '@/components/admin/Topbar';
-import FormGrid, { FormActions, FormCard } from '@/components/admin/FormGrid';
+import FormGrid, { FormCard } from '@/components/admin/FormGrid';
 import FormField from '@/components/admin/FormField';
 import { Reveal } from '@/components/admin/Reveal';
 
-interface SettingsForm {
-  platformName: string;
-  supportEmail: string;
-  smsSenderId: string;
-  archiveRetentionMonths: number;
-  mailgunDomain: string;
-  flutterwaveMode: 'test' | 'live';
-}
+// Deploy-time platform configuration. These values are set via environment at
+// deploy time (see infra/OPERATIONS.md) and are shown here read-only; the pieces
+// that ARE editable at runtime live on their own admin pages (linked below).
+const CONFIG: { label: string; value: string; hint: string }[] = [
+  { label: 'Platform name', value: 'BulkReach', hint: 'Shown in emails and branded reports (PROJECT_NAME).' },
+  { label: 'Support email', value: 'support@bulkreach.ug', hint: 'Reply-to for automated emails (SUPPORT_EMAIL).' },
+  { label: 'Default SMS sender ID', value: 'BULKREACH', hint: 'Max 11 alphanumeric chars (DEFAULT_SMS_SENDER).' },
+  { label: 'Mailgun domain', value: 'mg.bulkreach.ug', hint: 'Verified Mailgun sending domain (MAILGUN_DOMAIN).' },
+];
 
-const defaults: SettingsForm = {
-  platformName: 'BulkReach',
-  supportEmail: 'support@bulkreach.ug',
-  smsSenderId: 'BULKREACH',
-  archiveRetentionMonths: 24,
-  mailgunDomain: 'mg.bulkreach.ug',
-  flutterwaveMode: 'test',
-};
+const RUNTIME_CONTROLS: { label: string; href: string; desc: string }[] = [
+  { label: 'Payment providers', href: '/admin/settings/payments', desc: 'Enable providers, switch test/live mode, set keys.' },
+  { label: 'Plans', href: '/admin/settings/plans', desc: 'Create and price subscription plans.' },
+  { label: 'Data archive', href: '/admin/archive', desc: 'Retention windows, legal holds, erasure.' },
+  { label: 'Marketing content', href: '/admin/settings/content', desc: 'Public-site copy, FAQs, testimonials.' },
+];
 
 export default function SettingsPage() {
-  const [form, setForm] = useState<SettingsForm>(defaults);
-
-  function update<K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    toast.success('Settings saved');
-  }
-
-  function handleCancel() {
-    setForm(defaults);
-  }
-
   return (
     <>
       <Topbar title="Settings" subtitle="Platform configuration" />
 
-      <div className="p-[18px]">
-        <form onSubmit={handleSubmit}>
-          <Reveal>
+      <div className="p-[18px] space-y-[18px]">
+        <Reveal>
+          <div
+            className="flex items-start gap-2 rounded-[11px] border p-4 text-[12px] text-text-muted"
+            style={{ background: '#F7F8FC' }}
+          >
+            <Info size={16} className="mt-0.5 shrink-0 text-teal" aria-hidden />
+            <p>
+              These platform values are configured at deploy time via environment
+              variables (see <code>infra/OPERATIONS.md</code>) and are shown here
+              read-only. Settings that can be changed at runtime have their own
+              pages, linked below.
+            </p>
+          </div>
+        </Reveal>
+
+        <Reveal>
           <FormCard>
             <FormGrid columns={2}>
-              <FormField
-                label="Platform name"
-                htmlFor="platformName"
-                hint="Shown in emails and branded reports."
-              >
-                <input
-                  id="platformName"
-                  type="text"
-                  className="input"
-                  value={form.platformName}
-                  onChange={(e) => update('platformName', e.target.value)}
-                />
-              </FormField>
-
-              <FormField
-                label="Support email"
-                htmlFor="supportEmail"
-                hint="Replies to automated emails go here."
-              >
-                <input
-                  id="supportEmail"
-                  type="email"
-                  className="input"
-                  value={form.supportEmail}
-                  onChange={(e) => update('supportEmail', e.target.value)}
-                />
-              </FormField>
-
-              <FormField
-                label="Default SMS sender ID"
-                htmlFor="smsSenderId"
-                hint="Max 11 alphanumeric characters."
-              >
-                <input
-                  id="smsSenderId"
-                  type="text"
-                  className="input"
-                  maxLength={11}
-                  value={form.smsSenderId}
-                  onChange={(e) => update('smsSenderId', e.target.value)}
-                />
-              </FormField>
-
-              <FormField
-                label="Archive retention (months)"
-                htmlFor="archiveRetentionMonths"
-                hint="Campaign data is purged after this period."
-              >
-                <input
-                  id="archiveRetentionMonths"
-                  type="number"
-                  className="input"
-                  min={1}
-                  max={120}
-                  value={form.archiveRetentionMonths}
-                  onChange={(e) =>
-                    update('archiveRetentionMonths', Number(e.target.value))
-                  }
-                />
-              </FormField>
-
-              <FormField
-                label="Mailgun domain"
-                htmlFor="mailgunDomain"
-                hint="Must match your verified Mailgun sending domain."
-              >
-                <input
-                  id="mailgunDomain"
-                  type="text"
-                  className="input"
-                  value={form.mailgunDomain}
-                  onChange={(e) => update('mailgunDomain', e.target.value)}
-                />
-              </FormField>
-
-              <FormField
-                label="Flutterwave mode"
-                htmlFor="flutterwaveMode"
-                hint="Switch to Live only after completing Flutterwave KYC."
-              >
-                <select
-                  id="flutterwaveMode"
-                  className="input"
-                  value={form.flutterwaveMode}
-                  onChange={(e) =>
-                    update('flutterwaveMode', e.target.value as 'test' | 'live')
-                  }
-                >
-                  <option value="test">Test</option>
-                  <option value="live">Live</option>
-                </select>
-              </FormField>
+              {CONFIG.map((c) => (
+                <FormField key={c.label} label={c.label} hint={c.hint}>
+                  <input
+                    type="text"
+                    className="input"
+                    value={c.value}
+                    readOnly
+                    disabled
+                    aria-readonly
+                  />
+                </FormField>
+              ))}
             </FormGrid>
-
-            <FormActions>
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-full font-display font-bold text-[13px] px-4 py-2 transition hover:opacity-90"
-                style={{ background: '#00D4AA', color: '#0D0F2E' }}
-              >
-                Save changes
-              </button>
-            </FormActions>
           </FormCard>
-          </Reveal>
-        </form>
+        </Reveal>
+
+        <Reveal>
+          <FormCard>
+            <div className="font-display text-[14px] font-bold text-navy mb-1">
+              Runtime configuration
+            </div>
+            <div className="text-[11px] text-text-muted mb-3">
+              Editable without a redeploy.
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {RUNTIME_CONTROLS.map((r) => (
+                <Link
+                  key={r.href}
+                  href={r.href}
+                  className="group block rounded-[10px] border p-3 transition-all hover:border-teal/60 hover:shadow-[0_8px_20px_-12px_rgba(27,31,74,0.25)]"
+                >
+                  <div className="text-[12.5px] font-semibold text-navy group-hover:text-teal">
+                    {r.label} →
+                  </div>
+                  <div className="text-[11px] text-text-muted mt-0.5">{r.desc}</div>
+                </Link>
+              ))}
+            </div>
+          </FormCard>
+        </Reveal>
       </div>
     </>
   );

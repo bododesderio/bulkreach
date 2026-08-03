@@ -134,8 +134,15 @@ export default function ContactsPage() {
     pasteMut.mutate({ name: pasteName, text: pasteText });
   }
 
-  function remove(id: string) {
-    deleteMut.mutate(id);
+  function remove(list: ContactList) {
+    if (
+      !window.confirm(
+        `Delete the list "${list.name}"? This permanently removes it and cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    deleteMut.mutate(list.id);
   }
 
   const listColumns: Column<ContactList>[] = [
@@ -185,7 +192,8 @@ export default function ContactsPage() {
       align: "right",
       render: (l) => (
         <button
-          onClick={() => remove(l.id)}
+          onClick={() => remove(l)}
+          disabled={deleteMut.isPending}
           aria-label={`Delete ${l.name}`}
           className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-text-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
         >

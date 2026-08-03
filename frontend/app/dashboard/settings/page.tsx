@@ -22,6 +22,7 @@ import { useAuth, User } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
 import { StatusPill } from "@/components/admin/StatusPill";
+import { DataState } from "@/components/ui";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ export default function SettingsPage() {
   // ── Profile state ────────────────────────────────────────────────────────
   const [profileData, setProfileData] = useState<AccountOut | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
+  const [profileError, setProfileError] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
@@ -235,21 +237,26 @@ export default function SettingsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    api<MeResponse>("/auth/me", { auth: true })
-      .then((d) => {
-        setProfileData(d.account);
-        setDraft(draftFromAccount(d.account));
-      })
-      .catch(() => {});
+  const loadProfile = useCallback(async () => {
+    setProfileError(false);
+    try {
+      const d = await api<MeResponse>("/auth/me", { auth: true });
+      setProfileData(d.account);
+      setDraft(draftFromAccount(d.account));
+    } catch {
+      setProfileError(true);
+    }
+  }, []);
 
+  useEffect(() => {
+    loadProfile();
     loadInvites();
     loadSessions();
 
     api<{ channels: Channels }>("/notifications/preferences", { auth: true })
       .then((d) => setChannels(d.channels))
       .catch(() => {});
-  }, [loadInvites, loadSessions]);
+  }, [loadProfile, loadInvites, loadSessions]);
 
   // ── Profile handlers ─────────────────────────────────────────────────────
 
@@ -672,7 +679,11 @@ export default function SettingsPage() {
                 </div>
               </form>
             ) : (
-              <div className="py-8 text-center text-[12px] text-text-muted">Loading…</div>
+              <DataState
+                loading={!profileError}
+                error={profileError ? "Couldn't load your profile." : undefined}
+                onRetry={loadProfile}
+              />
             )}
           </div>
         </Reveal>

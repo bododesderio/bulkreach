@@ -32,7 +32,7 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import CountUp from "@/components/admin/CountUp";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusBadge } from "@/components/ui";
+import { StatusBadge, DataState } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -62,7 +62,7 @@ export default function CampaignDetailPage() {
   const abortRef = useRef<AbortController | null>(null);
 
   // Load campaign + messages (React Query also drives the post-dispatch refetch).
-  const { data, isError, refetch } = useApiQuery(
+  const { data, isError, error, refetch } = useApiQuery(
     ["dashboard", "campaign", id],
     async () => {
       const [detail, msgs] = await Promise.all([
@@ -77,7 +77,10 @@ export default function CampaignDetailPage() {
   );
   const campaign = data?.campaign ?? null;
   const messages = useMemo(() => data?.messages ?? [], [data]);
-  const notFound = isError;
+  // Only a real 404 means "gone"; any other error is transient → offer a retry
+  // instead of falsely telling the user the campaign was deleted.
+  const notFound = isError && error instanceof ApiError && error.status === 404;
+  const loadError = isError && !notFound;
 
   async function downloadReport() {
     setDownloading(true);
@@ -157,6 +160,22 @@ export default function CampaignDetailPage() {
               It may have been deleted, or the link is incorrect.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-[18px]">
+        <Link
+          href="/dashboard/campaigns"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal hover:underline"
+        >
+          <ArrowLeft size={14} aria-hidden /> Campaigns
+        </Link>
+        <div className={cardBase}>
+          <DataState error={error} onRetry={() => refetch()} />
         </div>
       </div>
     );

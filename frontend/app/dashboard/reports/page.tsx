@@ -15,7 +15,7 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusBadge } from "@/components/ui";
+import { StatusBadge, DataState } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -38,12 +38,12 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<string>("30d");
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const { data, isLoading: loading } = useApiQuery(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery(
     ["dashboard", "reports", period],
     () =>
       api<ReportSummary>(`/reports/summary?period=${period}`, {
         auth: true,
-      }).catch(() => null),
+      }),
     { enabled: !!user },
   );
 
@@ -167,6 +167,18 @@ export default function ReportsPage() {
           </div>
           <div className="h-56 animate-pulse rounded-[11px] border bg-bg" />
         </div>
+      )}
+
+      {/* ── Error state ───────────────────────────────────────────────────── */}
+      {isError && (
+        <Reveal>
+          <div className={cardBase}>
+            <DataState
+              error={error}
+              onRetry={() => refetch()}
+            />
+          </div>
+        </Reveal>
       )}
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}

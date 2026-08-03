@@ -5,6 +5,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Zap, CheckCircle2, Calendar, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -134,12 +135,13 @@ const columns: Column<AdminCampaign>[] = [
     label: '',
     align: 'right',
     render: (row) => (
-      <button
-        onClick={() => toast(`${row.name} — opening details…`)}
-        className="text-[11px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors"
+      <Link
+        href={`/admin/accounts/${row.account_id}`}
+        aria-label={`View ${row.account_name} — owner of ${row.name}`}
+        className="inline-block text-[11px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors"
       >
-        Details
-      </button>
+        Account →
+      </Link>
     ),
   },
 ];
