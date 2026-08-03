@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.account import Account
-from app.models.campaign import Campaign, CampaignContact, Message
+from app.models.campaign import Campaign, CampaignContact, Message, TrackedLink
 from app.models.contact import Contact, ContactList
 from app.schemas.campaign import CampaignCreate, CampaignUpdate
 from app.services import template_engine
@@ -303,6 +303,13 @@ async def compute_stats(db: AsyncSession, campaign_id: uuid.UUID) -> dict:
     stats["delivered_rate"] = (
         round(stats["delivered"] / stats["sent"] * 100, 1) if stats["sent"] else 0.0
     )
+    # Link clicks: total redirects across the campaign's tracked links + CTR.
+    clicks = await db.scalar(
+        select(func.coalesce(func.sum(TrackedLink.click_count), 0))
+        .where(TrackedLink.campaign_id == campaign_id)
+    )
+    stats["clicks"] = int(clicks or 0)
+    stats["click_rate"] = round(stats["clicks"] / stats["sent"] * 100, 1) if stats["sent"] else 0.0
     return stats
 
 

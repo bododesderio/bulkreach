@@ -69,18 +69,18 @@ async def _refund_unsent(db, account, refund: int) -> None:
     await quota_svc.release(account.id, refund)
 
 
-async def _send_one(message, campaign, merge_map, sms_provider, email_provider, sem) -> SendResult:
+async def _send_one(message, campaign, bodies, merge_map, sms_provider, email_provider, sem) -> SendResult:
     data = merge_map.get(message.campaign_contact_id, {})
     async with sem:
         try:
             if message.channel == "sms":
-                body = render_sms(campaign.sms_body or "", data)
+                body = render_sms(bodies["sms"], data)
                 return await sms_provider.send(
                     to=message.recipient, body=body, sender_id=campaign.sms_sender_id
                 )
-            subject = render_subject(campaign.email_subject or "", data)
-            html = render_email_body(campaign.email_html_body or "", data)
-            plain = render_sms(campaign.email_plain_body or "", data) if campaign.email_plain_body else None
+            subject = render_subject(bodies["subject"], data)
+            html = render_email_body(bodies["html"], data)
+            plain = render_sms(bodies["plain"], data) if bodies["plain"] else None
             return await email_provider.send(
                 to=message.recipient,
                 subject=subject,
@@ -148,6 +148,25 @@ async def dispatch_campaign(
         # would false-positive, since `used` includes this campaign's own reservation).
         account = await db.get(Account, campaign.account_id)
 
+        # Link/click tracking: create a short redirect per distinct URL in the
+        # bodies (idempotent per campaign), then render from the rewritten copies.
+        # The stored bodies are left untouched so duplication stays clean.
+        from app.services import tracking
+
+        link_map = await tracking.ensure_links(
+            db, campaign.id,
+            [campaign.sms_body, campaign.email_html_body, campaign.email_plain_body],
+        )
+        bodies = {
+            "sms": tracking.rewrite(campaign.sms_body or "", link_map),
+            "subject": campaign.email_subject or "",
+            "html": tracking.rewrite(campaign.email_html_body or "", link_map),
+            "plain": (
+                tracking.rewrite(campaign.email_plain_body, link_map)
+                if campaign.email_plain_body else None
+            ),
+        }
+
         campaign.status = "sending"
         await db.commit()
 
@@ -196,7 +215,7 @@ async def dispatch_campaign(
                     await flush_progress(status="cancelled")
                     return {"status": "cancelled", "sent": sent, "failed": failed}
                 results = await asyncio.gather(
-                    *[_send_one(m, campaign, merge_map, sms_provider, email_provider, sem) for m in batch]
+                    *[_send_one(m, campaign, bodies, merge_map, sms_provider, email_provider, sem) for m in batch]
                 )
                 for message, res in zip(batch, results):
                     message.attempts += 1

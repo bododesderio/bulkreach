@@ -394,6 +394,7 @@ export default function CampaignDetailPage() {
           { label: "Bounced", value: stats?.bounced ?? 0, suffix: "" },
           { label: "Failed", value: stats?.failed ?? 0, suffix: "" },
           { label: "Delivery rate", value: rate, suffix: "%" },
+          { label: "Link clicks", value: stats?.clicks ?? 0, suffix: "" },
         ].map((s) => (
           <RevealItem key={s.label} lift>
             <div className={`${cardBase} h-full`}>

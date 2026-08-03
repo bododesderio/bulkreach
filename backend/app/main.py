@@ -123,6 +123,7 @@ from app.api.v1.payments import router as payments_router  # noqa: E402
 from app.api.v1.reports import router as reports_router  # noqa: E402
 from app.api.v1.suppressions import router as suppressions_router  # noqa: E402
 from app.api.v1.templates import router as templates_router  # noqa: E402
+from app.api.v1.redirect import router as redirect_router  # noqa: E402
 from app.api.v1.subscription import router as subscription_router  # noqa: E402
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
@@ -136,6 +137,7 @@ app.include_router(deliveries_router, prefix=settings.API_V1_PREFIX)
 app.include_router(inbound_sms_router, prefix=settings.API_V1_PREFIX)
 app.include_router(suppressions_router, prefix=settings.API_V1_PREFIX)
 app.include_router(templates_router, prefix=settings.API_V1_PREFIX)
+app.include_router(redirect_router)  # /r/{slug} — root-mounted, short tracking links
 app.include_router(subscription_router, prefix=settings.API_V1_PREFIX)
 app.include_router(billing_router, prefix=settings.API_V1_PREFIX)
 app.include_router(invitations_router, prefix=settings.API_V1_PREFIX)

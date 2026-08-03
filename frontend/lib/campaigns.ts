@@ -45,6 +45,8 @@ export interface CampaignStats {
   bounced: number;
   delivery_rate: number;
   delivered_rate: number;
+  clicks: number;
+  click_rate: number;
 }
 
 export interface CampaignDetail extends CampaignOut {

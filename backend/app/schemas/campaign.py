@@ -71,6 +71,8 @@ class CampaignStats(BaseModel):
     bounced: int = 0
     delivery_rate: float = 0.0  # sent / (sent+failed) — provider acceptance
     delivered_rate: float = 0.0  # delivered / sent — DLR-confirmed delivery
+    clicks: int = 0  # total link redirects across the campaign's tracked links
+    click_rate: float = 0.0  # clicks / sent — click-through rate
 
 
 class CampaignOut(BaseModel):

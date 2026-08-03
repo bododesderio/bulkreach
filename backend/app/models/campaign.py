@@ -160,3 +160,20 @@ class MessageTemplate(UUIDPk, TimestampMixin, Base):
     sms_body: Mapped[str | None] = mapped_column(Text)
     email_subject: Mapped[str | None] = mapped_column(String(500))
     email_html_body: Mapped[str | None] = mapped_column(Text)
+
+
+class TrackedLink(UUIDPk, Base):
+    """A URL in a campaign body, rewritten to a short redirect that counts clicks.
+    Shared across the campaign's recipients (one row per distinct URL)."""
+
+    __tablename__ = "tracked_links"
+
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("campaigns.id", ondelete="CASCADE"), index=True
+    )
+    slug: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    click_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
