@@ -163,6 +163,21 @@ export default function PlansPage() {
   );
   const saving = saveMutation.isPending;
 
+  // Editor-modal a11y: ESC closes (unless mid-save); lock body scroll while open.
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !saving) setEditing(null);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [editing, saving]);
+
   const deleteMutation = useApiMutation<unknown, AdminPlan>(
     (p) => api(`/admin/plans/${p.id}`, { method: 'DELETE', auth: true }),
     {
