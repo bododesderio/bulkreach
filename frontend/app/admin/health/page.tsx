@@ -12,7 +12,7 @@ import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import { StatusDot } from '@/components/admin/StatusPill';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 import { resolveStatus } from '@/lib/status';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 
@@ -42,6 +42,9 @@ const fmtCheckedAt = (iso: string) =>
     hour:   '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    // Match the "All times UTC+3" label — render in East Africa Time regardless
+    // of the viewer's own timezone.
+    timeZone: 'Africa/Kampala',
   });
 
 // ── overall status card ───────────────────────────────────────────────────────
@@ -87,7 +90,7 @@ function SkeletonCard() {
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function HealthPage() {
-  const { data, isFetching, error, refetch } = useApiQuery(
+  const { data, isFetching, isError, error, refetch } = useApiQuery(
     ['admin', 'health'],
     () => api<HealthResponse>('/admin/health', { auth: true }),
   );
@@ -133,6 +136,13 @@ export default function HealthPage() {
             Refresh
           </button>
         </div>
+
+        {/* First-load failure — services empty because the health check itself errored. */}
+        {isError && services.length === 0 && (
+          <div className="bg-white border rounded-[11px] p-4 mb-4">
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
 
         {/* KPI row — 3 cards */}
         <RevealGroup className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-[18px]">

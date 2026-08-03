@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Calendar, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { paymentMethodLabel } from '@/lib/labels';
 import { useApiQuery, useApiMutation } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import { Reveal } from '@/components/admin/Reveal';
@@ -316,7 +317,7 @@ export default function AccountDetailPage() {
       key: 'method',
       label: 'Method',
       render: (row) => (
-        <span className="capitalize text-[11px] text-text-muted">{row.method}</span>
+        <span className="text-[11px] text-text-muted">{paymentMethodLabel(row.method)}</span>
       ),
     },
     {

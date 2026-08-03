@@ -63,11 +63,12 @@ export default function OTPInput({ onComplete, error = false }: OTPInputProps) {
   }
 
   return (
-    <div
-      role="group"
-      aria-label="6-digit verification code"
-      className="flex gap-2 sm:gap-3"
-    >
+    <div>
+      <div
+        role="group"
+        aria-label="6-digit verification code"
+        className="flex gap-2 sm:gap-3"
+      >
       {values.map((val, i) => (
         <input
           key={i}
@@ -80,6 +81,8 @@ export default function OTPInput({ onComplete, error = false }: OTPInputProps) {
           maxLength={1}
           value={val}
           aria-label={`Digit ${i + 1} of 6`}
+          aria-invalid={error}
+          aria-describedby={error ? "otp-error" : undefined}
           autoComplete={i === 0 ? "one-time-code" : "off"}
           className={cn(
             // Sizing — mobile first, then sm:
@@ -102,6 +105,12 @@ export default function OTPInput({ onComplete, error = false }: OTPInputProps) {
           onPaste={handlePaste}
         />
       ))}
+      </div>
+      {error && (
+        <p id="otp-error" role="alert" className="mt-2 text-[12px] font-medium text-error">
+          That code isn&apos;t right. Check the 6 digits and try again.
+        </p>
+      )}
     </div>
   );
 }

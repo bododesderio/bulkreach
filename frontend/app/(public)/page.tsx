@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Users, Check, FileText, Upload, Code, LayoutGrid, BarChart2, Award, Clock, ArrowRight } from 'lucide-react'

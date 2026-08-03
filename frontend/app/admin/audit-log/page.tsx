@@ -12,7 +12,7 @@ import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
@@ -131,7 +131,7 @@ const COLUMNS: Column<AuditEntry>[] = [
 export default function AuditLogPage() {
   const [filter, setFilter] = useState<Filter>('All');
 
-  const { data, isLoading, error } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ['admin', 'audit-log'],
     () => api<AuditLogResponse>('/admin/audit-log?limit=100', { auth: true }),
   );
@@ -182,7 +182,13 @@ export default function AuditLogPage() {
           </div>
         )}
 
-        {!loading && (
+        {!loading && isError && (
+          <div className="bg-white border rounded-[11px] p-4">
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+
+        {!loading && !isError && (
           <>
             {/* KPI row */}
             <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">

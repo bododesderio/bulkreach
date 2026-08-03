@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { storageTierLabel } from '@/lib/labels';
 import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
@@ -485,7 +486,7 @@ export default function ArchivePage() {
       key: 'state',
       label: 'State',
       render: (row) => (
-        <StatusPill label={row.state} color={STATE_COLOR[row.state]} pulse={row.state === 'hot'} />
+        <StatusPill label={storageTierLabel(row.state)} color={STATE_COLOR[row.state]} pulse={row.state === 'hot'} />
       ),
     },
   ], [maxCampaigns]);

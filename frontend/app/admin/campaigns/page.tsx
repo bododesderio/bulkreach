@@ -15,7 +15,7 @@ import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import LiveTicker from '@/components/admin/LiveTicker';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type CampaignStatus =
@@ -161,7 +161,7 @@ const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 export default function CampaignsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
 
-  const { data, isLoading, error } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ['admin', 'campaigns', statusFilter],
     () => {
       const qs = new URLSearchParams({ limit: '200' });
@@ -265,10 +265,13 @@ export default function CampaignsPage() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12 text-[12px] text-text-muted">
-              Loading campaigns…
-            </div>
+          {loading || isError ? (
+            <DataState
+              loading={loading}
+              error={isError ? error : undefined}
+              onRetry={() => refetch()}
+              loadingLabel="Loading campaigns…"
+            />
           ) : (
             <DataTable<AdminCampaign>
               columns={columns}

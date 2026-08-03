@@ -18,7 +18,7 @@ import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type SubStatus = 'active' | 'trial' | 'past_due' | 'cancelled';
@@ -110,7 +110,7 @@ const SUBS_COLS = buildColumns();
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function SubscriptionsPage() {
-  const { data, isLoading, error } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ['admin', 'subscriptions'],
     () => api<SubResponse>('/admin/subscriptions', { auth: true }),
   );
@@ -140,7 +140,13 @@ export default function SubscriptionsPage() {
           </div>
         )}
 
-        {!loading && stats && (
+        {!loading && isError && (
+          <div className="bg-white border rounded-[11px] p-4">
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+
+        {!loading && !isError && stats && (
           <>
             {/* KPI row */}
             <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">

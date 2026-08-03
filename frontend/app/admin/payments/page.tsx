@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useApiQuery } from '@/lib/hooks';
+import { paymentMethodLabel, paymentProviderLabel } from '@/lib/labels';
 import Topbar from '@/components/admin/Topbar';
 import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
@@ -242,14 +243,14 @@ export default function PaymentsPage() {
       key: 'method',
       label: 'Method',
       render: (row) => (
-        <span className="text-[11px] text-text-md">{row.method}</span>
+        <span className="text-[11px] text-text-md">{paymentMethodLabel(row.method)}</span>
       ),
     },
     {
       key: 'provider',
       label: 'Provider',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.provider}</span>
+        <span className="text-[11px] text-text-muted">{paymentProviderLabel(row.provider)}</span>
       ),
     },
     {

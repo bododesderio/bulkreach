@@ -7,15 +7,17 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 interface ErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-export default function GlobalError({ error, reset }: ErrorProps) {
+export default function RouteError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    // Log to error-monitoring service if wired up
+    // Report to Sentry (no-op unless a DSN is configured) + console for local dev.
+    Sentry.captureException(error);
     console.error("[BulkReach] Unhandled error:", error);
   }, [error]);
 

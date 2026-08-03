@@ -14,6 +14,7 @@ import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import AreaTrend from '@/components/admin/AreaTrend';
 import Donut from '@/components/admin/Donut';
+import { DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 interface RevenueTotals {
@@ -50,7 +51,7 @@ const cardBase = 'bg-white border rounded-[11px] p-4';
 export default function RevenuePage() {
   const [period, setPeriod] = useState<Period>('Month');
 
-  const { data, isLoading, error } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ['admin', 'revenue', period],
     () =>
       api<RevenueResponse>(`/admin/revenue?period=${periodParam(period)}`, {
@@ -96,7 +97,13 @@ export default function RevenuePage() {
           </div>
         )}
 
-        {!loading && totals && (
+        {!loading && isError && (
+          <div className="bg-white border rounded-[11px] p-4">
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+
+        {!loading && !isError && totals && (
           <>
             {/* KPI row — key on StatCard forces CountUp to remount + re-animate on period change */}
             <RevealGroup className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-[18px]">

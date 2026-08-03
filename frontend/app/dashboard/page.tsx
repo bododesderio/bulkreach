@@ -75,7 +75,7 @@ function usageBarColor(pct: number): string {
 export default function DashboardPage() {
   const { user, account } = useAuth();
 
-  const { data } = useApiQuery(
+  const { data, refetch } = useApiQuery(
     ['dashboard', 'home'],
     async () => {
       const quotaP = api<QuotaApi>('/subscription/quota', { auth: true })
@@ -98,22 +98,31 @@ export default function DashboardPage() {
           }),
         );
       const listP = api<ContactList[]>('/contacts/lists', { auth: true })
-        .then((lists) => lists.length)
-        .catch(() => 0);
+        .then((lists) => ({ count: lists.length, err: false }))
+        .catch(() => ({ count: 0, err: true }));
       const campP = api<PaginatedCampaigns>('/campaigns?page=1&page_size=100', {
         auth: true,
       })
-        .then((res) => ({ items: res.items, total: res.total }))
-        .catch(() => ({ items: [] as CampaignOut[], total: 0 }));
+        .then((res) => ({ items: res.items, total: res.total, err: false }))
+        .catch(() => ({ items: [] as CampaignOut[], total: 0, err: true }));
 
-      const [q, listCount, campaigns] = await Promise.all([quotaP, listP, campP]);
-      return { quota: q.quota, quotaError: q.quotaError, listCount, campaigns };
+      const [q, list, campaigns] = await Promise.all([quotaP, listP, campP]);
+      return {
+        quota: q.quota,
+        quotaError: q.quotaError,
+        listCount: list.count,
+        campaigns,
+        // Any sub-fetch failing is a partial outage — surface it softly rather
+        // than rendering the failures as legitimate zeros.
+        partialError: q.quotaError || list.err || campaigns.err,
+      };
     },
     { enabled: !!user },
   );
 
   const quota          = data?.quota ?? null;
   const quotaError     = data?.quotaError ?? false;
+  const partialError   = data?.partialError ?? false;
   const listCount      = data ? data.listCount : null;
   const campaigns      = data ? data.campaigns.items : null;
   const totalCampaigns = data ? data.campaigns.total : null;
@@ -177,6 +186,26 @@ export default function DashboardPage() {
           <StatusBadge domain="account" status={account.status} />
         </div>
       </Reveal>
+
+      {/* Partial-outage note — some tiles couldn't load; don't show failures as zeros. */}
+      {partialError && (
+        <Reveal>
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 rounded-[11px] border p-3 text-[12px]"
+            style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)', color: '#92400E' }}
+            role="alert"
+          >
+            <span>Some of your dashboard data couldn&apos;t be loaded.</span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="font-semibold underline hover:no-underline"
+            >
+              Try again
+            </button>
+          </div>
+        </Reveal>
+      )}
 
       {/* ── Stat cards (4-up) ────────────────────────────────────────────── */}
       <RevealGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" stagger={0.07}>
