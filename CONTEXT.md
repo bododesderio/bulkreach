@@ -29,7 +29,19 @@ seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified
   **tsc + lint + prod build green.**
 - Verified-NOT-a-bug (audit false positive): notification billing/quota email toggles are
   intentionally clickable — the backend only force-locks *in-app*, not email.
-- Deferred (documented, lower value / larger): full DataState sweep across remaining pages, the 5
+- **Managed queue redesign (`79b7993`)** — split the one-screen 15-column kanban into a filterable
+  **table** (`/admin/managed`) → focused **job workspace** (`/admin/managed/[id]`, stage stepper +
+  Brief/Content/Send/Report sections, one clear primary action per state) → **new-brief** page
+  (`/admin/managed/new`). Flow simplified per owner: **no client sign-off, no team assignment** — the
+  admin runs each job solo. Backend states collapsed to 5 admin steps in `lib/managed.ts`; backend
+  pipeline/approval/portal left intact but unused (forward jumps let the admin skip). Added backend
+  `GET /admin/managed/{id}`. E2E test `268f94e` covers create→advance.
+- **All pushed to origin/main** (5c76da4..268f94e). Gates green: **121 backend pytest**, frontend
+  tsc + lint + prod build, **5/5 Playwright E2E** (run `--workers=1`; clear `*login*` Redis keys first
+  or the per-account login limiter 429s the parallel workers). E2E creds: super@bulkreach.ug /
+  SuperPass123!, verify+m7@bulkreach.ug / TestPass123! (set in dev DB this session).
+- Deferred (documented, lower value / larger): optionally strip the backend approval subsystem +
+  client portal (owner may want this next); full DataState sweep across remaining pages, the 5
   bespoke-modal → shared `<Modal>` accessibility migration, per-session access-token revocation
   (needs a `token_version` column + migration), refresh-grace-window idempotency, assorted LOW a11y
   nits. localStorage-token XSS exposure noted (architectural).
