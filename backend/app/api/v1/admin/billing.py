@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,8 +30,8 @@ async def list_payments(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
 ) -> AdminPaymentsResponse:
     q = (
         select(Payment, Account.name, Account.email)
@@ -103,7 +103,7 @@ async def refund_payment(
 async def list_subscriptions(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 200,
+    limit: int = Query(200, ge=1, le=500),
 ) -> AdminSubscriptionsResponse:
     rows = (await db.execute(
         select(Subscription, Account.name, Account.email, Plan.name, Plan.price_ugx)

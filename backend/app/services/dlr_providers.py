@@ -13,8 +13,12 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import time
 
 from app.core.config import settings
+
+# Reject Mailgun callbacks whose signed timestamp is older/newer than this (replay).
+_MAILGUN_MAX_SKEW_SECONDS = 300
 
 # Africa's Talking SMS delivery-report statuses → our outcomes (terminal only).
 _AT_MAP = {
@@ -65,6 +69,13 @@ def _verify_mailgun(payload: dict) -> bool:
     if not key:
         return not settings.is_production
     if not (token and timestamp and signature):
+        return False
+    # Reject stale callbacks so a captured, validly-signed event can't be replayed
+    # indefinitely (forged delivered/complained → skewed stats + suppression).
+    try:
+        if abs(time.time() - float(timestamp)) > _MAILGUN_MAX_SKEW_SECONDS:
+            return False
+    except (TypeError, ValueError):
         return False
     expected = hmac.new(
         key.encode(), f"{timestamp}{token}".encode(), hashlib.sha256

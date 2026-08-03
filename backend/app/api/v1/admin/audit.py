@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,8 +33,8 @@ async def list_audit(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     resource_type: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
 ) -> AuditResponse:
     stmt = select(AuditLog).order_by(AuditLog.created_at.desc())
     count_stmt = select(func.count()).select_from(AuditLog)

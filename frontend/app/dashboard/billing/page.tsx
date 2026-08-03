@@ -14,7 +14,7 @@ import { useAuth } from '@/store/auth';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 
 const cardBase = 'bg-white border rounded-[11px] p-4';
 
@@ -86,25 +86,32 @@ export default function BillingPage() {
 
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const { data, isLoading } = useApiQuery(
+  const { data, isLoading, refetch } = useApiQuery(
     ['dashboard', 'billing'],
     async () => {
-      const [plans, history, invoices, subscription] = await Promise.all([
-        api<Plan[]>('/payments/plans', { auth: true }).catch(() => [] as Plan[]),
-        api<PaymentOut[]>('/payments/history', { auth: true }).catch(
-          () => [] as PaymentOut[],
-        ),
-        api<InvoiceOut[]>('/billing/invoices', { auth: true }).catch(
-          () => [] as InvoiceOut[],
-        ),
-        api<SubscriptionState>('/billing/subscription', { auth: true }).catch(
-          () => null as SubscriptionState | null,
-        ),
+      // Tolerate partial degradation (one sub-view empty) but detect a TOTAL
+      // outage so we can show an error+retry instead of a blank billing page.
+      const settled = await Promise.allSettled([
+        api<Plan[]>('/payments/plans', { auth: true }),
+        api<PaymentOut[]>('/payments/history', { auth: true }),
+        api<InvoiceOut[]>('/billing/invoices', { auth: true }),
+        api<SubscriptionState>('/billing/subscription', { auth: true }),
       ]);
-      return { plans, history, invoices, subscription };
+      const [plans, history, invoices, subscription] = settled.map((r) =>
+        r.status === 'fulfilled' ? r.value : null,
+      ) as [Plan[] | null, PaymentOut[] | null, InvoiceOut[] | null, SubscriptionState | null];
+      const allFailed = settled.every((r) => r.status === 'rejected');
+      return {
+        plans: plans ?? [],
+        history: history ?? [],
+        invoices: invoices ?? [],
+        subscription: subscription ?? null,
+        allFailed,
+      };
     },
   );
 
+  const allFailed    = data?.allFailed ?? false;
   const plans        = data?.plans ?? [];
   const history      = data?.history ?? [];
   const invoices     = data?.invoices ?? [];
@@ -264,6 +271,15 @@ export default function BillingPage() {
           Manage your subscription plan and view payment history.
         </p>
       </Reveal>
+
+      {/* ── Total-outage error (all four billing fetches failed) ──────────── */}
+      {!isLoading && allFailed && (
+        <Reveal>
+          <div className={cardBase}>
+            <DataState error="Couldn't load your billing details." onRetry={() => refetch()} />
+          </div>
+        </Reveal>
+      )}
 
       {/* ── Past-due / dunning alert ──────────────────────────────────────── */}
       {subscription?.status === 'past_due' && (

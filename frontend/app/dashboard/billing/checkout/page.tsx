@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { useApiQuery } from '@/lib/hooks';
+import { DataState } from '@/components/ui';
 
 // ── Flutterwave global declaration ────────────────────────────────────────────
 
@@ -143,20 +144,26 @@ function CheckoutInner() {
   const planId = params.get('plan') ?? '';
 
   // Data — plans + enabled payment methods, loaded in parallel.
-  const { data: loadData, isLoading: loading } = useApiQuery(
+  const { data: loadData, isLoading: loading, refetch } = useApiQuery(
     ['dashboard', 'checkout', planId],
     async () => {
-      const [plans, methods] = await Promise.all([
-        api<Plan[]>('/payments/plans', { auth: true }).catch(() => [] as Plan[]),
+      // Track a plans-fetch failure so a transient outage shows retry instead of
+      // the misleading "Plan not found" dead-end.
+      const [plansRes, methods] = await Promise.all([
+        api<Plan[]>('/payments/plans', { auth: true }).then(
+          (v) => ({ ok: true as const, v }),
+          () => ({ ok: false as const, v: [] as Plan[] }),
+        ),
         api<PaymentMethod[]>('/payments/methods', { auth: true }).catch(
           () => [] as PaymentMethod[],
         ),
       ]);
-      return { plans, methods };
+      return { plans: plansRes.v, plansFailed: !plansRes.ok, methods };
     },
     { enabled: !!planId },
   );
   const plans = loadData?.plans ?? [];
+  const plansFailed = loadData?.plansFailed ?? false;
   const methods = loadData?.methods ?? [];
 
   // Proration: if the account is upgrading mid-cycle, the server credits unused time.
@@ -391,6 +398,11 @@ function CheckoutInner() {
         >
           <ArrowLeft className="h-4 w-4" /> Billing
         </Link>
+        {plansFailed ? (
+          <div className="bg-white border rounded-[11px] p-6">
+            <DataState error="Couldn't load plans. Check your connection and retry." onRetry={() => refetch()} />
+          </div>
+        ) : (
         <div className="bg-white border rounded-[11px] p-12 text-center">
           <h3 className="font-display text-[20px] font-extrabold text-navy">Plan not found</h3>
           <p className="mt-1 text-[12px] text-text-muted">
@@ -400,6 +412,7 @@ function CheckoutInner() {
             Back to billing
           </Link>
         </div>
+        )}
       </div>
     );
   }

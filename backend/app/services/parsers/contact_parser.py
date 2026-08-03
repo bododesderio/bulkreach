@@ -21,6 +21,8 @@ _EMAIL_HINTS = {"email", "e-mail", "email_address", "mail", "e_mail"}
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _MAX_ERRORS = 50
+# Hard ceiling on rows materialised from a single upload (zip-bomb / OOM guard).
+_MAX_ROWS = 100_000
 
 
 @dataclass
@@ -82,7 +84,18 @@ def _detect_column(df: pd.DataFrame, hints: set[str], validator) -> str | None:
 def _result_from_dataframe(df: pd.DataFrame) -> ParseResult:
     df = df.dropna(how="all").reset_index(drop=True)
     df.columns = [str(c).strip() for c in df.columns]
-    result = ParseResult(columns=list(df.columns), total_rows=len(df))
+    # Cap the rows we materialise per upload. The route already enforces a byte
+    # ceiling, but a small compressed .xlsx/.docx can expand to millions of rows;
+    # truncate so parsing can't exhaust worker memory (zip-bomb defence).
+    total_rows = len(df)
+    truncated = total_rows > _MAX_ROWS
+    if truncated:
+        df = df.head(_MAX_ROWS)
+    result = ParseResult(columns=list(df.columns), total_rows=total_rows)
+    if truncated:
+        result.errors.append(
+            f"Only the first {_MAX_ROWS:,} rows were processed ({total_rows:,} submitted)."
+        )
 
     result.phone_column = _detect_column(df, _PHONE_HINTS, lambda v: normalise_phone(v) is not None)
     result.email_column = _detect_column(df, _EMAIL_HINTS, lambda v: is_valid_email(v) is not None)

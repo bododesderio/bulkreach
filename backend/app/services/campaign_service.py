@@ -157,6 +157,15 @@ async def estimate(db: AsyncSession, campaign: Campaign) -> dict:
 async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[int, int]:
     """Turn the chosen contact list into CampaignContact + Message rows and mark
     the campaign queued. Enforces MAX_RECIPIENTS and the trial message allowance."""
+    # Serialize concurrent sends of the same campaign: take a row lock and re-check
+    # status under it. Without this, a double-submit (double-click / retried request)
+    # could both read status="draft" and each materialise a full duplicate set of
+    # messages + reserve quota → every recipient sent twice.
+    campaign = (
+        await db.execute(
+            select(Campaign).where(Campaign.id == campaign.id).with_for_update()
+        )
+    ).scalar_one()
     if campaign.status not in ("draft", "scheduled"):
         raise HTTPException(status.HTTP_409_CONFLICT, f"Campaign is already '{campaign.status}'.")
     if not campaign.contact_list_id:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ async def list_campaigns(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = None,
-    limit: int = 200,
+    limit: int = Query(200, ge=1, le=500),
 ) -> AdminCampaignsResponse:
     audience_sub = (
         select(

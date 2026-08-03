@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,7 +92,7 @@ async def list_accounts(
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = None,
     q: str | None = None,
-    limit: int = 200,
+    limit: int = Query(200, ge=1, le=500),
 ) -> AdminAccountsResponse:
     since = datetime.now(timezone.utc) - timedelta(days=30)
     mrr = await _mrr_map(db)

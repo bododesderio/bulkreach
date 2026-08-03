@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,7 +82,7 @@ async def list_managed(
     admin: SuperadminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     status_filter: str | None = None,
-    limit: int = 200,
+    limit: int = Query(200, ge=1, le=500),
 ) -> ManagedResponse:
     stmt = (
         select(ManagedCampaign, Account.name, Campaign)
