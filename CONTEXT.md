@@ -40,11 +40,17 @@ seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified
   tsc + lint + prod build, **5/5 Playwright E2E** (run `--workers=1`; clear `*login*` Redis keys first
   or the per-account login limiter 429s the parallel workers). E2E creds: super@bulkreach.ug /
   SuperPass123!, verify+m7@bulkreach.ug / TestPass123! (set in dev DB this session).
-- **Client sign-off removed from backend (`662e067`)** — per owner: deleted the public approval router
+- **Client sign-off removed from backend (`662e067`)** — deleted the public approval router
   (`managed_approval.py`), the admin `request-approval` endpoint, and the `/managed-approve/[token]`
-  page; dropped orphaned schemas + robots entry. Kept: client managed-portal (read-only visibility),
-  account-manager assignment, and the DB columns (dormant → reversible, no migration). 119 backend
-  pytest + 5 E2E green. Approval endpoints now 404; portal + admin detail intact.
+  page; dropped orphaned schemas + robots entry. Approval endpoints now 404; client managed-portal
+  (read-only visibility) kept.
+- **Assignment stripped + dormant columns dropped (`bbd82ed`)** — removed account-manager assignment
+  across model/API/schema/frontend/tests. Migration **b2d4f6a8c1e0** drops `managed_campaigns.`
+  {account_manager_id, approved_at, approval_token_hash+index, approval_sent_at, approval_expires_at,
+  change_request_note}; **reversible** (verified up/down/up), `status` + job states untouched.
+  managed_campaigns now has only: campaign_id, account_id, brief_text, status, id, created_at,
+  updated_at, copy_sms/subject/body, on_hold, cancelled. 119 backend pytest + 5 E2E green. The managed
+  service is now fully admin-only end-to-end.
 - Deferred (documented, lower value / larger): full DataState sweep across remaining pages, the 5
   bespoke-modal → shared `<Modal>` accessibility migration, per-session access-token revocation
   (needs a `token_version` column + migration), refresh-grace-window idempotency, assorted LOW a11y
