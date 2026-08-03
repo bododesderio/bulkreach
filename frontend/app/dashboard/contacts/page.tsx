@@ -6,13 +6,14 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileText, Trash2, Upload, Users } from "lucide-react";
+import { FileText, Tags, Trash2, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 import { api, apiUpload } from "@/lib/api";
 import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
+import ContactsDrawer from "@/components/dashboard/ContactsDrawer";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -43,6 +44,7 @@ export default function ContactsPage() {
   const [pasteName, setPasteName] = useState("");
   const [pasteText, setPasteText] = useState("");
   const [lastImport, setLastImport] = useState<ImportResult | null>(null);
+  const [viewList, setViewList] = useState<ContactList | null>(null);
 
   const { data: listsData } = useApiQuery(
     ["dashboard", "contacts"],
@@ -191,14 +193,24 @@ export default function ContactsPage() {
       label: "",
       align: "right",
       render: (l) => (
-        <button
-          onClick={() => remove(l)}
-          disabled={deleteMut.isPending}
-          aria-label={`Delete ${l.name}`}
-          className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-text-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        </button>
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            onClick={() => setViewList(l)}
+            aria-label={`View & tag contacts in ${l.name}`}
+            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-text-muted transition hover:text-teal hover:border-teal"
+          >
+            <Tags className="h-3.5 w-3.5" aria-hidden />
+            Tags
+          </button>
+          <button
+            onClick={() => remove(l)}
+            disabled={deleteMut.isPending}
+            aria-label={`Delete ${l.name}`}
+            className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-text-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
       ),
     },
   ];
@@ -399,6 +411,14 @@ export default function ContactsPage() {
           )}
         </div>
       </Reveal>
+
+      {viewList && (
+        <ContactsDrawer
+          listId={viewList.id}
+          listName={viewList.name}
+          onClose={() => setViewList(null)}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ class CampaignBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: CampaignType
     contact_list_id: uuid.UUID | None = None
+    audience_tags: list[str] = Field(default_factory=list)  # segment filter (any-of)
     sms_body: str | None = Field(default=None, max_length=1600)
     sms_sender_id: str | None = Field(default=None, max_length=20)
     email_subject: str | None = Field(default=None, max_length=500)
@@ -80,6 +81,7 @@ class CampaignOut(BaseModel):
     id: uuid.UUID
     account_id: uuid.UUID
     contact_list_id: uuid.UUID | None = None
+    audience_tags: list[str] = []
     name: str
     type: str
     status: str

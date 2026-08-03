@@ -192,6 +192,31 @@ export default function CampaignComposerPage() {
     [selected],
   );
 
+  // ── Audience segment (filter the list by contact tags) ────────────────────
+  const [audienceTags, setAudienceTags] = useState<string[]>([]);
+  // Tags are per-list — reset the filter when the list changes.
+  useEffect(() => { setAudienceTags([]); }, [listId]);
+
+  const { data: listTags } = useApiQuery(
+    ["composer", "tags", listId],
+    () =>
+      api<Record<string, number>>(`/contacts/lists/${listId}/tags`, { auth: true }).catch(
+        () => ({}) as Record<string, number>,
+      ),
+    { enabled: !!listId },
+  );
+  const { data: segCount } = useApiQuery(
+    ["composer", "count", listId, audienceTags.join(",")],
+    () =>
+      api<{ count: number }>(
+        `/contacts/lists/${listId}/count?tags=${encodeURIComponent(audienceTags.join(","))}`,
+        { auth: true },
+      ).catch(() => ({ count: 0 })),
+    { enabled: !!listId && audienceTags.length > 0 },
+  );
+  const toggleAudienceTag = (t: string) =>
+    setAudienceTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
+
   function insertTag(tag: string) {
     const el = bodyRef.current;
     const token = `{{${tag}}}`;
@@ -214,7 +239,8 @@ export default function CampaignComposerPage() {
   const showSms = channel === "sms" || channel === "both";
   const smsLen = body.length;
   const segments = smsSegments(smsLen);
-  const audience = selected?.valid_contacts ?? 0;
+  const audience =
+    audienceTags.length > 0 ? (segCount?.count ?? 0) : (selected?.valid_contacts ?? 0);
   const busy = phase === "sending" || savingDraft;
 
   const validation = useMemo<string | null>(() => {
@@ -243,6 +269,7 @@ export default function CampaignComposerPage() {
       name: name.trim(),
       type: channel,
       contact_list_id: selected!.id,
+      audience_tags: audienceTags,
     };
     if (showSms) payload.sms_body = body;
     if (showEmail) {
@@ -409,8 +436,51 @@ export default function CampaignComposerPage() {
                     >
                       <Sparkles size={12} aria-hidden />
                       {audience.toLocaleString()} valid recipients
+                      {audienceTags.length > 0 && (
+                        <span className="opacity-70">· segment of {selected.valid_contacts.toLocaleString()}</span>
+                      )}
                     </span>
                   )}
+                </div>
+              )}
+              {selected && listTags && Object.keys(listTags).length > 0 && (
+                <div className="mt-3">
+                  <div className="mb-1.5 text-[11px] font-semibold text-neutral-500">
+                    Send only to contacts tagged (any of):
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(listTags)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([tag, count]) => {
+                        const on = audienceTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => toggleAudienceTag(tag)}
+                            aria-pressed={on}
+                            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+                            style={
+                              on
+                                ? { background: "#00D4AA", borderColor: "#00D4AA", color: "#04241d" }
+                                : { borderColor: "rgba(120,120,120,0.35)", color: "inherit" }
+                            }
+                          >
+                            {tag}
+                            <span className="opacity-60">{count}</span>
+                          </button>
+                        );
+                      })}
+                    {audienceTags.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAudienceTags([])}
+                        className="text-[11px] font-semibold text-neutral-500 underline"
+                      >
+                        clear
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </section>

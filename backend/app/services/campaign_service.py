@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -64,6 +64,7 @@ async def create(db: AsyncSession, account_id: uuid.UUID, payload: CampaignCreat
     campaign = Campaign(
         account_id=account_id,
         contact_list_id=payload.contact_list_id,
+        audience_tags=payload.audience_tags or [],
         name=payload.name,
         type=payload.type,
         status="draft",
@@ -129,21 +130,21 @@ async def delete(db: AsyncSession, campaign: Campaign) -> None:
     await db.flush()
 
 
-async def _valid_contacts(db: AsyncSession, list_id: uuid.UUID) -> list[Contact]:
-    return list(
-        (
-            await db.execute(
-                select(Contact).where(Contact.list_id == list_id, Contact.is_valid.is_(True))
-            )
-        ).scalars()
-    )
+async def _valid_contacts(
+    db: AsyncSession, list_id: uuid.UUID, tags: list[str] | None = None
+) -> list[Contact]:
+    stmt = select(Contact).where(Contact.list_id == list_id, Contact.is_valid.is_(True))
+    if tags:
+        # Segment: keep contacts carrying ANY of the selected tags (JSONB @> per tag).
+        stmt = stmt.where(or_(*[Contact.tags.contains([t]) for t in tags]))
+    return list((await db.execute(stmt)).scalars())
 
 
 async def estimate(db: AsyncSession, campaign: Campaign) -> dict:
     """Recipient + message counts without materialising (for the detail view)."""
     if not campaign.contact_list_id:
         return {"recipients": 0, "messages": 0}
-    contacts = await _valid_contacts(db, campaign.contact_list_id)
+    contacts = await _valid_contacts(db, campaign.contact_list_id, campaign.audience_tags)
     recipients = messages = 0
     for c in contacts:
         has_sms = campaign.type in ("sms", "both") and bool(c.phone)
@@ -169,7 +170,7 @@ async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[i
     if not campaign.contact_list_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Attach a contact list before sending.")
 
-    contacts = await _valid_contacts(db, campaign.contact_list_id)
+    contacts = await _valid_contacts(db, campaign.contact_list_id, campaign.audience_tags)
 
     # Suppression list (Section 20): skip addresses that hard-bounced, complained,
     # or opted out. Loaded once per channel, not per recipient.

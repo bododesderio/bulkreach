@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """ContactList, Contact — Section 4.1."""
 from __future__ import annotations
 
@@ -47,5 +49,7 @@ class Contact(UUIDPk, TimestampMixin, Base):
     raw_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True)
     validation_error: Mapped[str | None] = mapped_column(Text)
+    # Free-form labels for segmentation; a campaign can target contacts by tag.
+    tags: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]", nullable=False)
 
     list: Mapped[ContactList] = relationship(back_populates="contacts")

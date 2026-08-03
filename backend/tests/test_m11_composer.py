@@ -97,3 +97,56 @@ async def test_click_redirect_and_stats(client, owner_headers):
 
     detail = await client.get(f"/api/v1/campaigns/{cid}", headers=owner_headers)
     assert detail.json()["stats"]["clicks"] == 1
+
+
+# ── contact tags / audience segments ──
+async def test_tag_segment_narrows_audience(client, owner_headers):
+    import uuid as _uuid
+
+    # Unique tag so the assertions hold regardless of pre-existing list data.
+    tag = "seg" + _uuid.uuid4().hex[:8]
+
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+
+    rows = (await client.get(
+        f"/api/v1/contacts/lists/{list_id}/rows?page_size=200", headers=owner_headers
+    )).json()["items"]
+    valid = [r for r in rows if r["is_valid"]]
+    assert len(valid) >= 2, "need at least two valid contacts to test segmentation"
+
+    # Tag exactly one contact.
+    tagged = await client.patch(
+        f"/api/v1/contacts/lists/{list_id}/contacts/{valid[0]['id']}",
+        headers=owner_headers, json={"tags": [tag]},
+    )
+    assert tagged.status_code == 200, tagged.text
+    assert tagged.json()["tags"] == [tag]
+
+    # Tag facet reports the segment size of 1.
+    facets = (await client.get(
+        f"/api/v1/contacts/lists/{list_id}/tags", headers=owner_headers
+    )).json()
+    assert facets.get(tag) == 1
+
+    # Segment count is narrower than the full valid audience.
+    seg = (await client.get(
+        f"/api/v1/contacts/lists/{list_id}/count?tags={tag}", headers=owner_headers
+    )).json()["count"]
+    full = (await client.get(
+        f"/api/v1/contacts/lists/{list_id}/count", headers=owner_headers
+    )).json()["count"]
+    assert seg == 1
+    assert full >= 2
+
+    # A campaign scoped to the segment estimates only the tagged contact.
+    camp = await client.post("/api/v1/campaigns", headers=owner_headers, json={
+        "name": "Segment only", "type": "sms", "contact_list_id": list_id,
+        "audience_tags": [tag], "sms_body": "Hi {{name|there}}",
+    })
+    assert camp.status_code == 201, camp.text
+    cid = camp.json()["id"]
+    assert camp.json()["audience_tags"] == [tag]
+    detail = (await client.get(f"/api/v1/campaigns/{cid}", headers=owner_headers)).json()
+    assert detail["recipient_estimate"] == 1

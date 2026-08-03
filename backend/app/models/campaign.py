@@ -24,6 +24,8 @@ class Campaign(UUIDPk, TimestampMixin, Base):
     contact_list_id: Mapped[uuid.UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("contact_lists.id", ondelete="SET NULL")
     )
+    # Optional segment filter: only contacts carrying any of these tags are sent to.
+    audience_tags: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]", nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(10), nullable=False)  # sms|email|both
     # draft|queued|scheduled|sending|completed|failed|cancelled

@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Contact list / import schemas (Section 5.3)."""
 from __future__ import annotations
 
@@ -48,6 +50,7 @@ class ContactRow(BaseModel):
     email: str | None = None
     raw_data: dict = {}
     is_valid: bool
+    tags: list[str] = []
 
 
 class PaginatedContacts(BaseModel):

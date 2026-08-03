@@ -1,11 +1,14 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Contacts endpoints (Section 5.3): upload, paste, map-columns, list, rows, delete."""
 from __future__ import annotations
 
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from sqlalchemy import cast, func, or_, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -163,6 +166,74 @@ async def get_rows(
         items=[ContactRow.model_validate(r) for r in rows],
         total=total, page=page, page_size=page_size,
     )
+
+
+@router.get("/lists/{list_id}/tags")
+async def list_tags(
+    list_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, int]:
+    """Distinct tags used in this list, each with its contact count (for the picker)."""
+    await _get_owned_list(db, list_id, user.account_id)
+    rows = (await db.execute(
+        select(func.jsonb_array_elements_text(Contact.tags).label("tag"), func.count())
+        .where(Contact.list_id == list_id)
+        .group_by(func.jsonb_array_elements_text(Contact.tags))
+    )).all()
+    return {tag: count for tag, count in rows}
+
+
+@router.get("/lists/{list_id}/count")
+async def audience_count(
+    list_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+    tags: Annotated[str | None, Query()] = None,
+) -> dict[str, int]:
+    """Count valid contacts in the list, optionally narrowed to a tag segment."""
+    await _get_owned_list(db, list_id, user.account_id)
+    wanted = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    stmt = select(func.count()).select_from(Contact).where(
+        Contact.list_id == list_id, Contact.is_valid.is_(True)
+    )
+    if wanted:
+        stmt = stmt.where(or_(*[Contact.tags.contains([t]) for t in wanted]))
+    return {"count": int(await db.scalar(stmt) or 0)}
+
+
+@router.post("/lists/{list_id}/tags", status_code=status.HTTP_200_OK)
+async def add_tag_to_list(
+    list_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+    tag: Annotated[str, Body(embed=True, min_length=1, max_length=64)],
+) -> dict[str, int]:
+    """Add a tag to every valid contact in the list that doesn't already have it."""
+    await _get_owned_list(db, list_id, user.account_id)
+    t = tag.strip()
+    result = await db.execute(
+        update(Contact)
+        .where(
+            Contact.list_id == list_id, Contact.is_valid.is_(True),
+            ~Contact.tags.contains([t]),
+        )
+        .values(tags=Contact.tags.op("||")(cast([t], JSONB)))
+    )
+    await db.commit()
+    return {"tagged": result.rowcount or 0}
+
+
+@router.patch("/lists/{list_id}/contacts/{contact_id}", response_model=ContactRow)
+async def set_contact_tags(
+    list_id: UUID, contact_id: UUID, user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    tags: Annotated[list[str], Body(embed=True)],
+) -> Contact:
+    """Replace a single contact's tags."""
+    await _get_owned_list(db, list_id, user.account_id)
+    contact = await db.get(Contact, contact_id)
+    if contact is None or contact.list_id != list_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found")
+    clean = sorted({t.strip() for t in tags if t.strip()})[:20]
+    contact.tags = clean
+    await db.commit()
+    await db.refresh(contact)
+    return contact
 
 
 @router.delete("/lists/{list_id}", status_code=status.HTTP_200_OK)
