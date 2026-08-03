@@ -163,6 +163,11 @@ async def send_campaign(
         resource_type="campaign", resource_id=str(campaign_id),
         details={"recipients": recipients, "messages": messages},
     )
+    # Commit the queued messages BEFORE enqueuing dispatch. `get_db` would otherwise
+    # only commit after this handler returns, so a real worker could dequeue and run
+    # dispatch against an uncommitted campaign (0 messages) → mark it completed/empty
+    # and strand the send. Committing here makes the rows durable first.
+    await db.commit()
     # Dispatch: enqueue to the ARQ worker, or run in-process when no worker runs.
     if settings.DISPATCH_INLINE:
         background.add_task(dispatch_campaign, campaign.id)

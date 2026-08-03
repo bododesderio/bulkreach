@@ -7,6 +7,7 @@ report — advancing via forward state transitions (each audited). There is no
 client sign-off step; the client-approval flow was removed."""
 from __future__ import annotations
 
+import html
 import io
 import logging
 from datetime import datetime, timezone
@@ -103,8 +104,8 @@ async def list_managed(
     ]
     stats = {
         "total": len(items),
-        "pending": sum(1 for i in items if i.status not in _TERMINAL),
-        "in_flight": sum(1 for i in items if i.status in ("scheduled", "sending")),
+        "pending": sum(1 for i in items if i.status not in _TERMINAL and not i.cancelled),
+        "in_flight": sum(1 for i in items if i.status in ("scheduled", "sending") and not i.cancelled),
         "complete": sum(1 for i in items if i.status in _TERMINAL),
     }
     return ManagedResponse(items=items, stats=stats)
@@ -280,12 +281,14 @@ async def issue_report(
 
     # Email the client (best-effort — no-op in dev without SMTP), PDF attached.
     emailed_at = None
+    acct_name = html.escape(account.name or "")
+    camp_name = html.escape(campaign.name or "")
     sent = await send_email(
         to=account.email,
         subject=f"Your BulkReach campaign report — {campaign.name}",
         html=(
-            f"<p>Hello {account.name},</p>"
-            f"<p>Your managed campaign <strong>{campaign.name}</strong> is complete. "
+            f"<p>Hello {acct_name},</p>"
+            f"<p>Your managed campaign <strong>{camp_name}</strong> is complete. "
             f"The delivery report is attached.</p>"
             f"<p>— The BulkReach team</p>"
         ),

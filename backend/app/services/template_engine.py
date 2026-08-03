@@ -1,16 +1,21 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Personalisation engine (Sections 3.2, 6.2, 13.3).
 
-Jinja2 SandboxedEnvironment with {{double_brace}} syntax. Case-insensitive tags.
-SMS renders plain text; email renders with autoescape=True so merge-tag XSS is
-impossible. Provides GSM-7 / Unicode length info for the composer warning.
+Only `{{double_brace}}` merge tags are supported, so rendering is a bounded, pure
+regex substitution — NOT a Jinja `render()`. This deliberately avoids handing the
+user-authored campaign body to a template engine: a body like
+`{% for i in range(1e9) %}` or `{{ "A" * 2**30 }}` would otherwise be evaluated
+once per recipient inside the worker (CPU/memory self-DoS). Tags are
+case-insensitive; unknown tags render empty. Email escapes each substituted value
+(XSS-safe) while the template's own HTML passes through literally.
+Provides GSM-7 / Unicode length info for the composer warning.
 """
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass
-
-from jinja2 import meta
-from jinja2.sandbox import SandboxedEnvironment
 
 _TAG_RE = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
 
@@ -20,11 +25,6 @@ _GSM7_BASIC = set(
     "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà\n\r"
 )
 _GSM7_EXT = set("^{}\\[~]|€")
-
-# Plain-text environment (SMS) — no autoescape
-_sms_env = SandboxedEnvironment(variable_start_string="{{", variable_end_string="}}", autoescape=False)
-# HTML environment (email) — autoescape ON to prevent XSS via merge tags
-_html_env = SandboxedEnvironment(variable_start_string="{{", variable_end_string="}}", autoescape=True)
 
 
 class TemplateError(ValueError):
@@ -36,17 +36,9 @@ def _lower_keys(data: dict) -> dict:
     return {str(k).lower(): v for k, v in data.items()}
 
 
-def _normalise_template(template: str) -> str:
-    return _TAG_RE.sub(lambda m: "{{ " + m.group(1).lower() + " }}", template)
-
-
 def extract_merge_tags(template: str) -> list[str]:
     """Return the distinct merge-tag names referenced in a template."""
-    try:
-        ast = _sms_env.parse(_normalise_template(template or ""))
-    except Exception as exc:  # noqa: BLE001
-        raise TemplateError(str(exc)) from exc
-    return sorted(meta.find_undeclared_variables(ast))
+    return sorted({m.lower() for m in _TAG_RE.findall(template or "")})
 
 
 def validate_template(template: str, available_tags: list[str]) -> list[str]:
@@ -55,19 +47,24 @@ def validate_template(template: str, available_tags: list[str]) -> list[str]:
     return [t for t in extract_merge_tags(template) if t not in available]
 
 
+def _render(template: str, data: dict, *, escape: bool) -> str:
+    d = _lower_keys(data)
+
+    def _sub(m: re.Match) -> str:
+        value = d.get(m.group(1).lower(), "")
+        s = "" if value is None else str(value)
+        return html.escape(s) if escape else s
+
+    return _TAG_RE.sub(_sub, template or "")
+
+
 def render_sms(template: str, data: dict) -> str:
-    try:
-        return _sms_env.from_string(_normalise_template(template or "")).render(**_lower_keys(data))
-    except Exception as exc:  # noqa: BLE001
-        raise TemplateError(str(exc)) from exc
+    return _render(template, data, escape=False)
 
 
 def render_email_body(template: str, data: dict) -> str:
-    """Render HTML email body — autoescaped."""
-    try:
-        return _html_env.from_string(_normalise_template(template or "")).render(**_lower_keys(data))
-    except Exception as exc:  # noqa: BLE001
-        raise TemplateError(str(exc)) from exc
+    """Render HTML email body — merge-tag values are HTML-escaped (XSS-safe)."""
+    return _render(template, data, escape=True)
 
 
 def render_subject(template: str, data: dict) -> str:

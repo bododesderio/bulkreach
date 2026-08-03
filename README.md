@@ -1,3 +1,7 @@
+<!--
+  @author Bodo Desderio <rooiboktechltd@gmail.com>
+  @copyright 2026 Rooibok Technologies. All rights reserved.
+-->
 # BulkReach
 
 Multi-tenant **bulk SMS & Email** marketing SaaS for Uganda / East Africa (base currency **UGX**,

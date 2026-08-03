@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.campaign import Campaign, Message
@@ -140,12 +140,20 @@ async def record_delivery(
         if reason:
             msg.error_reason = str(reason)[:2000]
 
-    campaign = await db.get(Campaign, msg.campaign_id)
-    if campaign is not None:
-        if outcome == "delivered":
-            campaign.delivered += 1
-        elif outcome in _HARD:
-            campaign.bounced += 1
+    # Atomic counter bump — concurrent DLRs for different messages of the same
+    # campaign must not lose updates (an ORM `+= 1` read-modify-write would).
+    if outcome == "delivered":
+        await db.execute(
+            update(Campaign).where(Campaign.id == msg.campaign_id)
+            .values(delivered=Campaign.delivered + 1)
+        )
+    elif outcome in _HARD:
+        await db.execute(
+            update(Campaign).where(Campaign.id == msg.campaign_id)
+            .values(bounced=Campaign.bounced + 1)
+        )
+        campaign = await db.get(Campaign, msg.campaign_id)
+        if campaign is not None:
             await add_suppression(
                 db, campaign.account_id, msg.channel, msg.recipient, reason=outcome,
             )

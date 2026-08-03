@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
                 <KPICard
                   label="MANAGED QUEUE"
                   value={String(kpis.managed_queue_pending)}
-                  change="Pending approval"
+                  change="Awaiting action"
                   changeType="warn"
                   icon={Zap}
                   warn

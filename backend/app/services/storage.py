@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Object storage abstraction — S3/MinIO with a local-filesystem fallback.
 
 The spec (Section 2.2) uses S3/MinIO for uploaded files, with a local storage
@@ -56,11 +58,19 @@ class Storage:
         except Exception:  # noqa: BLE001
             client.create_bucket(Bucket=bucket)
 
+    @staticmethod
+    def _local_path(key: str):
+        """Resolve `key` under the local root, refusing any `..`/absolute escape."""
+        path = (_LOCAL_ROOT / key).resolve()
+        if not path.is_relative_to(_LOCAL_ROOT.resolve()):
+            raise ValueError("Invalid storage key")
+        return path
+
     def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
         if self._s3 is not None:
             self._s3.put_object(Bucket=settings.S3_BUCKET, Key=key, Body=data, ContentType=content_type)
             return f"s3://{settings.S3_BUCKET}/{key}"
-        path = _LOCAL_ROOT / key
+        path = self._local_path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         return f"file://{path}"
@@ -69,7 +79,7 @@ class Storage:
         if self._s3 is not None:
             obj = self._s3.get_object(Bucket=settings.S3_BUCKET, Key=key)
             return obj["Body"].read()
-        return (_LOCAL_ROOT / key).read_bytes()
+        return self._local_path(key).read_bytes()
 
 
 _storage: Storage | None = None

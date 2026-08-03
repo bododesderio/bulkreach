@@ -25,7 +25,7 @@ import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusBadge } from "@/components/ui";
+import { StatusBadge, DataState } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -75,7 +75,7 @@ const fmtDate = (iso: string) =>
 export default function CampaignsPage() {
   const { user } = useAuth();
 
-  const { data, isLoading } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ["dashboard", "campaigns"],
     async () => {
       const [page, lists] = await Promise.all([
@@ -103,7 +103,7 @@ export default function CampaignsPage() {
 
   const hasContacts = listCount > 0;
   const loading = isLoading;
-  const empty = !loading && campaigns.length === 0;
+  const empty = !loading && !isError && campaigns.length === 0;
 
   const campaignColumns: Column<CampaignOut>[] = [
     {
@@ -203,6 +203,13 @@ export default function CampaignsPage() {
         </div>
       )}
 
+      {/* ── Error state ───────────────────────────────────────────────────────── */}
+      {!loading && isError && (
+        <div className="bg-white border rounded-[11px] p-4">
+          <DataState error={error} onRetry={() => refetch()} />
+        </div>
+      )}
+
       {/* ── Empty state ───────────────────────────────────────────────────────── */}
       {empty && (
         <>
@@ -257,7 +264,7 @@ export default function CampaignsPage() {
       )}
 
       {/* ── Loaded state ──────────────────────────────────────────────────────── */}
-      {!loading && !empty && (
+      {!loading && !empty && !isError && (
         <>
           {/* Summary stat cards */}
           <RevealGroup className="grid gap-3 sm:grid-cols-3" stagger={0.07}>

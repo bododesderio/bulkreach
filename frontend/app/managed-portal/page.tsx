@@ -12,6 +12,7 @@ import { useApiQuery } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
 import { StatusPill } from "@/components/admin/StatusPill";
+import { DataState } from "@/components/ui";
 
 const cardBase = "bg-white border rounded-[11px] p-4";
 
@@ -54,12 +55,12 @@ export default function ManagedPortalHome() {
 
   // Managed-client campaign list — fetched once the client is authenticated and
   // has completed activation. `campaigns` stays null while loading (skeletons).
-  const { data, isLoading } = useApiQuery(
+  const { data, isLoading, isError, error, refetch } = useApiQuery(
     ["managed-portal", "campaigns"],
     () => api<PortalCampaign[]>("/managed-portal/campaigns", { auth: true }),
     { enabled: user?.user_type === "managed_client" && !user.must_change_password },
   );
-  const campaigns = isLoading ? null : (data ?? []);
+  const campaigns = isLoading || isError ? null : (data ?? []);
 
   if (!user || user.user_type !== "managed_client" || user.must_change_password) {
     return (
@@ -112,7 +113,11 @@ export default function ManagedPortalHome() {
         </Reveal>
 
         <div className="mt-5 space-y-3">
-          {campaigns === null ? (
+          {isError ? (
+            <div className={cardBase}>
+              <DataState error={error} onRetry={() => refetch()} loadingLabel="Loading campaigns…" />
+            </div>
+          ) : campaigns === null ? (
             [0, 1, 2].map((i) => (
               <div key={i} className="h-20 animate-pulse rounded-[11px] border bg-bg" />
             ))
@@ -126,7 +131,7 @@ export default function ManagedPortalHome() {
                   <FileText className="h-5 w-5" aria-hidden />
                 </div>
                 <p className="mt-3 text-[12px] text-text-muted">
-                  No managed campaigns yet. Your account manager will brief the first one soon.
+                  No managed campaigns yet. Our team will brief the first one soon.
                 </p>
               </div>
             </Reveal>

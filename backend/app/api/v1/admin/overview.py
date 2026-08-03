@@ -101,7 +101,8 @@ async def overview(
 
     managed_pending = await _count(
         select(func.count()).select_from(ManagedCampaign).where(
-            ManagedCampaign.status.not_in(_MANAGED_TERMINAL)
+            ManagedCampaign.status.not_in(_MANAGED_TERMINAL),
+            ManagedCampaign.cancelled.is_(False),
         )
     )
 

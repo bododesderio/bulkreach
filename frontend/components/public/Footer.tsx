@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 
@@ -5,21 +9,13 @@ const productLinks = [
   { href: '/features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/managed', label: 'Managed service' },
-  { href: '#', label: 'API docs' },
+  { href: '/how-it-works', label: 'How it works' },
 ]
 
 const legalLinks = [
-  { href: '#', label: 'Privacy policy' },
-  { href: '#', label: 'Terms of service' },
-  { href: '#', label: 'Data retention' },
-  { href: '#', label: 'Cookie notice' },
-]
-
-const companyLinks = [
-  { href: '#', label: 'About' },
-  { href: '#', label: 'Contact' },
-  { href: '#', label: 'Support' },
-  { href: '#', label: 'Status' },
+  { href: '/privacy-policy', label: 'Privacy policy' },
+  { href: '/terms-of-service', label: 'Terms of service' },
+  { href: '/data-retention-policy', label: 'Data retention' },
 ]
 
 function FooterLinkGroup({
@@ -59,7 +55,7 @@ export default function Footer() {
     >
       <div className="max-w-[1100px] mx-auto px-6 md:px-12 pt-10 pb-6">
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr] gap-9 mb-[30px]">
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-9 mb-[30px]">
           {/* Brand col */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -82,7 +78,6 @@ export default function Footer() {
 
           <FooterLinkGroup heading="Product" links={productLinks} />
           <FooterLinkGroup heading="Legal" links={legalLinks} />
-          <FooterLinkGroup heading="Company" links={companyLinks} />
         </div>
 
         {/* Bottom bar */}
