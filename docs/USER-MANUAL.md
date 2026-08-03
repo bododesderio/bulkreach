@@ -89,8 +89,8 @@ bell.
 If BulkReach runs campaigns *for* you (managed service):
 1. The operator issues you a portal login (email + a temporary password).
 2. On first login you **must set a new password**.
-3. In the portal you review campaigns prepared for you and **approve copy** (or request changes)
-   via a single-use approval link. Approvals are one-time and audited.
+3. In the portal you **see the campaigns being run for you and their progress** (read-only). The
+   BulkReach team handles everything end-to-end — there is no copy-approval step for you to action.
 
 ---
 
@@ -125,8 +125,10 @@ Live platform KPIs (accounts, revenue, activity feed), plus health and the manag
 
 ## C4. Operations
 - **Campaigns / Subscriptions / Payments** — cross-account views; refund a payment from Payments.
-- **Managed pipeline** — a 15-state kanban for operator-run campaigns; move cards, send client
-  approval links, and track through to delivery.
+- **Managed queue** — an admin-only console for operator-run campaigns: a filterable job list opens
+  a focused per-job workspace where you run everything solo (write the brief, draft the copy, link
+  and dispatch the campaign, issue the report). One clear next action advances each job — no client
+  sign-off, no assigning jobs to team members.
 - **CMS** — edit marketing content (features, testimonials, FAQs, page copy) shown on the public site.
 - **Revenue** — MRR/ARPU and revenue breakdowns.
 - **Health** — live status of Postgres/Redis/ClickHouse/MinIO/providers.

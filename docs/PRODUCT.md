@@ -9,20 +9,23 @@ BulkReach is a **bulk SMS & email marketing platform (SaaS)** built for the East
 market (base currency **UGX**, Uganda VAT-aware). It lets a business upload its contacts, compose
 a personalized message once, and dispatch it to thousands of recipients over SMS and/or email —
 then see how it performed. It also offers a **managed service**: the BulkReach team runs campaigns
-on a client's behalf through a superadmin console and a light client-approval portal.
+end-to-end on a client's behalf through a superadmin console, with the client seeing progress on a
+read-only portal.
 
 There are two ways a customer uses BulkReach:
 
 - **Self-service** — a company signs up, buys a plan (or uses the free trial), and runs its own
   campaigns from the dashboard.
-- **Managed service** — the BulkReach operator (superadmin) drafts and runs campaigns for a
-  client; the client reviews and approves copy through a single-use approval link and a portal.
+- **Managed service** — the BulkReach operator (superadmin) runs each campaign for the client
+  end-to-end (brief → copy → dispatch → report), advancing it through a single focused workspace.
+  There is no client sign-off step and no assigning the job to a team member; the client sees
+  status on a read-only portal.
 
 ### Who uses it
 | Role | Who | Where |
 |------|-----|-------|
 | **Owner / Admin / Member** | A customer company's users (multi-user accounts, RBAC) | `bulkreach.ug/dashboard` |
-| **Managed client** | A hands-off client of the managed service | `bulkreach.ug` managed portal |
+| **Managed client** | A hands-off client of the managed service (read-only visibility) | `bulkreach.ug` managed portal |
 | **Superadmin** | The BulkReach operator/platform staff | `admin.bulkreach.ug` |
 
 ---
@@ -56,8 +59,9 @@ There are two ways a customer uses BulkReach:
   quota/price/feature overrides (custom deals) that survive settlement/dunning appropriately.
 - **Notifications** — in-app bell + email, per-category preferences; critical billing/security
   notices force-email.
-- **Managed pipeline** — a 15-state kanban workflow for operator-run campaigns, with a public
-  single-use client-approval page.
+- **Managed workflow** — an admin-only console for operator-run campaigns: a filterable job queue
+  feeding a focused per-job workspace (brief → content → send → report), advanced solo by the
+  superadmin via forward pipeline transitions. No client sign-off, no team assignment.
 - **CMS & SEO** — admin-managed marketing content (features, testimonials, FAQs, page copy);
   metadata, sitemap, robots, JSON-LD, dynamic OG images.
 - **Data governance / archive** — ingest, 7-year retention, anonymisation, GDPR-style erasure,
@@ -129,7 +133,8 @@ Full runbook: `infra/DEPLOY-TRAEFIK.md`. Operational drafts (CI, backups, monito
   per-recipient send (status, retries) with denormalized per-campaign counters for fast reporting.
 - **Contact** / contact lists — imported audience with merge fields.
 - **RefreshToken** / **AuthEvent** — rotating sessions + append-only auth audit.
-- **Notification** / **NotificationPreference**, **Invoice**, **ManagedCampaign** (15-state),
+- **Notification** / **NotificationPreference**, **Invoice**, **ManagedCampaign** (admin-run: brief +
+  draft copy + pipeline status; no assignment/approval columns),
   **AuditLog** (append-only), CMS tables, and the archive schema.
 
 ---
