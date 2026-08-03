@@ -201,7 +201,7 @@ export default function PaymentsPage() {
     return acc;
   }, {});
   const donutData = Object.entries(methodTotals).map(([method, value], i) => ({
-    label: method,
+    label: paymentMethodLabel(method),
     value,
     color: methodColor(method, i),
   }));
