@@ -5,7 +5,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   Loader2,
   XCircle,
   Download,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError, apiDownload } from "@/lib/api";
@@ -56,9 +57,11 @@ export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
+  const router = useRouter();
   const [live, setLive] = useState<Progress | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [downloading, setDownloading] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load campaign + messages (React Query also drives the post-dispatch refetch).
@@ -81,6 +84,21 @@ export default function CampaignDetailPage() {
   // instead of falsely telling the user the campaign was deleted.
   const notFound = isError && error instanceof ApiError && error.status === 404;
   const loadError = isError && !notFound;
+
+  async function duplicate() {
+    setDuplicating(true);
+    try {
+      const copy = await api<{ id: string }>(`/campaigns/${id}/duplicate`, {
+        method: "POST",
+        auth: true,
+      });
+      toast.success("Duplicated as a new draft");
+      router.push(`/dashboard/campaigns/${copy.id}`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Couldn't duplicate");
+      setDuplicating(false);
+    }
+  }
 
   async function downloadReport() {
     setDownloading(true);
@@ -263,19 +281,34 @@ export default function CampaignDetailPage() {
             </h2>
             <StatusBadge domain="campaign" status={campaign.status} />
           </div>
-          <button
-            type="button"
-            onClick={downloadReport}
-            disabled={downloading}
-            className="btn-outline h-9 px-3 text-sm"
-          >
-            {downloading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            Report PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={duplicate}
+              disabled={duplicating}
+              className="btn-outline h-9 px-3 text-sm"
+            >
+              {duplicating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              Duplicate
+            </button>
+            <button
+              type="button"
+              onClick={downloadReport}
+              disabled={downloading}
+              className="btn-outline h-9 px-3 text-sm"
+            >
+              {downloading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Report PDF
+            </button>
+          </div>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
           <Icon size={14} aria-hidden />

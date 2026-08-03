@@ -17,7 +17,9 @@ import html
 import re
 from dataclasses import dataclass
 
-_TAG_RE = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*}}")
+# {{tag}} or {{tag|default}} — a default fallback is used when the recipient's
+# value is missing/empty (and makes the tag optional, so it always validates).
+_TAG_RE = re.compile(r"{{\s*([a-zA-Z0-9_]+)\s*(?:\|\s*([^}]*?))?\s*}}")
 
 # GSM-7 basic + extension characters (Section 3.2 / glossary GSM-7)
 _GSM7_BASIC = set(
@@ -36,23 +38,35 @@ def _lower_keys(data: dict) -> dict:
     return {str(k).lower(): v for k, v in data.items()}
 
 
+def _iter_tags(template: str):
+    """Yield (name, default) for each merge tag; default is None when omitted."""
+    for m in _TAG_RE.finditer(template or ""):
+        yield m.group(1).lower(), m.group(2)
+
+
 def extract_merge_tags(template: str) -> list[str]:
     """Return the distinct merge-tag names referenced in a template."""
-    return sorted({m.lower() for m in _TAG_RE.findall(template or "")})
+    return sorted({name for name, _ in _iter_tags(template)})
 
 
 def validate_template(template: str, available_tags: list[str]) -> list[str]:
-    """Return a list of tags used but not available (empty = valid)."""
+    """Return tags used but not available (empty = valid). A tag with a `|default`
+    fallback is optional — it never counts as invalid."""
     available = {t.lower() for t in available_tags}
-    return [t for t in extract_merge_tags(template) if t not in available]
+    return sorted({
+        name for name, default in _iter_tags(template)
+        if default is None and name not in available
+    })
 
 
 def _render(template: str, data: dict, *, escape: bool) -> str:
     d = _lower_keys(data)
 
     def _sub(m: re.Match) -> str:
-        value = d.get(m.group(1).lower(), "")
+        value = d.get(m.group(1).lower())
         s = "" if value is None else str(value)
+        if not s and m.group(2) is not None:  # empty/missing → use the fallback
+            s = m.group(2)
         return html.escape(s) if escape else s
 
     return _TAG_RE.sub(_sub, template or "")

@@ -44,6 +44,15 @@ interface ContactList {
   email_column: string | null;
 }
 
+interface MessageTemplate {
+  id: string;
+  name: string;
+  type: string;
+  sms_body: string | null;
+  email_subject: string | null;
+  email_html_body: string | null;
+}
+
 const CHANNELS: { key: Channel; label: string; icon: typeof Mail }[] = [
   { key: "sms", label: "SMS", icon: MessageSquare },
   { key: "email", label: "Email", icon: Mail },
@@ -81,10 +90,12 @@ function renderPreview(text: string): string {
 }
 
 /** All merge tags referenced in a template, lowercased & de-duped. */
-function extractTags(text: string): string[] {
+// Tags that REQUIRE a matching column. A tag with a `|default` fallback
+// ({{name|there}}) is optional, so it's never flagged as unknown.
+function requiredTags(text: string): string[] {
   const out = new Set<string>();
-  for (const m of text.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)) {
-    out.add(m[1].toLowerCase());
+  for (const m of text.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*(\|[^}]*?)?\s*\}\}/g)) {
+    if (!m[2]) out.add(m[1].toLowerCase());
   }
   return [...out];
 }
@@ -120,6 +131,50 @@ export default function CampaignComposerPage() {
   const [phase, setPhase] = useState<"idle" | "sending" | "done">("idle");
   const [savingDraft, setSavingDraft] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
+
+  // ── Message templates (save / load reusable copy) ─────────────────────────
+  const { data: templates, refetch: refetchTemplates } = useApiQuery(
+    ["dashboard", "templates"],
+    () => api<MessageTemplate[]>("/templates", { auth: true }).catch(() => [] as MessageTemplate[]),
+    { enabled: !!user },
+  );
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  function loadTemplate(id: string) {
+    const t = (templates ?? []).find((x) => x.id === id);
+    if (!t) return;
+    setChannel(t.type as Channel);
+    if (t.email_subject) setSubject(t.email_subject);
+    // SMS body is plain; for email-only templates fall back to the HTML stripped to text.
+    const text = t.sms_body ?? (t.email_html_body ? t.email_html_body.replace(/<[^>]+>/g, "") : "");
+    if (text) setBody(text);
+    toast.success(`Loaded “${t.name}”`);
+  }
+
+  async function saveTemplate() {
+    const tname = window.prompt("Save this message as a template. Name:");
+    if (!tname || !tname.trim()) return;
+    setSavingTemplate(true);
+    try {
+      await api("/templates", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          name: tname.trim(),
+          type: channel,
+          sms_body: showSms ? body : null,
+          email_subject: showEmail ? subject : null,
+          email_html_body: showEmail ? bodyToHtml(body) : null,
+        }),
+      });
+      toast.success("Template saved");
+      await refetchTemplates();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Couldn't save template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
   const abortRef = useRef<AbortController | null>(null);
 
   // Tear down the SSE reader if the user navigates away mid-dispatch.
@@ -169,7 +224,7 @@ export default function CampaignComposerPage() {
     if (showEmail && !subject.trim()) return "Add an email subject.";
     // Mirror the backend's merge-tag check so users see the problem before sending.
     const allowed = new Set(mergeTags.map((t) => t.toLowerCase()));
-    const used = [...extractTags(body), ...(showEmail ? extractTags(subject) : [])];
+    const used = [...requiredTags(body), ...(showEmail ? requiredTags(subject) : [])];
     const unknown = used.filter((t) => !allowed.has(t));
     if (unknown.length) {
       const avail = mergeTags.length
@@ -392,9 +447,39 @@ export default function CampaignComposerPage() {
           {/* Message body */}
           <Reveal delay={0.12}>
             <section className={cardBase}>
-              <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
-                Message
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  Message
+                </label>
+                {/* Template library — load a saved message or save this one */}
+                <div className="flex items-center gap-2">
+                  {(templates?.length ?? 0) > 0 && (
+                    <select
+                      aria-label="Load a saved template"
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) loadTemplate(e.target.value);
+                        e.target.value = "";
+                      }}
+                      className="input text-[11px]"
+                      style={{ padding: "4px 8px" }}
+                    >
+                      <option value="">Load template…</option>
+                      {(templates ?? []).map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveTemplate}
+                    disabled={savingTemplate || !body.trim()}
+                    className="rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-text-muted transition-colors hover:border-teal hover:text-teal disabled:opacity-40"
+                  >
+                    {savingTemplate ? "Saving…" : "Save as template"}
+                  </button>
+                </div>
+              </div>
 
               {/* Merge tag insert buttons */}
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -413,6 +498,9 @@ export default function CampaignComposerPage() {
                         {`{{${tag}}}`}
                       </button>
                     ))}
+                    <span className="text-[10.5px] text-text-muted">
+                      Tip: add a fallback with <code className="font-mono">{`{{name|there}}`}</code>.
+                    </span>
                   </>
                 ) : (
                   <span className="text-[11px] text-text-muted">

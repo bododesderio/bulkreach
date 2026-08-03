@@ -76,6 +76,38 @@ async def create_campaign(
     return CampaignOut.model_validate(campaign)
 
 
+@router.post("/{campaign_id}/duplicate", response_model=CampaignOut, status_code=status.HTTP_201_CREATED)
+async def duplicate_campaign(
+    campaign_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+) -> CampaignOut:
+    """Clone a campaign's content into a fresh draft (no recipients/stats copied)."""
+    src = await campaign_service.get_owned(db, campaign_id, user.account_id)
+    copy = Campaign(
+        account_id=user.account_id,
+        contact_list_id=src.contact_list_id,
+        name=f"{src.name} (copy)"[:255],
+        type=src.type,
+        status="draft",
+        sms_body=src.sms_body,
+        sms_sender_id=src.sms_sender_id,
+        email_subject=src.email_subject,
+        email_html_body=src.email_html_body,
+        email_plain_body=src.email_plain_body,
+        from_email=src.from_email,
+        from_name=src.from_name,
+    )
+    db.add(copy)
+    await db.flush()
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="campaign.duplicate",
+        resource_type="campaign", resource_id=str(copy.id),
+        details={"from": str(campaign_id), "name": copy.name},
+    )
+    await db.commit()
+    await db.refresh(copy)
+    return CampaignOut.model_validate(copy)
+
+
 @router.get("", response_model=PaginatedCampaigns)
 async def list_campaigns(
     user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],

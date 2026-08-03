@@ -144,3 +144,19 @@ class Report(UUIDPk, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class MessageTemplate(UUIDPk, TimestampMixin, Base):
+    """A reusable saved message (per account) the composer can load into a new
+    campaign — name + channel + SMS/email copy."""
+
+    __tablename__ = "message_templates"
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(10), default="sms", nullable=False)  # sms|email|both
+    sms_body: Mapped[str | None] = mapped_column(Text)
+    email_subject: Mapped[str | None] = mapped_column(String(500))
+    email_html_body: Mapped[str | None] = mapped_column(Text)
