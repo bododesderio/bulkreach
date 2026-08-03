@@ -1,15 +1,15 @@
 # @author Bodo Desderio <rooiboktechltd@gmail.com>
 # @copyright 2026 Rooibok Technologies. All rights reserved.
 """Managed-service workflow (superadmin): drive a client brief through the
-15-state pipeline (see services/managed/pipeline.py). Transitions follow the state
-graph (forward jumps + the copy-approval loop); each is audited. Assigning a
-manager, sending copy for client approval, holding/cancelling, and issuing the
-final report are first-class actions."""
+pipeline (see services/managed/pipeline.py). The admin runs each job solo —
+create the brief, draft the copy, link + dispatch the campaign, and issue the
+report — advancing via forward state transitions (each audited). There is no
+client sign-off step; the client-approval flow was removed."""
 from __future__ import annotations
 
 import io
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
@@ -18,7 +18,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
 from app.models.account import Account, User
@@ -227,72 +226,6 @@ async def update_managed(
             db, actor_id=admin.id, actor_email=admin.email, action="managed.update",
             resource_type="managed_campaign", resource_id=str(mc.id), details=details,
         )
-    await db.commit()
-    await db.refresh(mc)
-    return await _load_one(db, mc)
-
-
-@router.post("/{managed_id}/request-approval", response_model=ManagedOut)
-async def request_approval(
-    managed_id: UUID,
-    admin: SuperadminUser,
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> ManagedOut:
-    """Snapshot the draft copy, mint a client copy-approval token, email the client a
-    no-login review link, and move the job to `awaiting_approval`."""
-    mc = await db.get(ManagedCampaign, managed_id)
-    if mc is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
-    if not (mc.copy_sms or mc.copy_email_body):
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Add draft SMS or email copy before sending it to the client for approval",
-        )
-    if mc.status != pipeline.APPROVAL_OPEN and not pipeline.can_transition(mc.status, pipeline.APPROVAL_OPEN):
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"Cannot send for approval from '{mc.status}'",
-        )
-    account = await db.get(Account, mc.account_id)
-    if account is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
-
-    token, token_hash = pipeline.new_token()
-    mc.approval_token_hash = token_hash
-    mc.approval_sent_at = _now()
-    mc.approval_expires_at = _now() + timedelta(days=pipeline.APPROVAL_TTL_DAYS)
-    mc.change_request_note = None
-    mc.status = pipeline.APPROVAL_OPEN
-
-    link = f"{settings.FRONTEND_URL}/managed-approve/{token}"
-    await send_email(
-        to=account.email,
-        subject="Please review your campaign copy — BulkReach",
-        html=(
-            f"<p>Hello {account.name},</p>"
-            f"<p>Your account manager has prepared the copy for your upcoming campaign. "
-            f"Please review and approve it so we can proceed.</p>"
-            f'<p><a href="{link}">Review &amp; approve your campaign copy</a></p>'
-            f"<p>This link expires in {pipeline.APPROVAL_TTL_DAYS} days.</p>"
-        ),
-    )
-    try:
-        from app.services.notifications import notify
-
-        await notify(
-            db, account_id=mc.account_id, type="managed.copy_review",
-            title="Your campaign copy is ready to review",
-            body="Your account manager sent your managed-campaign copy for approval.",
-            level="info", meta={"managed_id": str(mc.id)},
-        )
-    except Exception:  # noqa: BLE001 — a notice must not fail the action
-        pass
-
-    await record_audit(
-        db, actor_id=admin.id, actor_email=admin.email, action="managed.request_approval",
-        resource_type="managed_campaign", resource_id=str(mc.id),
-        details={"expires_at": mc.approval_expires_at.isoformat()},
-    )
     await db.commit()
     await db.refresh(mc)
     return await _load_one(db, mc)

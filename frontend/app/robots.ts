@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import type { MetadataRoute } from "next";
 import { absoluteUrl, SITE_URL } from "@/lib/seo";
 
@@ -12,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
           "/admin",
           "/dashboard",
           "/managed-portal",
-          "/managed-approve",
           "/invite",
           "/api",
           "/login",

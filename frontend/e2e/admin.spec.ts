@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import { test, expect } from '@playwright/test';
 import { login, SUPERADMIN } from './helpers';
 

@@ -176,22 +176,6 @@ class ManagedUpdate(BaseModel):
     copy_email_body: str | None = None
 
 
-class ManagedApprovalView(BaseModel):
-    """Public, token-scoped view of the copy a client is asked to approve."""
-    managed_id: UUID
-    account_name: str | None
-    status: str
-    brief_text: str
-    copy_sms: str | None = None
-    copy_email_subject: str | None = None
-    copy_email_body: str | None = None
-    expires_at: datetime | None = None
-
-
-class ChangeRequestBody(BaseModel):
-    note: str = Field(min_length=1, max_length=2000)
-
-
 # ── Health ───────────────────────────────────────────────────────────────────
 class HealthService(BaseModel):
     name: str
