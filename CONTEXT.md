@@ -40,8 +40,12 @@ seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified
   tsc + lint + prod build, **5/5 Playwright E2E** (run `--workers=1`; clear `*login*` Redis keys first
   or the per-account login limiter 429s the parallel workers). E2E creds: super@bulkreach.ug /
   SuperPass123!, verify+m7@bulkreach.ug / TestPass123! (set in dev DB this session).
-- Deferred (documented, lower value / larger): optionally strip the backend approval subsystem +
-  client portal (owner may want this next); full DataState sweep across remaining pages, the 5
+- **Client sign-off removed from backend (`662e067`)** — per owner: deleted the public approval router
+  (`managed_approval.py`), the admin `request-approval` endpoint, and the `/managed-approve/[token]`
+  page; dropped orphaned schemas + robots entry. Kept: client managed-portal (read-only visibility),
+  account-manager assignment, and the DB columns (dormant → reversible, no migration). 119 backend
+  pytest + 5 E2E green. Approval endpoints now 404; portal + admin detail intact.
+- Deferred (documented, lower value / larger): full DataState sweep across remaining pages, the 5
   bespoke-modal → shared `<Modal>` accessibility migration, per-session access-token revocation
   (needs a `token_version` column + migration), refresh-grace-window idempotency, assorted LOW a11y
   nits. localStorage-token XSS exposure noted (architectural).
