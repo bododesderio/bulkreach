@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Managed-service workflow (superadmin): drive a client brief through the
 15-state pipeline (see services/managed/pipeline.py). Transitions follow the state
 graph (forward jumps + the copy-approval loop); each is audited. Assigning a
@@ -132,6 +134,19 @@ async def _load_one(db: AsyncSession, mc: ManagedCampaign) -> ManagedOut:
     )
     ready = bool(await _report_ready_ids(db, {mc.campaign_id} if mc.campaign_id else set()))
     return _to_out(mc, account.name if account else None, campaign, mgr_emails, ready)
+
+
+@router.get("/{managed_id}", response_model=ManagedOut)
+async def get_managed(
+    managed_id: UUID,
+    admin: SuperadminUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ManagedOut:
+    """Single managed job — backs the admin job-detail workspace."""
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
+    return await _load_one(db, mc)
 
 
 @router.post("", response_model=ManagedOut, status_code=status.HTTP_201_CREATED)
