@@ -10,13 +10,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeo('managed', {
     title: 'Managed Service',
     description:
-      'Brief us, approve the copy, and receive a branded report. BulkReach handles contact import, message copywriting, dispatch, and analytics — end to end.',
+      'Send us a brief and receive a branded report. BulkReach handles contact import, message copywriting, dispatch, and analytics — end to end.',
   })
   return pageMetadata({ title: seo.title, description: seo.description, path: '/managed' })
 }
 
 const included = [
-  'Dedicated account manager',
+  'Fully managed by our team',
   'Contact import & validation',
   'Message copywriting',
   'Campaign dispatch',
@@ -28,12 +28,12 @@ const managedStages = [
   {
     num: 1,
     title: 'Briefed',
-    desc: 'Client submits brief (objective, audience, send date). Account manager notified.',
+    desc: 'You send the brief — objective, audience, and send date.',
   },
   {
     num: 2,
-    title: 'Copy approved',
-    desc: 'Account manager writes/edits message copy. Client reviews and signs off.',
+    title: 'Content',
+    desc: 'Our team writes the message copy and prepares the audience.',
   },
   {
     num: 3,
@@ -43,7 +43,7 @@ const managedStages = [
   {
     num: 4,
     title: 'Sending',
-    desc: 'Messages dispatching in real time. Progress visible to both sides.',
+    desc: 'Messages dispatching in real time. Track progress in your portal.',
   },
   {
     num: 5,
@@ -76,7 +76,7 @@ export default function ManagedPage() {
             className="text-[16px] max-w-[520px] mx-auto"
             style={{ color: 'rgba(255,255,255,0.52)' }}
           >
-            Brief us, approve the copy, and receive a branded report. We handle everything in
+            Send us a brief and receive a branded report. We handle everything in
             between.
           </p>
         </div>

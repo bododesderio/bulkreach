@@ -91,7 +91,7 @@ export default function ManagedPortalLogin() {
           </form>
 
           <p className="mt-5 text-center text-[13px] text-text-muted">
-            Need help? Contact your account manager.
+            Need help? Contact our team.
           </p>
         </AuthCard>
       </div>

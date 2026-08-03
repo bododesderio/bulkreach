@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Contact import parser (Sections 3.1, 6.2).
 
 Accepts CSV / Excel / Word / PDF / pasted text and returns a ParseResult:

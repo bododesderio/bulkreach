@@ -252,7 +252,7 @@ export default async function HomePage() {
               </p>
               <p className="text-[12.5px]" style={{ color: 'var(--text-md)' }}>
                 Brief the BulkReach team. We handle contacts, message copy, dispatch, and report
-                delivery — with a dedicated account manager at every stage.
+                delivery — fully managed by our team at every stage.
               </p>
             </div>
             <Link

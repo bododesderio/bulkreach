@@ -64,7 +64,7 @@ export const seedPlans = [
     price: "Custom quote",
     period: "per project",
     featured: false,
-    features: ["Up to 20k per campaign", "Full campaign management", "Dedicated account manager", "Branded client report", "Delivery SLA guarantee"],
+    features: ["Up to 20k per campaign", "Full campaign management", "Fully managed by our team", "Branded client report", "Delivery SLA guarantee"],
     cta: "Request a quote",
     managed: true,
   },

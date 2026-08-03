@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin audit-log viewer (superadmin, read-only over the append-only table)."""
 from __future__ import annotations
 

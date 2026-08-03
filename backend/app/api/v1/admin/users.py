@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin users directory (superadmin): platform staff assignable as managed
 account managers. Defaults to internal staff roles (superadmin, admin)."""
 from __future__ import annotations

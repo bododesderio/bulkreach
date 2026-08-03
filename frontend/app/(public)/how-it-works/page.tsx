@@ -39,12 +39,12 @@ const managedStages = [
   {
     num: 1,
     title: 'Briefed',
-    desc: 'Client submits brief (objective, audience, send date). Account manager notified.',
+    desc: 'You send the brief — objective, audience, and send date.',
   },
   {
     num: 2,
-    title: 'Copy approved',
-    desc: 'Account manager writes/edits message copy. Client reviews and signs off.',
+    title: 'Content',
+    desc: 'Our team writes the message copy and prepares the audience.',
   },
   {
     num: 3,

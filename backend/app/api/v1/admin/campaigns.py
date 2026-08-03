@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin cross-account campaign monitor (superadmin, read-only)."""
 from __future__ import annotations
 
