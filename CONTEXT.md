@@ -1,5 +1,38 @@
+<!--
+  @author Bodo Desderio <rooiboktechltd@gmail.com>
+  @copyright 2026 Rooibok Technologies. All rights reserved.
+-->
 # Project Context
 Last updated: 2026-08-03
+
+## Latest session — ✅ Second full audit (4 parallel agents) + live testing + fixes (2026-08-03)
+Ran the whole stack locally (dev datastores on 55432/63799/3112, host uvicorn :3101 + Next dev :3100,
+seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified the prior WIP
+(clickable KPI/StatCards + managed stat-filter, commit `229dae5`), then fanned out 4 audit agents
+(security, backend-correctness, frontend-UX, recent-changes review) and fixed the findings.
+
+- **Backend (`7ed9a8d`)** — Security: webhook callback-secret gate (inbound-SMS + DLR fail **closed**
+  in prod, simulator prod-gated, Mailgun fails closed w/o key) closing a forgeable opt-out-by-number
+  hole; refuse impersonating a superadmin account; constant-time login + forgot-password (kills
+  enumeration timing oracles); `/docs`+`/openapi` off in prod. Correctness: overview
+  `managed_queue_pending` used a bogus terminal set (counted finished jobs as pending → 388 vs real
+  247) now reuses `pipeline.TERMINAL`; dispatch recomputes campaign counters from the `messages`
+  table at completion (retry no longer clobbers totals); inbound STOP normalises to E.164;
+  `quota.release` floors at 0; new `(recipient, created_at)` index. +`test_m10_hardening.py`.
+  **121 backend pytest green.**
+- **Frontend (`33dbbf5`)** — Reports `.catch→null` blanked the page on a 500 → now DataState
+  error+**Try again** (verified live: 500→retry→recover); campaign-detail error≠404 no longer
+  falsely says "deleted"; profile tab no longer hangs on `/auth/me` failure; contact-list delete
+  now confirms; admin campaigns dead "Details" toast → real "Account →" link; admin Settings fake
+  "saved" no-op → honest read-only view + links to real runtime-config pages; managed board tiles
+  derive from one predicate set (cancelled-item consistency); managed-portal humanises unknown stages.
+  **tsc + lint + prod build green.**
+- Verified-NOT-a-bug (audit false positive): notification billing/quota email toggles are
+  intentionally clickable — the backend only force-locks *in-app*, not email.
+- Deferred (documented, lower value / larger): full DataState sweep across remaining pages, the 5
+  bespoke-modal → shared `<Modal>` accessibility migration, per-session access-token revocation
+  (needs a `token_version` column + migration), refresh-grace-window idempotency, assorted LOW a11y
+  nits. localStorage-token XSS exposure noted (architectural).
 
 ## Current state — ✅ ALL 6 audit phases complete; single `main`; green (2026-08-01)
 The full audit master plan (docs/AUDIT-2026-07-31.md) is closed. Repo collapsed to a **single
