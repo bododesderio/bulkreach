@@ -31,7 +31,7 @@ const RUNTIME_CONTROLS: { label: string; href: string; desc: string }[] = [
 export default function SettingsPage() {
   return (
     <>
-      <Topbar title="Settings" subtitle="Platform configuration" />
+      <Topbar title="Settings" subtitle="Platform configuration" showPeriod={false} />
 
       <div className="p-[18px] space-y-[18px]">
         <Reveal>

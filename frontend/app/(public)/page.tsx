@@ -120,7 +120,7 @@ export default async function HomePage() {
             <div className="flex gap-3 flex-wrap">
               {[
                 { num: '500', label: 'free messages on signup' },
-                { num: '98.4%', label: 'delivery rate' },
+                { num: '98%+', label: 'delivery-rate target' },
                 { num: '0', label: 'credit card required' },
               ].map(({ num, label }) => (
                 <div
@@ -152,7 +152,7 @@ export default async function HomePage() {
         <div className="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-3">
           {[
             { Icon: Users, num: '20,000', label: 'recipients per campaign batch' },
-            { Icon: Check, num: '98.4%', label: 'average SMS delivery rate' },
+            { Icon: Check, num: '98%+', label: 'SMS delivery-rate target' },
             { Icon: FileText, num: 'Auto PDF', label: 'report after every campaign' },
           ].map(({ Icon, num, label }, i) => (
             <div

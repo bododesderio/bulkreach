@@ -22,6 +22,7 @@ import { api, ApiError } from '@/lib/api';
 import { storageTierLabel } from '@/lib/labels';
 import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
+import { DataState } from '@/components/ui';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
@@ -200,7 +201,7 @@ export default function ArchivePage() {
   // Single query combining all sections. `contactQuery` is part of the key, so a
   // contact search re-runs the load; action handlers call refetch() on success.
 
-  const { data, isLoading: loading, refetch } = useApiQuery(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery(
     ['admin', 'archive', contactQuery],
     async () => {
       const [ov, ret, rul, con, holds, ers, log, exps] = await Promise.all([
@@ -850,6 +851,14 @@ export default function ArchivePage() {
       />
 
       <div className="p-[18px]">
+        {/* Surface a load failure instead of silently showing all-zero
+            compliance figures (a governance page must not look "clear"
+            when it actually failed to load). */}
+        {isError && (
+          <div className="mb-5 rounded-[11px] border border-line bg-surface p-4">
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
         {/* ── header actions ─────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <p className="text-[11px] text-fg-muted max-w-[480px]">
