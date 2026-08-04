@@ -21,7 +21,7 @@ import StatCard from '@/components/admin/StatCard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import Donut from '@/components/admin/Donut';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type BackendPayStatus =
@@ -430,9 +430,14 @@ export default function PaymentsPage() {
           </>
         )}
 
-        {!loading && !stats && (
+        {!loading && error && (
+          <div className={cardBase}>
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+        {!loading && !error && !stats && (
           <div className="py-16 text-center text-[12px] text-fg-muted">
-            No payment data available.
+            No payments yet.
           </div>
         )}
       </div>

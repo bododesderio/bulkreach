@@ -16,7 +16,7 @@ import Topbar from '@/components/admin/Topbar';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
-import { StatusBadge } from '@/components/ui';
+import { StatusBadge, DataState } from '@/components/ui';
 
 const cardBase = 'bg-surface border rounded-[11px] p-4';
 
@@ -429,9 +429,14 @@ export default function AccountsPage() {
           </>
         )}
 
-        {!loading && !stats && (
+        {!loading && error && (
+          <div className={cardBase}>
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+        {!loading && !error && !stats && (
           <div className="py-16 text-center text-[12px] text-fg-muted">
-            No account data available.
+            No accounts yet.
           </div>
         )}
       </div>

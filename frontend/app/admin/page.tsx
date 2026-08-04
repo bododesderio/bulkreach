@@ -14,7 +14,7 @@ import { useApiQuery } from '@/lib/hooks';
 import Topbar, { Period } from '@/components/admin/Topbar';
 import KPICard from '@/components/admin/KPICard';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
-import { StatusDot, StatusBadge } from '@/components/ui';
+import { StatusDot, StatusBadge, DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type ActivityKind = 'signup' | 'payment' | 'campaign' | 'managed' | 'system';
@@ -130,7 +130,7 @@ const cardBase = 'bg-surface border rounded-[11px] p-4';
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<Period>('Month');
 
-  const { data, isLoading: loading, isError } = useApiQuery(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery(
     ['admin', 'overview', period],
     async () => {
       const [overview, healthRes, managedRes] = await Promise.all([
@@ -428,9 +428,14 @@ export default function AdminDashboardPage() {
           </>
         )}
 
-        {!loading && !kpis && (
+        {!loading && isError && (
+          <div className={cardBase}>
+            <DataState error={error} onRetry={() => refetch()} />
+          </div>
+        )}
+        {!loading && !isError && !kpis && (
           <div className="py-16 text-center text-[12px] text-fg-muted">
-            No overview data available.
+            No overview data yet.
           </div>
         )}
       </div>
