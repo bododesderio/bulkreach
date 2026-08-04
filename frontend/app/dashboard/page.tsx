@@ -18,13 +18,9 @@ import { useApiQuery } from '@/lib/hooks';
 import { useAuth } from '@/store/auth';
 import { type CampaignOut, type PaginatedCampaigns } from '@/lib/campaigns';
 import { Reveal, RevealGroup, RevealItem } from '@/components/admin/Reveal';
-import StatCard from '@/components/admin/StatCard';
 import CountUp from '@/components/admin/CountUp';
-import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
-import { StatusBadge } from '@/components/ui';
-
-const cardBase = 'bg-surface border rounded-[11px] p-4';
+import { Card, DataTable, StatTile, StatusBadge, type Column } from '@/components/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface QuotaResponse {
@@ -212,7 +208,7 @@ export default function DashboardPage() {
 
         {/* Messages this month (with quota bar) */}
         <RevealItem lift>
-          <div className={`${cardBase} h-full`}>
+          <Card className="h-full">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Messages this month
@@ -272,12 +268,13 @@ export default function DashboardPage() {
                 )}
               </>
             )}
-          </div>
+          </Card>
         </RevealItem>
 
         {/* Contact lists */}
         <RevealItem lift>
-          <StatCard
+          <StatTile
+            countUp
             label="Contact lists"
             value={listCount ?? 0}
             icon={Users}
@@ -294,7 +291,8 @@ export default function DashboardPage() {
 
         {/* Campaigns */}
         <RevealItem lift>
-          <StatCard
+          <StatTile
+            countUp
             label="Campaigns"
             value={totalCampaigns ?? 0}
             icon={Send}
@@ -311,7 +309,7 @@ export default function DashboardPage() {
 
         {/* Plan */}
         <RevealItem lift>
-          <div className={`${cardBase} h-full flex flex-col`}>
+          <Card className="h-full flex flex-col">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Plan
@@ -332,7 +330,7 @@ export default function DashboardPage() {
                 Manage billing <ArrowRight size={12} aria-hidden />
               </Link>
             </div>
-          </div>
+          </Card>
         </RevealItem>
 
       </RevealGroup>
@@ -354,7 +352,7 @@ export default function DashboardPage() {
                 key={href}
                 href={href}
                 data-testid={testid}
-                className={`${cardBase} flex items-center gap-3 transition-colors hover-lift hover:border-teal`}
+                className="bg-surface border border-line rounded-[11px] p-4 flex items-center gap-3 transition-colors hover-lift hover:border-teal"
               >
                 <span
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
@@ -378,7 +376,7 @@ export default function DashboardPage() {
 
       {/* ── Recent campaigns ──────────────────────────────────────────────── */}
       <Reveal delay={0.4}>
-        <div className={cardBase}>
+        <Card>
           <div className="flex items-center justify-between mb-3">
             <div className="font-display text-[14px] font-bold text-fg">Recent campaigns</div>
             <Link
@@ -420,9 +418,10 @@ export default function DashboardPage() {
               columns={campaignColumns}
               rows={recentCampaigns}
               rowKey={(c) => c.id}
+              stagger={0.035}
             />
           )}
-        </div>
+        </Card>
       </Reveal>
 
     </div>

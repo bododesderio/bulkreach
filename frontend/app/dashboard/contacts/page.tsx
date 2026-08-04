@@ -12,11 +12,9 @@ import { api, apiDownload, ApiError, apiUpload } from "@/lib/api";
 import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
-import DataTable, { Column } from "@/components/admin/DataTable";
-import { DataState, RowMenu } from "@/components/ui";
+import { Card, DataState, DataTable, RowMenu, type Column } from "@/components/ui";
 import ContactsDrawer from "@/components/dashboard/ContactsDrawer";
 
-const cardBase = "bg-surface border rounded-[11px] p-4";
 
 interface ContactList {
   id: string;
@@ -404,7 +402,7 @@ export default function ContactsPage() {
 
       {/* ── Contact lists ─────────────────────────────────────────────────────── */}
       <Reveal delay={0.2}>
-        <div className={cardBase}>
+        <Card>
           <div className="font-display text-[14px] font-bold text-fg mb-3">
             Your contact lists
           </div>
@@ -441,10 +439,11 @@ export default function ContactsPage() {
                 columns={listColumns}
                 rows={lists}
                 rowKey={(l) => l.id}
+                stagger={0.035}
               />
             </div>
           )}
-        </div>
+        </Card>
       </Reveal>
 
       {viewList && (

@@ -23,11 +23,7 @@ import {
 } from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
-import StatCard from "@/components/admin/StatCard";
-import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusBadge, DataState } from "@/components/ui";
-
-const cardBase = "bg-surface border rounded-[11px] p-4";
+import { Card, DataTable, StatTile, StatusBadge, DataState, type Column } from "@/components/ui";
 
 const STEPS = [
   {
@@ -214,9 +210,7 @@ export default function CampaignsPage() {
       {empty && (
         <>
           <Reveal delay={0.1}>
-            <div
-              className={`${cardBase} flex flex-col items-center justify-center py-12 text-center`}
-            >
+            <Card className="flex flex-col items-center justify-center py-12 text-center">
               <div
                 className="flex h-11 w-11 items-center justify-center rounded-xl"
                 style={{ background: "rgba(0,212,170,0.12)", color: "#00D4AA" }}
@@ -239,13 +233,13 @@ export default function CampaignsPage() {
                   </Link>
                 )}
               </div>
-            </div>
+            </Card>
           </Reveal>
 
           <RevealGroup className="grid gap-3 sm:grid-cols-3" stagger={0.07}>
             {STEPS.map((step) => (
               <RevealItem key={step.title} lift>
-                <div className={`${cardBase} h-full`}>
+                <Card className="h-full">
                   <div
                     className="flex h-9 w-9 items-center justify-center rounded-lg"
                     style={{ background: "var(--bg)", color: "var(--navy)" }}
@@ -256,7 +250,7 @@ export default function CampaignsPage() {
                     {step.title}
                   </p>
                   <p className="mt-1 text-[11px] text-fg-muted">{step.desc}</p>
-                </div>
+                </Card>
               </RevealItem>
             ))}
           </RevealGroup>
@@ -269,7 +263,8 @@ export default function CampaignsPage() {
           {/* Summary stat cards */}
           <RevealGroup className="grid gap-3 sm:grid-cols-3" stagger={0.07}>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Campaigns"
                 value={summary.count}
                 icon={Send}
@@ -277,7 +272,8 @@ export default function CampaignsPage() {
               />
             </RevealItem>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Delivered"
                 value={summary.delivered}
                 icon={Mail}
@@ -285,7 +281,8 @@ export default function CampaignsPage() {
               />
             </RevealItem>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Failed"
                 value={summary.failed}
                 icon={MessageSquare}
@@ -297,7 +294,7 @@ export default function CampaignsPage() {
 
           {/* Campaign table */}
           <Reveal delay={0.25}>
-            <div className={cardBase}>
+            <Card>
               <div className="font-display text-[14px] font-bold text-fg mb-3">
                 All campaigns
               </div>
@@ -305,8 +302,9 @@ export default function CampaignsPage() {
                 columns={campaignColumns}
                 rows={campaigns ?? []}
                 rowKey={(c) => c.id}
+                stagger={0.035}
               />
-            </div>
+            </Card>
           </Reveal>
         </>
       )}

@@ -5,10 +5,12 @@
 import React from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import CountUp from '@/components/admin/CountUp';
 import { cn } from '@/lib/utils';
 
 type Accent = 'brand' | 'success' | 'warning' | 'danger' | 'info';
+type ChangeType = 'up' | 'down' | 'warn';
 
 interface StatTileProps {
   label: string;
@@ -25,6 +27,20 @@ interface StatTileProps {
   /** Selected/active styling for filter tiles. */
   active?: boolean;
   className?: string;
+
+  // --- Numeric KPI mode (parity with the old admin StatCard) ---
+  /** Animate a numeric `value` counting up from zero. Ignored for non-numbers. */
+  countUp?: boolean;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+  /** Target font size (px) at desktop width; shrinks fluidly on mobile. */
+  valueSize?: number;
+  /** Trend/delta line under the value, with a direction icon + colour. */
+  change?: React.ReactNode;
+  changeType?: ChangeType;
+  /** Danger emphasis: reddens the value and forces the accent to danger. */
+  warn?: boolean;
 }
 
 // Left-accent + icon colour per accent. Semantic colours are real Tailwind
@@ -49,6 +65,17 @@ const ICON: Record<Accent, string> = {
  * muted label, big value, icon top-right. Dark-ready by construction. Use for
  * the KPI rows the density mandate calls for on every section landing.
  */
+const CHANGE_ICON: Record<ChangeType, LucideIcon> = {
+  up: TrendingUp,
+  down: TrendingDown,
+  warn: AlertTriangle,
+};
+const CHANGE_COLOR: Record<ChangeType, string> = {
+  up: 'text-success',
+  down: 'text-danger',
+  warn: 'text-warning',
+};
+
 export function StatTile({
   label,
   value,
@@ -59,8 +86,17 @@ export function StatTile({
   onClick,
   active = false,
   className,
+  countUp = false,
+  prefix = '',
+  suffix = '',
+  decimals = 0,
+  valueSize = 26,
+  change,
+  changeType = 'up',
+  warn = false,
 }: StatTileProps) {
   const interactive = Boolean(href || onClick);
+  const effAccent: Accent = warn ? 'danger' : accent;
   const cls = cn(
     'group relative block h-full w-full overflow-hidden rounded-[11px] border border-line bg-surface p-4 pl-5 text-left',
     interactive && 'cursor-pointer transition hover:border-brand/60 hover:shadow-soft',
@@ -68,22 +104,41 @@ export function StatTile({
     className,
   );
 
+  const ChangeIcon = CHANGE_ICON[changeType];
+  const rendered =
+    countUp && typeof value === 'number' ? (
+      <CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
+    ) : (
+      value
+    );
+
   const body = (
     <>
       {/* Left accent bar */}
-      <span className={cn('absolute inset-y-0 left-0 w-1', BAR[accent])} aria-hidden />
+      <span className={cn('absolute inset-y-0 left-0 w-1', BAR[effAccent])} aria-hidden />
       <div className="mb-1 flex items-center justify-between">
         <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">{label}</span>
         {href ? (
           <ArrowUpRight size={15} className="text-fg-muted transition-colors group-hover:text-brand" aria-hidden />
         ) : Icon ? (
-          <Icon size={15} className={ICON[accent]} aria-hidden />
+          <Icon size={15} className={ICON[effAccent]} aria-hidden />
         ) : null}
       </div>
-      <div className="mt-1 font-mono font-semibold leading-tight text-fg" style={{ fontSize: 'clamp(20px, 5.2vw, 26px)' }}>
-        {value}
+      <div
+        className={cn('mt-1 font-mono font-semibold leading-tight', warn ? 'text-danger' : 'text-fg')}
+        // Fluid: shrinks on narrow mobile cards, grows to the target on desktop.
+        style={{ fontSize: `clamp(${Math.round(valueSize * 0.77)}px, 5.2vw, ${valueSize}px)` }}
+      >
+        {rendered}
       </div>
-      {hint && <div className="mt-1.5 text-[10.5px] font-semibold text-fg-muted">{hint}</div>}
+      {change != null && change !== '' ? (
+        <div className={cn('mt-1.5 inline-flex items-center gap-[3px] text-[10.5px] font-semibold', CHANGE_COLOR[changeType])}>
+          <ChangeIcon size={12} aria-hidden />
+          <span>{change}</span>
+        </div>
+      ) : (
+        hint && <div className="mt-1.5 text-[10.5px] font-semibold text-fg-muted">{hint}</div>
+      )}
     </>
   );
 

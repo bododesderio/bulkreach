@@ -13,11 +13,7 @@ import { useApiQuery } from "@/lib/hooks";
 import { type ReportSummary, type CampaignSummaryRow } from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
 import { Reveal, RevealGroup, RevealItem } from "@/components/admin/Reveal";
-import StatCard from "@/components/admin/StatCard";
-import DataTable, { Column } from "@/components/admin/DataTable";
-import { StatusBadge, DataState } from "@/components/ui";
-
-const cardBase = "bg-surface border rounded-[11px] p-4";
+import { Card, DataTable, StatTile, StatusBadge, DataState, type Column } from "@/components/ui";
 
 const PERIODS = [
   { key: "7d", label: "7 days" },
@@ -172,19 +168,19 @@ export default function ReportsPage() {
       {/* ── Error state ───────────────────────────────────────────────────── */}
       {isError && (
         <Reveal>
-          <div className={cardBase}>
+          <Card>
             <DataState
               error={error}
               onRetry={() => refetch()}
             />
-          </div>
+          </Card>
         </Reveal>
       )}
 
       {/* ── Empty state ───────────────────────────────────────────────────── */}
       {empty && (
         <Reveal>
-          <div className={`${cardBase} flex flex-col items-center justify-center py-12 text-center`}>
+          <Card className="flex flex-col items-center justify-center py-12 text-center">
             <div
               className="flex h-11 w-11 items-center justify-center rounded-xl"
               style={{ background: "rgba(0,212,170,0.12)", color: "#00D4AA" }}
@@ -198,7 +194,7 @@ export default function ReportsPage() {
             <Link href="/dashboard/campaigns/new" className="btn-primary mt-5">
               Create a campaign
             </Link>
-          </div>
+          </Card>
         </Reveal>
       )}
 
@@ -208,7 +204,8 @@ export default function ReportsPage() {
           {/* KPI stat cards */}
           <RevealGroup className="grid grid-cols-2 gap-3 lg:grid-cols-4" stagger={0.07}>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Campaigns"
                 value={data.campaigns}
                 icon={FileBarChart}
@@ -216,7 +213,8 @@ export default function ReportsPage() {
               />
             </RevealItem>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Delivered"
                 value={data.delivered}
                 icon={Send}
@@ -224,7 +222,8 @@ export default function ReportsPage() {
               />
             </RevealItem>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Failed"
                 value={data.failed}
                 icon={AlertTriangle}
@@ -232,7 +231,8 @@ export default function ReportsPage() {
               />
             </RevealItem>
             <RevealItem lift>
-              <StatCard
+              <StatTile
+                countUp
                 label="Delivery rate"
                 value={Math.round(data.delivery_rate)}
                 icon={TrendingUp}
@@ -247,7 +247,7 @@ export default function ReportsPage() {
             <div className="grid gap-[18px] lg:grid-cols-[1.4fr_1fr]">
 
               {/* Delivery over time */}
-              <div className={cardBase}>
+              <Card>
                 <div className="font-display text-[14px] font-bold text-fg">
                   Delivery over time
                 </div>
@@ -273,10 +273,10 @@ export default function ReportsPage() {
                     ))}
                   </div>
                 )}
-              </div>
+              </Card>
 
               {/* Channel breakdown */}
-              <div className={cardBase}>
+              <Card>
                 <div className="font-display text-[14px] font-bold text-fg">By channel</div>
                 <p className="mb-4 mt-0.5 text-[11px] text-fg-muted">Delivered vs failed.</p>
                 <div className="space-y-4">
@@ -309,14 +309,14 @@ export default function ReportsPage() {
                     );
                   })}
                 </div>
-              </div>
+              </Card>
 
             </div>
           </Reveal>
 
           {/* Recent campaigns */}
           <Reveal delay={0.35}>
-            <div className={cardBase}>
+            <Card>
               <div className="mb-3 font-display text-[14px] font-bold text-fg">
                 Recent campaigns
               </div>
@@ -324,8 +324,9 @@ export default function ReportsPage() {
                 columns={campaignColumns}
                 rows={data.recent}
                 rowKey={(c) => c.id}
+                stagger={0.035}
               />
-            </div>
+            </Card>
           </Reveal>
         </>
       )}

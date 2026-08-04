@@ -31,6 +31,10 @@ interface DataTableProps<T> {
   /** Optional per-row click. */
   onRowClick?: (row: T, index: number) => void;
   className?: string;
+  /** Stagger each row's fade-up entrance by this many seconds (off when unset). */
+  stagger?: number;
+  /** Base delay before the first staggered row animates. */
+  baseDelay?: number;
 }
 
 /**
@@ -49,6 +53,8 @@ export function DataTable<T>({
   empty = 'Nothing here yet.',
   onRowClick,
   className,
+  stagger,
+  baseDelay = 0.05,
 }: DataTableProps<T>) {
   const showState = loading || error || rows.length === 0;
   if (showState) {
@@ -92,7 +98,12 @@ export function DataTable<T>({
               <tr
                 key={rowKey(row, i)}
                 onClick={clickable ? () => onRowClick!(row, i) : undefined}
-                className={cn('transition-colors hover:bg-surface-2', clickable && 'cursor-pointer')}
+                className={cn(
+                  'transition-colors hover:bg-surface-2',
+                  clickable && 'cursor-pointer',
+                  stagger != null && 'animate-fade-up',
+                )}
+                style={stagger != null ? { animationDelay: `${baseDelay + i * stagger}s` } : undefined}
               >
                 {columns.map((col) => {
                   const content = col.render
