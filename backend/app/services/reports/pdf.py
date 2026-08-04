@@ -49,6 +49,12 @@ def _render_html(campaign: Campaign, account: Account, stats: dict) -> str:
         if account.logo_url
         else f'<div class="logo-fallback">{_esc(account.name[:1].upper())}</div>'
     )
+    # Client-configured report intro (Settings → Report header). Was saved but
+    # never rendered — now shown under the title on every branded report.
+    header_text = (getattr(account, "report_header", None) or "").strip()
+    report_intro = (
+        f'<div class="report-intro">{_esc(header_text)}</div>' if header_text else ""
+    )
 
     channel_rows = ""
     if campaign.type in ("sms", "both"):
@@ -76,6 +82,9 @@ def _render_html(campaign: Campaign, account: Account, stats: dict) -> str:
                    color: #fff; font-weight: 800; font-size: 22px; text-align:center; line-height:44px; }}
   h1 {{ font-size: 22px; margin: 28px 0 2px; }}
   .subtitle {{ color:#64748b; font-size: 12px; margin-bottom: 22px; }}
+  .report-intro {{ color:#334155; font-size: 12px; line-height: 1.55; margin: -10px 0 22px;
+                   padding: 12px 14px; background:#f8fafc; border-left: 3px solid {_BRAND_TEAL};
+                   border-radius: 6px; white-space: pre-wrap; }}
   .stats {{ display: flex; gap: 12px; margin: 18px 0 26px; }}
   .stat {{ flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align:center; }}
   .stat-value {{ font-size: 24px; font-weight: 800; }}
@@ -95,6 +104,7 @@ def _render_html(campaign: Campaign, account: Account, stats: dict) -> str:
 
   <h1>{_esc(campaign.name)}</h1>
   <div class="subtitle">{_esc(campaign.type.upper())} campaign · {stats['total']:,} recipients</div>
+  {report_intro}
 
   <div class="stats">
     {_stat_card("Delivered", f"{delivered:,}", _BRAND_TEAL)}

@@ -275,6 +275,38 @@ async def list_messages(
     )
 
 
+@router.get("/{campaign_id}/messages/export")
+async def export_messages(
+    campaign_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """Download the full per-recipient delivery result as a CSV — the export a
+    bulk-messaging product is expected to provide for reconciliation."""
+    import csv
+    import io
+
+    campaign = await campaign_service.get_owned(db, campaign_id, user.account_id)
+    rows = (await db.execute(
+        select(Message).where(Message.campaign_id == campaign_id).order_by(Message.created_at)
+    )).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["recipient", "channel", "status", "attempts", "provider",
+                     "provider_message_id", "error", "sent_at", "delivered_at"])
+    for m in rows:
+        writer.writerow([
+            m.recipient, m.channel, m.status, m.attempts, m.provider or "",
+            m.provider_message_id or "", m.error_reason or "",
+            m.sent_at.isoformat() if m.sent_at else "",
+            m.delivered_at.isoformat() if m.delivered_at else "",
+        ])
+    safe = "".join(c if c.isalnum() else "-" for c in (campaign.name or "campaign"))[:40]
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{safe}-messages.csv"'},
+    )
+
+
 @router.get("/{campaign_id}/progress")
 async def progress_stream(
     campaign_id: UUID, user: CurrentUser

@@ -6,9 +6,9 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { FileText, Tags, Trash2, Upload, Users } from "lucide-react";
+import { Download, FileText, Tags, Trash2, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
-import { api, apiUpload } from "@/lib/api";
+import { api, apiDownload, ApiError, apiUpload } from "@/lib/api";
 import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
@@ -147,6 +147,14 @@ export default function ContactsPage() {
     deleteMut.mutate(list.id);
   }
 
+  async function exportList(list: ContactList) {
+    try {
+      await apiDownload(`/contacts/lists/${list.id}/export`, `${list.name || "contacts"}.csv`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not export list");
+    }
+  }
+
   const listColumns: Column<ContactList>[] = [
     {
       key: "name",
@@ -201,6 +209,14 @@ export default function ContactsPage() {
           >
             <Tags className="h-3.5 w-3.5" aria-hidden />
             Tags
+          </button>
+          <button
+            onClick={() => exportList(l)}
+            aria-label={`Export ${l.name} as CSV`}
+            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Export
           </button>
           <button
             onClick={() => remove(l)}

@@ -5,8 +5,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell } from 'lucide-react';
 import { useAuth } from '@/store/auth';
+import NotificationBell from '@/components/NotificationBell';
 import { NavMenuButton, ThemeToggle } from '@/components/ui';
 
 export type Period = 'Today' | 'Month' | 'Quarter';
@@ -91,14 +91,8 @@ export default function Topbar({
         {/* Theme toggle (moon/sun) */}
         <ThemeToggle />
 
-        {/* Notification bell — no fake unread dot */}
-        <button
-          className="flex items-center justify-center border border-line bg-transparent rounded-[7px] transition-colors hover:bg-surface-2"
-          style={{ width: '32px', height: '32px' }}
-          aria-label="Notifications"
-        >
-          <Bell size={15} className="text-fg-muted" />
-        </button>
+        {/* Live notification bell (real unread count + panel) */}
+        <NotificationBell />
 
         {/* Avatar with real user initials */}
         <div

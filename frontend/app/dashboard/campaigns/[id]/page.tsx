@@ -61,6 +61,7 @@ export default function CampaignDetailPage() {
   const [live, setLive] = useState<Progress | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [downloading, setDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -108,6 +109,17 @@ export default function CampaignDetailPage() {
       toast.error(e instanceof ApiError ? e.message : "Could not generate PDF");
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await apiDownload(`/campaigns/${id}/messages/export`, "campaign-messages.csv");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not export CSV");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -307,6 +319,20 @@ export default function CampaignDetailPage() {
                 <Download className="mr-2 h-4 w-4" />
               )}
               Report PDF
+            </button>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={exporting}
+              className="btn-outline h-9 px-3 text-sm"
+              title="Download per-recipient delivery results as CSV"
+            >
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Export CSV
             </button>
           </div>
         </div>

@@ -64,6 +64,31 @@ async def test_duplicate_campaign(client, owner_headers):
     assert body["name"].endswith("(copy)")
 
 
+# ── CSV exports ──
+async def test_export_contacts_csv(client, owner_headers):
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+    r = await client.get(f"/api/v1/contacts/lists/{list_id}/export", headers=owner_headers)
+    assert r.status_code == 200, r.text
+    assert "text/csv" in r.headers["content-type"]
+    assert r.text.splitlines()[0].startswith("phone,email,tags")
+
+
+async def test_export_campaign_messages_csv(client, owner_headers):
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+    cid = (await client.post("/api/v1/campaigns", headers=owner_headers, json={
+        "name": "Export test", "type": "sms", "contact_list_id": list_id,
+        "sms_body": "Hi {{name|there}}",
+    })).json()["id"]
+    r = await client.get(f"/api/v1/campaigns/{cid}/messages/export", headers=owner_headers)
+    assert r.status_code == 200, r.text
+    assert "text/csv" in r.headers["content-type"]
+    assert r.text.splitlines()[0].startswith("recipient,channel,status")
+
+
 # ── link/click tracking ──
 def test_url_extract_and_rewrite():
     from app.services import tracking

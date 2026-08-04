@@ -7,6 +7,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import cast, func, or_, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,6 +166,39 @@ async def get_rows(
     return PaginatedContacts(
         items=[ContactRow.model_validate(r) for r in rows],
         total=total, page=page, page_size=page_size,
+    )
+
+
+@router.get("/lists/{list_id}/export")
+async def export_list(
+    list_id: UUID, user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """Download a contact list as CSV (phone, email, tags, + original columns).
+    Backs the client self-serve data export promised in the retention policy."""
+    import csv
+    import io
+
+    clist = await _get_owned_list(db, list_id, user.account_id)
+    rows = (await db.execute(
+        select(Contact).where(Contact.list_id == list_id).order_by(Contact.created_at)
+    )).scalars().all()
+
+    # Preserve the list's original imported columns after the canonical ones.
+    extra_cols = [c for c in (clist.columns or []) if isinstance(c, str)]
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["phone", "email", "tags", *extra_cols])
+    for c in rows:
+        raw = c.raw_data or {}
+        writer.writerow([
+            c.phone or "", c.email or "",
+            ";".join(c.tags or []),
+            *[str(raw.get(col, "")) for col in extra_cols],
+        ])
+    safe = "".join(ch if ch.isalnum() else "-" for ch in (clist.name or "contacts"))[:40]
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{safe}.csv"'},
     )
 
 
