@@ -42,7 +42,7 @@ function Stepper({ status }: { status: Status }) {
               <div
                 className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold"
                 style={{
-                  background: done || current ? s.color : '#EEF1F8',
+                  background: done || current ? s.color : 'var(--surface-2)',
                   color: done || current ? '#fff' : '#94A3B8',
                 }}
               >
@@ -61,7 +61,7 @@ function Stepper({ status }: { status: Status }) {
             {i < STEPS.length - 1 && (
               <div
                 className="h-[2px] w-6 rounded-full sm:w-10"
-                style={{ background: done ? s.color : '#EEF1F8' }}
+                style={{ background: done ? s.color : 'var(--surface-2)' }}
               />
             )}
           </div>
@@ -85,7 +85,7 @@ function SectionCard({
         <div className="mb-3 flex items-center gap-2">
           <span
             className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold"
-            style={{ background: active ? '#00D4AA' : '#EEF1F8', color: active ? '#0D0F2E' : '#64748B' }}
+            style={{ background: active ? '#00D4AA' : 'var(--surface-2)', color: active ? '#0D0F2E' : '#64748B' }}
           >
             {n}
           </span>
@@ -330,7 +330,7 @@ export default function ManagedJobPage() {
               onClick={() => run(() => patch({ brief_text: brief.trim() }), 'Brief saved')}
               disabled={busy || job.cancelled || brief.trim() === job.brief_text}
               className="rounded-full px-3.5 py-1.5 text-[12px] font-bold transition hover:opacity-90 disabled:opacity-40"
-              style={{ background: '#EEF1F8', color: '#1B1F4A' }}
+              style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
             >
               Save brief
             </button>
@@ -409,7 +409,7 @@ export default function ManagedJobPage() {
               }), 'Copy saved')}
               disabled={busy || job.cancelled}
               className="rounded-full px-3.5 py-1.5 text-[12px] font-bold transition hover:opacity-90 disabled:opacity-40"
-              style={{ background: '#EEF1F8', color: '#1B1F4A' }}
+              style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
             >
               Save copy
             </button>
@@ -453,7 +453,7 @@ export default function ManagedJobPage() {
                 disabled={busy || !job.campaign_id}
                 title={!job.campaign_id ? 'Link a campaign first' : undefined}
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold transition hover:opacity-90 disabled:opacity-40"
-                style={{ background: '#EEF1F8', color: '#1B1F4A' }}
+                style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
               >
                 <FileText size={13} aria-hidden /> Issue report
               </button>

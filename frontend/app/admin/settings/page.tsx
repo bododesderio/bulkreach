@@ -37,7 +37,7 @@ export default function SettingsPage() {
         <Reveal>
           <div
             className="flex items-start gap-2 rounded-[11px] border p-4 text-[12px] text-fg-muted"
-            style={{ background: '#F7F8FC' }}
+            style={{ background: 'var(--surface-2)' }}
           >
             <Info size={16} className="mt-0.5 shrink-0 text-teal" aria-hidden />
             <p>

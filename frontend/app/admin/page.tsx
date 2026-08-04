@@ -278,7 +278,7 @@ export default function AdminDashboardPage() {
                               : '—'}
                           </span>
                         </div>
-                        <div className="h-[5px] bg-[#EEF0FA] rounded-full overflow-hidden">
+                        <div className="h-[5px] bg-surface-2 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${plan.fill_pct}%`, background: plan.color }}

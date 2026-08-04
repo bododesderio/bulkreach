@@ -118,7 +118,7 @@ const columns: Column<AdminCampaign>[] = [
         <div className="flex items-center gap-2">
           <div
             className="rounded-full overflow-hidden flex-shrink-0"
-            style={{ width: 72, height: 5, background: '#F7F8FC' }}
+            style={{ width: 72, height: 5, background: 'var(--surface-2)' }}
           >
             <div
               className={`h-full rounded-full ${isActive ? 'animate-pulse' : ''}`}

@@ -998,7 +998,7 @@ export default function SettingsPage() {
             role="tabpanel"
             aria-labelledby="tab-danger"
             className="rounded-[11px] border-2 p-4"
-            style={{ borderColor: "rgba(239,68,68,0.35)", background: "#fff" }}
+            style={{ borderColor: "rgba(239,68,68,0.35)", background: "var(--surface)" }}
           >
             <div className="mb-0.5 flex items-center gap-2">
               <AlertTriangle size={15} className="text-error" aria-hidden />

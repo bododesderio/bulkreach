@@ -806,7 +806,7 @@ function DispatchPanel({
         {[
           { label: "Sent", value: p?.sent ?? 0, color: "#10B981" },
           { label: "Failed", value: p?.failed ?? 0, color: "#EF4444" },
-          { label: "Pending", value: p?.pending ?? 0, color: "var(--navy)" },
+          { label: "Pending", value: p?.pending ?? 0, color: "var(--fg-muted)" },
         ].map((c) => (
           <div
             key={c.label}
