@@ -16,9 +16,10 @@ import {
   Trash2,
   Upload,
   Users,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, apiDownload } from '@/lib/api';
 import { storageTierLabel } from '@/lib/labels';
 import { useApiQuery } from '@/lib/hooks';
 import Topbar from '@/components/admin/Topbar';
@@ -791,6 +792,26 @@ export default function ArchivePage() {
       label: 'Archived',
       render: (row) => (
         <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.archived_at)}</span>
+      ),
+    },
+    {
+      key: 'download',
+      label: '',
+      align: 'right',
+      render: (row) => (
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await apiDownload(`/admin/archive/exports/${row.id}/download`, row.filename);
+            } catch (e) {
+              toast.error(e instanceof ApiError ? e.message : 'Export unavailable');
+            }
+          }}
+          className="inline-flex items-center gap-1 rounded-[5px] border border-line px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:border-teal hover:text-fg"
+        >
+          <Download className="h-3 w-3" aria-hidden /> Download
+        </button>
       ),
     },
   ], []);

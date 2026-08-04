@@ -1,6 +1,9 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import type { Metadata } from 'next'
-import { seedPlans } from '@/lib/seed-data'
-import { getFaqs, getSections, getSeo } from '@/lib/public-content'
+import { getFaqs, getPlans, getSections, getSeo } from '@/lib/public-content'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { faqSchema, pageMetadata } from '@/lib/seo'
 import PlanCard from '@/components/public/PlanCard'
@@ -26,7 +29,9 @@ const HERO_FALLBACK = {
 }
 
 export default async function PricingPage() {
-  const [faqs, hero] = await Promise.all([getFaqs(), getSections('pricing', HERO_FALLBACK)])
+  const [faqs, hero, plans] = await Promise.all([
+    getFaqs(), getSections('pricing', HERO_FALLBACK), getPlans(),
+  ])
   return (
     <>
       {faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
@@ -55,7 +60,7 @@ export default async function PricingPage() {
       <section className="bg-pricing-bg py-20 px-4 md:px-10">
         <div className="max-w-[1100px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            {seedPlans.map((plan) => (
+            {plans.map((plan) => (
               <PlanCard
                 key={plan.name}
                 {...plan}

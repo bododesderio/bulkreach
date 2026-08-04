@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Public content API — powers the marketing site. No auth; published rows only.
 
 These endpoints are read by the public (marketing) pages as server components, so
@@ -13,10 +15,31 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.models.billing import Plan
 from app.models.cms import CmsFaq, CmsFeature, CmsPageSection, CmsTestimonial
 from app.schemas.cms import FaqOut, FeatureOut, TestimonialOut
 
 router = APIRouter(prefix="/content", tags=["content"])
+
+
+@router.get("/plans")
+async def public_plans(db: Annotated[AsyncSession, Depends(get_db)]) -> list[dict]:
+    """Active subscription plans for the public pricing/landing pages, so the
+    marketing site tracks admin-edited pricing instead of hardcoded numbers."""
+    rows = (await db.execute(
+        select(Plan).where(Plan.status == "active")
+        .order_by(Plan.display_order.asc(), Plan.price_ugx.asc())
+    )).scalars().all()
+    return [
+        {
+            "name": p.name,
+            "price_ugx": p.price_ugx,
+            "messages_per_month": p.messages_per_month,
+            "featured": bool(p.featured),
+            "bullets": (p.features or {}).get("bullets", []),
+        }
+        for p in rows
+    ]
 
 
 @router.get("/faqs", response_model=list[FaqOut])

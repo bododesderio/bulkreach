@@ -5,8 +5,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Users, Check, FileText, Upload, Code, LayoutGrid, BarChart2, Award, Clock, ArrowRight } from 'lucide-react'
-import { seedPlans } from '@/lib/seed-data'
-import { getFeatures, getTestimonials, getSeo } from '@/lib/public-content'
+import { getFeatures, getPlans, getTestimonials, getSeo } from '@/lib/public-content'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationSchema, softwareApplicationSchema, pageMetadata, websiteSchema, DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '@/lib/seo'
 import BroadcastAnimation from '@/components/public/BroadcastAnimation'
@@ -51,7 +50,9 @@ const steps = [
 ]
 
 export default async function HomePage() {
-  const [features, testimonials] = await Promise.all([getFeatures(), getTestimonials()])
+  const [features, testimonials, plans] = await Promise.all([
+    getFeatures(), getTestimonials(), getPlans(),
+  ])
   return (
     <>
       <JsonLd data={[organizationSchema(), websiteSchema(), softwareApplicationSchema()]} />
@@ -285,7 +286,7 @@ export default async function HomePage() {
             All prices in UGX. Pay via MTN Mobile Money, Airtel Money, Visa, or Mastercard.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-11">
-            {seedPlans.map((plan) => (
+            {plans.map((plan) => (
               <PlanCard
                 key={plan.name}
                 {...plan}

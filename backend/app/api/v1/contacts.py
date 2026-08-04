@@ -248,6 +248,11 @@ async def add_tag_to_list(
         )
         .values(tags=Contact.tags.op("||")(cast([t], JSONB)))
     )
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="contacts.tag_list",
+        resource_type="contact_list", resource_id=str(list_id),
+        details={"tag": t, "tagged": result.rowcount or 0},
+    )
     await db.commit()
     return {"tagged": result.rowcount or 0}
 
@@ -265,6 +270,11 @@ async def set_contact_tags(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contact not found")
     clean = sorted({t.strip() for t in tags if t.strip()})[:20]
     contact.tags = clean
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="contacts.set_tags",
+        resource_type="contact", resource_id=str(contact_id),
+        details={"list_id": str(list_id), "tags": clean},
+    )
     await db.commit()
     await db.refresh(contact)
     return contact

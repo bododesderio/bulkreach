@@ -16,6 +16,7 @@ import {
   XCircle,
   Download,
   Copy,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError, apiDownload } from "@/lib/api";
@@ -63,6 +64,7 @@ export default function CampaignDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [sending, setSending] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load campaign + messages (React Query also drives the post-dispatch refetch).
@@ -120,6 +122,23 @@ export default function CampaignDetailPage() {
       toast.error(e instanceof ApiError ? e.message : "Could not export CSV");
     } finally {
       setExporting(false);
+    }
+  }
+
+  // Dispatch a saved draft from its detail page (the composer only ever created
+  // a fresh campaign, so a saved draft used to be a dead end). Once sent, the
+  // status becomes live and the progress stream above takes over automatically.
+  async function sendDraft() {
+    if (!window.confirm("Send this campaign now? Messages go out immediately.")) return;
+    setSending(true);
+    try {
+      await api(`/campaigns/${id}/send`, { method: "POST", auth: true });
+      toast.success("Campaign sending");
+      await refetch();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not send");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -294,6 +313,21 @@ export default function CampaignDetailPage() {
             <StatusBadge domain="campaign" status={campaign.status} />
           </div>
           <div className="flex items-center gap-2">
+            {campaign.status === "draft" && (
+              <button
+                type="button"
+                onClick={sendDraft}
+                disabled={sending}
+                className="btn-primary h-9 px-4 text-sm"
+              >
+                {sending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Send now
+              </button>
+            )}
             <button
               type="button"
               onClick={duplicate}

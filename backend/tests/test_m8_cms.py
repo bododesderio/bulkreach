@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """M8 — CMS: public content API (published only) + superadmin CRUD + auth gating."""
 from __future__ import annotations
 
@@ -71,3 +73,13 @@ async def test_admin_content_requires_superadmin(client, owner_headers):
         "icon": "Zap", "title": "x", "description": "y",
     })
     assert r2.status_code in (401, 403)
+
+
+async def test_public_plans_endpoint(client):
+    """Public pricing plans come from the DB (active plans, sorted), no auth."""
+    r = await client.get("/api/v1/content/plans")
+    assert r.status_code == 200, r.text
+    plans = r.json()
+    assert isinstance(plans, list) and len(plans) >= 1
+    p = plans[0]
+    assert {"name", "price_ugx", "messages_per_month", "featured", "bullets"} <= set(p)

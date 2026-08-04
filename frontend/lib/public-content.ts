@@ -1,5 +1,9 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import "server-only";
-import { seedFAQ, seedFeatures, seedTestimonials } from "@/lib/seed-data";
+import { seedFAQ, seedFeatures, seedPlans, seedTestimonials } from "@/lib/seed-data";
 
 /**
  * Server-side fetch of published marketing content from the backend CMS.
@@ -42,6 +46,49 @@ export async function getTestimonials(): Promise<Testimonial[]> {
   const data = await get<{ quote: string; name: string; role: string }[]>("/content/testimonials");
   if (!data || data.length === 0) return seedTestimonials;
   return data.map((t) => ({ quote: t.quote, name: t.name, role: t.role }));
+}
+
+export interface PublicPlan {
+  name: string;
+  price: string;
+  period: string;
+  featured: boolean;
+  badge?: string;
+  features: string[];
+  cta: string;
+  managed?: boolean;
+}
+
+interface PlanRow {
+  name: string;
+  price_ugx: number;
+  messages_per_month: number;
+  featured: boolean;
+  bullets: string[];
+}
+
+/** Live subscription plans for the pricing/landing pages. Falls back to the
+ *  bundled seedPlans so the marketing site always renders. */
+export async function getPlans(): Promise<PublicPlan[]> {
+  const data = await get<PlanRow[]>("/content/plans");
+  if (!data || data.length === 0) return seedPlans as PublicPlan[];
+  return data.map((p) => ({
+    name: p.name,
+    price: p.price_ugx > 0 ? `UGX ${Math.round(p.price_ugx / 1000)}k` : "Custom quote",
+    period: p.price_ugx > 0 ? "per month" : "per project",
+    featured: p.featured,
+    badge: p.featured ? "Most popular" : undefined,
+    features:
+      p.bullets && p.bullets.length
+        ? p.bullets
+        : [
+            p.messages_per_month < 0
+              ? "Unlimited messages"
+              : `${p.messages_per_month.toLocaleString()} messages / month`,
+          ],
+    cta: p.featured ? "Start free trial" : "Get started",
+    managed: p.price_ugx <= 0,
+  }));
 }
 
 /** Published section copy for a page as a {key: value} map, with fallbacks applied. */

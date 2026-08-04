@@ -144,6 +144,11 @@ async def update_campaign(
 ) -> CampaignOut:
     campaign = await campaign_service.get_owned(db, campaign_id, user.account_id)
     campaign = await campaign_service.update_draft(db, campaign, payload)
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="campaign.update",
+        resource_type="campaign", resource_id=str(campaign_id),
+        details=payload.model_dump(exclude_unset=True, mode="json"),
+    )
     return CampaignOut.model_validate(campaign)
 
 

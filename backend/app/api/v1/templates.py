@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import CurrentUser
 from app.models.campaign import MessageTemplate
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
@@ -64,6 +65,12 @@ async def create_template(
         email_html_body=body.email_html_body or None,
     )
     db.add(tpl)
+    await db.flush()
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="template.create",
+        resource_type="message_template", resource_id=str(tpl.id),
+        details={"name": tpl.name, "type": tpl.type},
+    )
     await db.commit()
     await db.refresh(tpl)
     return tpl
@@ -76,6 +83,11 @@ async def delete_template(
     tpl = await db.get(MessageTemplate, template_id)
     if tpl is None or tpl.account_id != user.account_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Template not found")
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="template.delete",
+        resource_type="message_template", resource_id=str(template_id),
+        details={"name": tpl.name},
+    )
     await db.delete(tpl)
     await db.commit()
     return {"deleted": True}

@@ -10,7 +10,10 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
+import io
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -322,3 +325,31 @@ async def create_export(
         details={"domain": body.domain}, ip_address=_ip(request),
     )
     return ExportOut.model_validate(rec)
+
+
+@router.get("/exports/{export_id}/download")
+async def download_export(
+    export_id: UUID, admin: SuperadminUser, archive_db: ArchiveDB, request: Request,
+) -> StreamingResponse:
+    """Stream a completed export file. Was write-only before — the admin could
+    generate an export but had no way to retrieve it through the app."""
+    from app.services.storage import get_storage
+
+    rec = await archive_db.get(ArchivedSourceFile, export_id)
+    if rec is None or rec.format != "export" or not rec.s3_key:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Export not found")
+    try:
+        data = get_storage().get(rec.s3_key)
+    except Exception as exc:  # noqa: BLE001 — storage may be infra-gated / evicted
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Export file is no longer available."
+        ) from exc
+    await archive_service.record_access(
+        archive_db, actor_id=admin.id, actor_email=admin.email, action="export_download",
+        resource_type="export", resource_id=str(rec.id),
+        details={"filename": rec.filename}, ip_address=_ip(request),
+    )
+    return StreamingResponse(
+        io.BytesIO(data), media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{rec.filename}"'},
+    )
