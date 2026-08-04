@@ -13,8 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.core.logging import RequestIdMiddleware, configure_logging
 from app.core.middleware import SecurityHeadersMiddleware
 from app.domain.exceptions import DomainError
+
+# Structured logging with per-request correlation ids — install before anything
+# below logs, so even import-time and startup lines are formatted.
+configure_logging()
 
 # --- Error tracking (Sentry) — no-op unless SENTRY_DSN is set ---
 if settings.SENTRY_DSN:
@@ -71,6 +76,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added last → outermost: the correlation id is bound before any other
+# middleware or route logs, and the response carries it back for tracing.
+app.add_middleware(RequestIdMiddleware)
 
 
 @app.get("/health", tags=["system"])

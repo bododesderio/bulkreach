@@ -17,9 +17,14 @@ from arq.connections import RedisSettings
 
 from app.core.config import settings
 from app.core.database import ArchiveSessionLocal, LiveSessionLocal
+from app.core.logging import configure_logging, set_request_id
 from app.domain.exceptions import SendNotAllowed
 from app.services import campaign_service
 from app.services.dispatch import close_http, dispatch_campaign
+
+# The worker is a separate process from the API — give it the same structured
+# handler so its lines share the format (and JSON-in-prod) as the API's.
+configure_logging()
 
 logger = logging.getLogger("bulkreach.worker")
 
@@ -50,6 +55,10 @@ async def enqueue_dispatch(campaign_id: UUID | str) -> str | None:
 # --- Task functions -------------------------------------------------------
 
 async def dispatch_campaign_task(ctx: dict, campaign_id: str) -> dict:
+    # Tie every log line this job emits (here + down through the dispatch engine)
+    # to the ARQ job id so a send can be traced end-to-end. ARQ runs each job in
+    # its own asyncio task, so this contextvar can't leak across jobs.
+    set_request_id(f"job-{ctx.get('job_id', campaign_id)}")
     logger.info("worker: dispatching campaign %s", campaign_id)
     return await dispatch_campaign(UUID(campaign_id))
 

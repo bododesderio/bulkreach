@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
     # Uptime-Kuma push URL for the ARQ worker heartbeat (blank → disabled).
     KUMA_PUSH_URL: str = ""
+
+    # --- Logging ---
+    # "auto" → JSON in production (ingestion-friendly), human-readable elsewhere.
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: Literal["auto", "json", "text"] = "auto"
+
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "BulkReach"
     BASE_URL: str = "https://api.bulkreach.ug"
@@ -226,6 +232,13 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
+
+    @property
+    def resolved_log_format(self) -> str:
+        """"auto" → JSON in prod, text otherwise; an explicit value wins."""
+        if self.LOG_FORMAT == "auto":
+            return "json" if self.is_production else "text"
+        return self.LOG_FORMAT
 
     @field_validator("JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY")
     @classmethod
