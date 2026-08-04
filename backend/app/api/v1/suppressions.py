@@ -21,6 +21,7 @@ from app.core.database import get_db
 from app.core.dependencies import CurrentUser
 from app.models.suppression import Suppression
 from app.services import deliveries
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/suppressions", tags=["suppressions"])
 
@@ -64,6 +65,11 @@ async def add(
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             "Only an account owner or admin can edit the suppression list.")
     await deliveries.add_suppression(db, user.account_id, body.channel, body.address, reason="manual")
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="suppression.add",
+        resource_type="suppression", resource_id=body.address.strip(),
+        details={"channel": body.channel, "address": body.address.strip()},
+    )
     await db.commit()
     row = await db.scalar(
         select(Suppression).where(
@@ -86,10 +92,22 @@ async def remove(
     if user.role not in ("owner", "admin"):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             "Only an account owner or admin can edit the suppression list.")
-    await db.execute(
-        sa_delete(Suppression).where(
+    # Fetch first so the audit records WHAT opt-out was lifted (consent surface).
+    row = await db.scalar(
+        select(Suppression).where(
             Suppression.id == suppression_id, Suppression.account_id == user.account_id
         )
     )
-    await db.commit()
+    if row is not None:
+        await record_audit(
+            db, actor_id=user.id, actor_email=user.email, action="suppression.remove",
+            resource_type="suppression", resource_id=str(suppression_id),
+            details={"channel": row.channel, "address": row.address},
+        )
+        await db.execute(
+            sa_delete(Suppression).where(
+                Suppression.id == suppression_id, Suppression.account_id == user.account_id
+            )
+        )
+        await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -123,3 +123,10 @@ async def apply_password_reset(db: AsyncSession, token: str, new_password: str) 
         )
     except Exception:  # noqa: BLE001 — a security notice must not block the reset
         pass
+    # Audit the recovery event (parity with change-password / activate-password).
+    from app.services.audit import record_audit
+
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="account.password_changed",
+        resource_type="user", resource_id=str(user.id), details={"via": "reset"},
+    )

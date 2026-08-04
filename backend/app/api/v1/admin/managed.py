@@ -241,7 +241,33 @@ async def unhold_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[
 
 @router.post("/{managed_id}/cancel", response_model=ManagedOut)
 async def cancel_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[AsyncSession, Depends(get_db)]):
-    return await _toggle_flag(db, admin, managed_id, field="cancelled", value=True, action="managed.cancel")
+    """Cancel a managed job — and actually STOP its campaign if one is in flight.
+
+    Previously this only flipped the ``cancelled`` flag, so a job cancelled while
+    ``sending`` kept dispatching SMS/email. Now, if the linked campaign is still
+    stoppable, it is cancelled in the same transaction (the dispatch loop checks
+    the campaign status between batches and halts)."""
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
+
+    stopped_campaign = False
+    if mc.campaign_id is not None:
+        campaign = await db.get(Campaign, mc.campaign_id)
+        if campaign is not None and campaign.status in ("queued", "sending", "scheduled"):
+            await campaign_service.cancel(db, campaign)
+            stopped_campaign = True
+
+    mc.cancelled = True
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="managed.cancel",
+        resource_type="managed_campaign", resource_id=str(mc.id),
+        details={"stopped_campaign": stopped_campaign,
+                 "campaign_id": str(mc.campaign_id) if mc.campaign_id else None},
+    )
+    await db.commit()
+    await db.refresh(mc)
+    return await _load_one(db, mc)
 
 
 @router.post("/{managed_id}/send", response_model=ManagedOut)

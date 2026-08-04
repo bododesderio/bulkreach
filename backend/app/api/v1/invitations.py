@@ -125,6 +125,11 @@ async def revoke_invite(
     invite = await db.get(InvitationToken, invite_id)
     if invite is None or invite.account_id != admin.account_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="invite.revoked",
+        resource_type="invitation", resource_id=str(invite_id),
+        details={"email": invite.email, "role": invite.role},
+    )
     await db.delete(invite)
     return {"status": "revoked"}
 

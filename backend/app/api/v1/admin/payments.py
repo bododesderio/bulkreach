@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Admin payment configuration (superadmin only).
 
 Configure each gateway's credentials + test/live mode, toggle it on/off, and map
@@ -27,6 +29,7 @@ from app.schemas.payment import (
     RoutingOut,
     RoutingUpdate,
 )
+from app.services.audit import record_audit
 from app.services.payments.registry import PROVIDER_CLASSES
 
 router = APIRouter(prefix="/admin/payments", tags=["admin:payments"])
@@ -106,6 +109,14 @@ async def update_provider(
                 merged[key] = value
         config.credentials = merged
     config.updated_by = admin.email
+    # Audit the config change — record which fields changed, NEVER the secrets.
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email,
+        action="payments.provider_config", resource_type="payment_provider",
+        resource_id=slug,
+        details={"enabled": config.enabled, "mode": config.mode,
+                 "changed": [k for k in (body.credentials or {})]},
+    )
     await db.commit()
     await db.refresh(config)
     return _to_out(slug, config)
@@ -148,5 +159,11 @@ async def set_routing(
     row.routing = {k: v for k, v in body.routing.items() if v}
     row.default_currency = body.default_currency
     row.updated_by = admin.email
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email,
+        action="payments.routing", resource_type="payment_settings",
+        resource_id="singleton",
+        details={"routing": row.routing, "default_currency": row.default_currency},
+    )
     await db.commit()
     return RoutingOut(routing=row.routing, default_currency=row.default_currency)

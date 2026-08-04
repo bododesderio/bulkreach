@@ -119,3 +119,35 @@ async def test_send_requires_linked_campaign(client, super_headers):
     r = await client.post(f"/api/v1/admin/managed/{mid}/send", headers=super_headers)
     assert r.status_code == 409
     assert "link the campaign" in r.json()["detail"].lower()
+
+
+async def test_cancel_stops_inflight_campaign(client, super_headers, owner_headers):
+    """Cancelling a managed job whose campaign is in flight also STOPS the
+    campaign — not just flips a flag (the mirror of the send bug)."""
+    import uuid as _uuid
+    from app.core.database import LiveSessionLocal
+    from app.models.campaign import Campaign
+
+    me = (await client.get("/api/v1/auth/me", headers=owner_headers)).json()
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+    cid = (await client.post("/api/v1/campaigns", headers=owner_headers, json={
+        "name": "Cancel test", "type": "sms", "contact_list_id": list_id,
+        "sms_body": "Hi {{name|there}}.",
+    })).json()["id"]
+    mid = (await client.post("/api/v1/admin/managed", headers=super_headers, json={
+        "account_id": me["account"]["id"], "brief_text": "cancel test", "campaign_id": cid,
+    })).json()["id"]
+
+    # Simulate an in-flight dispatch (what a real async worker leaves it at).
+    async with LiveSessionLocal() as db:
+        camp = await db.get(Campaign, _uuid.UUID(cid))
+        camp.status = "queued"
+        await db.commit()
+
+    c = await client.post(f"/api/v1/admin/managed/{mid}/cancel", headers=super_headers)
+    assert c.status_code == 200 and c.json()["cancelled"] is True
+    # The in-flight campaign was actually cancelled, not left running.
+    detail = (await client.get(f"/api/v1/campaigns/{cid}", headers=owner_headers)).json()
+    assert detail["status"] == "cancelled"

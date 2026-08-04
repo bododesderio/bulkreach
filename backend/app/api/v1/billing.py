@@ -130,6 +130,13 @@ async def set_auto_renew(
     if sub is None or account is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No active subscription")
     sub.auto_renew = body.auto_renew
+    from app.services.audit import record_audit
+
+    await record_audit(
+        db, actor_id=user.id, actor_email=user.email, action="billing.auto_renew",
+        resource_type="subscription", resource_id=str(sub.id),
+        details={"auto_renew": body.auto_renew},
+    )
     await db.commit()
     await db.refresh(sub)
     return SubscriptionStateOut(

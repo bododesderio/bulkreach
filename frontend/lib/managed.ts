@@ -139,11 +139,15 @@ const _CONTENT_STATES: Status[] = [
   'internal_review', 'awaiting_approval', 'changes_requested', 'approved',
 ];
 
-/** True when the job is at a stage where its linked campaign can still be
- *  dispatched (i.e. before it has actually gone out). Drives the "Send now"
- *  button — the real dispatch, not a status flip. */
+// States where the campaign has already been dispatched (or the job is done) —
+// "Send now" no longer applies. Everything else is pre-dispatch. Mirrors the
+// backend's _SENDABLE_STATES (all pipeline stages before "sending").
+const _DISPATCHED_STATES: Status[] = ['sending', 'sent', 'report_issued', 'closed'];
+
+/** True when the job's linked campaign can still be dispatched (i.e. it hasn't
+ *  gone out yet). Drives the real "Send now" button — not a status flip. */
 export function canSendNow(status: Status): boolean {
-  return _CONTENT_STATES.includes(status) || status === 'scheduled';
+  return !_DISPATCHED_STATES.includes(status) && status !== 'changes_requested';
 }
 
 export function primaryActionFor(status: Status): PrimaryAction {
