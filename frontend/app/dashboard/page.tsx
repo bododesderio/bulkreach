@@ -24,7 +24,7 @@ import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
 import { StatusBadge } from '@/components/ui';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface QuotaResponse {
@@ -144,7 +144,7 @@ export default function DashboardPage() {
       render: (c) => (
         <Link
           href={`/dashboard/campaigns/${c.id}`}
-          className="font-semibold text-navy hover:text-teal transition-colors"
+          className="font-semibold text-fg hover:text-teal transition-colors"
         >
           {c.name}
         </Link>
@@ -153,12 +153,12 @@ export default function DashboardPage() {
     {
       key: 'type',
       label: 'Type',
-      render: (c) => <span className="capitalize text-text-muted">{c.type}</span>,
+      render: (c) => <span className="capitalize text-fg-muted">{c.type}</span>,
     },
     {
       key: 'created_at',
       label: 'Created',
-      render: (c) => <span className="text-text-muted whitespace-nowrap">{fmtWhen(c.created_at)}</span>,
+      render: (c) => <span className="text-fg-muted whitespace-nowrap">{fmtWhen(c.created_at)}</span>,
     },
     {
       key: 'status',
@@ -174,7 +174,7 @@ export default function DashboardPage() {
       {/* ── Greeting ─────────────────────────────────────────────────────── */}
       <Reveal>
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="font-display text-[20px] font-extrabold text-navy" data-testid="welcome">
+          <h2 className="font-display text-[20px] font-extrabold text-fg" data-testid="welcome">
             Welcome back, {name}
           </h2>
           <StatusPill
@@ -214,23 +214,23 @@ export default function DashboardPage() {
         <RevealItem lift>
           <div className={`${cardBase} h-full`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Messages this month
               </span>
-              <MessageSquare size={15} className="text-text-muted" aria-hidden />
+              <MessageSquare size={15} className="text-fg-muted" aria-hidden />
             </div>
 
             {quota === null && !quotaError && (
               <>
-                <div className="mt-2 h-7 animate-pulse rounded bg-bg" />
-                <div className="mt-3 h-1.5 animate-pulse rounded-full bg-bg" />
+                <div className="mt-2 h-7 animate-pulse rounded bg-surface-2" />
+                <div className="mt-3 h-1.5 animate-pulse rounded-full bg-surface-2" />
               </>
             )}
-            {quotaError && <div className="mt-1 font-mono text-[26px] font-semibold text-text-muted">—</div>}
+            {quotaError && <div className="mt-1 font-mono text-[26px] font-semibold text-fg-muted">—</div>}
 
             {quota !== null && !quotaError && (
               <>
-                <div className="mt-1 font-mono text-[26px] font-semibold leading-tight text-navy">
+                <div className="mt-1 font-mono text-[26px] font-semibold leading-tight text-fg">
                   {quota.limit === null ? 'Unlimited' : <CountUp value={quota.used} />}
                 </div>
 
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                         style={{ width: `${quotaPct}%`, background: usageBarColor(quotaPct) }}
                       />
                     </div>
-                    <div className="mt-1 flex justify-between text-[10px] text-text-muted">
+                    <div className="mt-1 flex justify-between text-[10px] text-fg-muted">
                       <span style={{ color: usageBarColor(quotaPct) }}>{quotaPct}% used</span>
                       <span>{quota.used.toLocaleString()} / {quota.limit.toLocaleString()}</span>
                     </div>
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                 )}
 
                 {quota.limit === null && (
-                  <p className="mt-1.5 text-[10.5px] text-text-muted">No usage cap on your plan</p>
+                  <p className="mt-1.5 text-[10.5px] text-fg-muted">No usage cap on your plan</p>
                 )}
                 {quota.is_trial && (
                   <p className="mt-1.5 text-[10.5px] font-semibold text-amber">
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {resetDays !== null && (
-                  <p className="mt-1 text-[10px] text-text-muted">
+                  <p className="mt-1 text-[10px] text-fg-muted">
                     Resets in {resetDays} day{resetDays !== 1 ? 's' : ''}
                   </p>
                 )}
@@ -313,12 +313,12 @@ export default function DashboardPage() {
         <RevealItem lift>
           <div className={`${cardBase} h-full flex flex-col`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Plan
               </span>
-              <CreditCard size={15} className="text-text-muted" aria-hidden />
+              <CreditCard size={15} className="text-fg-muted" aria-hidden />
             </div>
-            <div className="mt-1 font-mono text-[26px] font-semibold capitalize leading-tight text-navy">
+            <div className="mt-1 font-mono text-[26px] font-semibold capitalize leading-tight text-fg">
               {account.plan}
             </div>
             <div className="mt-1.5">
@@ -340,7 +340,7 @@ export default function DashboardPage() {
       {/* ── Quick actions ─────────────────────────────────────────────────── */}
       <Reveal delay={0.3}>
         <div>
-          <h3 className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+          <h3 className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
             Quick actions
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -367,8 +367,8 @@ export default function DashboardPage() {
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
-                  <div className="text-[13px] font-semibold text-navy">{title}</div>
-                  <div className="text-[11px] text-text-muted">{sub}</div>
+                  <div className="text-[13px] font-semibold text-fg">{title}</div>
+                  <div className="text-[11px] text-fg-muted">{sub}</div>
                 </div>
               </Link>
             ))}
@@ -380,7 +380,7 @@ export default function DashboardPage() {
       <Reveal delay={0.4}>
         <div className={cardBase}>
           <div className="flex items-center justify-between mb-3">
-            <div className="font-display text-[14px] font-bold text-navy">Recent campaigns</div>
+            <div className="font-display text-[14px] font-bold text-fg">Recent campaigns</div>
             <Link
               href="/dashboard/campaigns"
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal hover:underline"
@@ -392,7 +392,7 @@ export default function DashboardPage() {
           {campaignsLoading && (
             <div className="space-y-3 py-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-10 animate-pulse rounded-lg bg-bg" />
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-2" />
               ))}
             </div>
           )}
@@ -405,8 +405,8 @@ export default function DashboardPage() {
               >
                 <Send className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 font-semibold text-navy">No campaigns yet</p>
-              <p className="mt-1 max-w-xs text-[12px] text-text-muted">
+              <p className="mt-3 font-semibold text-fg">No campaigns yet</p>
+              <p className="mt-1 max-w-xs text-[12px] text-fg-muted">
                 Import a contact list and send your first campaign to see results here.
               </p>
               <Link href="/dashboard/campaigns/new" className="btn-primary mt-5">

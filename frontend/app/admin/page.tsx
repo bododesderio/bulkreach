@@ -124,7 +124,7 @@ const KIND_META: Record<ActivityKind, { icon: LucideIcon; color: string }> = {
 };
 
 const PLAN_COLORS = ['#00D4AA', '#1B1F4A', 'rgba(0,212,170,0.45)', '#F59E0B', '#6366F1'];
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading dashboard…
           </div>
         )}
@@ -246,7 +246,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 gap-3 mb-[18px] lg:[grid-template-columns:1.4fr_1fr]">
               <Reveal delay={0.15} lift className={cardBase}>
                 <div className="flex items-start justify-between gap-2 mb-0.5">
-                  <div className="font-display text-[14px] font-bold text-navy">
+                  <div className="font-display text-[14px] font-bold text-fg">
                     Revenue by plan
                   </div>
                   <Link
@@ -256,23 +256,23 @@ export default function AdminDashboardPage() {
                     View all →
                   </Link>
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">
+                <div className="text-[11px] text-fg-muted mb-4">
                   {period} · {kpis.total_clients} active accounts
                 </div>
                 {planBars.length === 0 ? (
-                  <div className="py-4 text-[12px] text-text-muted">No plan revenue data yet.</div>
+                  <div className="py-4 text-[12px] text-fg-muted">No plan revenue data yet.</div>
                 ) : (
                   <div>
                     {planBars.slice(0, 6).map((plan) => (
                       <div key={plan.name} className="mb-3">
                         <div className="flex justify-between items-baseline mb-1.5">
-                          <span className="text-[12.5px] font-semibold text-navy">
+                          <span className="text-[12.5px] font-semibold text-fg">
                             {plan.name}{' '}
-                            <span className="text-text-muted font-normal">
+                            <span className="text-fg-muted font-normal">
                               {plan.accounts} accounts
                             </span>
                           </span>
-                          <span className="font-mono text-[12px] text-text-md">
+                          <span className="font-mono text-[12px] text-fg">
                             {plan.mrr_ugx > 0
                               ? `UGX ${plan.mrr_ugx.toLocaleString()}`
                               : '—'}
@@ -300,7 +300,7 @@ export default function AdminDashboardPage() {
 
               <Reveal delay={0.22} lift className={cardBase}>
                 <div className="flex items-start justify-between gap-2 mb-0.5">
-                  <div className="font-display text-[14px] font-bold text-navy">
+                  <div className="font-display text-[14px] font-bold text-fg">
                     Managed queue
                   </div>
                   <Link
@@ -310,23 +310,23 @@ export default function AdminDashboardPage() {
                     View all →
                   </Link>
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">
+                <div className="text-[11px] text-fg-muted mb-4">
                   {kpis.managed_queue_pending} campaigns pending action
                 </div>
                 {queue.length === 0 ? (
-                  <div className="py-4 text-[12px] text-text-muted">Queue is clear.</div>
+                  <div className="py-4 text-[12px] text-fg-muted">Queue is clear.</div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {queue.map((m) => (
                       <div
                         key={m.id}
-                        className="bg-bg border rounded-[7px] px-[11px] py-[9px] flex items-center gap-[9px]"
+                        className="bg-surface-2 border rounded-[7px] px-[11px] py-[9px] flex items-center gap-[9px]"
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="text-[12.5px] font-semibold text-navy truncate">
+                          <div className="text-[12.5px] font-semibold text-fg truncate">
                             {m.campaign_name || m.account_name || 'Untitled campaign'}
                           </div>
-                          <div className="text-[10.5px] text-text-muted mt-0.5 truncate">
+                          <div className="text-[10.5px] text-fg-muted mt-0.5 truncate">
                             {m.account_name || '—'}
                           </div>
                         </div>
@@ -342,7 +342,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1fr_1.5fr]">
               <Reveal delay={0.3} lift className={cardBase}>
                 <div className="flex items-start justify-between gap-2 mb-0.5">
-                  <div className="font-display text-[14px] font-bold text-navy">
+                  <div className="font-display text-[14px] font-bold text-fg">
                     Provider health
                   </div>
                   <Link
@@ -352,19 +352,19 @@ export default function AdminDashboardPage() {
                     View all →
                   </Link>
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">Real-time platform status</div>
+                <div className="text-[11px] text-fg-muted mb-4">Real-time platform status</div>
                 {health.length === 0 ? (
-                  <div className="py-4 text-[12px] text-text-muted">No health data available.</div>
+                  <div className="py-4 text-[12px] text-fg-muted">No health data available.</div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {health.map((svc) => (
                       <div
                         key={svc.name}
-                        className="bg-bg border rounded-[7px] px-3 py-[9px] flex justify-between items-center gap-2"
+                        className="bg-surface-2 border rounded-[7px] px-3 py-[9px] flex justify-between items-center gap-2"
                       >
                         <div className="min-w-0">
-                          <div className="text-[12px] font-semibold text-navy truncate">{svc.name}</div>
-                          <div className="text-[10.5px] text-text-muted truncate">
+                          <div className="text-[12px] font-semibold text-fg truncate">{svc.name}</div>
+                          <div className="text-[10.5px] text-fg-muted truncate">
                             {svc.detail}
                             {svc.latency_ms != null ? ` · ${svc.latency_ms}ms` : ''}
                           </div>
@@ -380,7 +380,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <StatusDot color="#10B981" pulse />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                       Live activity
                     </span>
                   </div>
@@ -392,7 +392,7 @@ export default function AdminDashboardPage() {
                   </Link>
                 </div>
                 {activity.length === 0 ? (
-                  <div className="py-4 text-[12px] text-text-muted">No activity recorded yet.</div>
+                  <div className="py-4 text-[12px] text-fg-muted">No activity recorded yet.</div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
                     {activity.slice(0, 6).map((item) => {
@@ -401,7 +401,7 @@ export default function AdminDashboardPage() {
                       return (
                         <div
                           key={item.id}
-                          className="flex items-start gap-2.5 rounded-[8px] px-2.5 py-2 hover:bg-bg transition-colors"
+                          className="flex items-start gap-2.5 rounded-[8px] px-2.5 py-2 hover:bg-surface-2 transition-colors"
                         >
                           <span
                             className="flex items-center justify-center rounded-[7px] flex-shrink-0 mt-0.5"
@@ -410,12 +410,12 @@ export default function AdminDashboardPage() {
                             <Icon size={13} color={cfg.color} />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-[12px] font-semibold text-navy leading-snug truncate">
+                            <div className="text-[12px] font-semibold text-fg leading-snug truncate">
                               {item.text}
                             </div>
-                            <div className="text-[10.5px] text-text-muted">{item.meta}</div>
+                            <div className="text-[10.5px] text-fg-muted">{item.meta}</div>
                           </div>
-                          <span className="text-[10px] text-text-muted whitespace-nowrap mt-0.5">
+                          <span className="text-[10px] text-fg-muted whitespace-nowrap mt-0.5">
                             {fmtWhen(item.when)}
                           </span>
                         </div>
@@ -429,7 +429,7 @@ export default function AdminDashboardPage() {
         )}
 
         {!loading && !kpis && (
-          <div className="py-16 text-center text-[12px] text-text-muted">
+          <div className="py-16 text-center text-[12px] text-fg-muted">
             No overview data available.
           </div>
         )}

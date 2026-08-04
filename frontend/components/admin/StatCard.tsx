@@ -48,32 +48,32 @@ export default function StatCard({
     changeType === 'up' ? 'text-success' : changeType === 'down' ? 'text-error' : 'text-amber';
 
   const clickable = Boolean(href || onClick);
-  const className = `group block h-full w-full text-left bg-white border rounded-[11px] p-4 ${
+  const className = `group block h-full w-full text-left bg-surface border rounded-[11px] p-4 ${
     clickable
-      ? 'cursor-pointer transition-all hover:border-teal/60 hover:shadow-[0_8px_20px_-12px_rgba(27,31,74,0.25)]'
+      ? 'cursor-pointer transition-all hover:border-brand/60 hover:shadow-[0_8px_20px_-12px_rgba(27,31,74,0.25)]'
       : ''
-  } ${active ? 'border-teal ring-1 ring-teal/30' : ''}`;
+  } ${active ? 'border-brand ring-1 ring-brand/30' : ''}`;
   const style = warn && !active ? { borderColor: 'rgba(239,68,68,0.2)' } : undefined;
 
   const body = (
     <>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
           {label}
         </span>
         {href ? (
           <ArrowUpRight
             size={15}
-            className="text-text-muted transition-colors group-hover:text-teal"
+            className="text-fg-muted transition-colors group-hover:text-brand"
             aria-hidden
           />
         ) : (
-          <Icon size={15} className={warn ? 'text-error' : 'text-text-muted'} />
+          <Icon size={15} className={warn ? 'text-error' : 'text-fg-muted'} />
         )}
       </div>
 
       <div
-        className={`font-mono font-semibold leading-tight mt-1 ${warn ? 'text-error' : 'text-navy'}`}
+        className={`font-mono font-semibold leading-tight mt-1 ${warn ? 'text-error' : 'text-fg'}`}
         style={{
           // Fluid: shrinks on narrow mobile cards, grows to the target on desktop.
           fontSize: `clamp(${Math.round(valueSize * 0.7)}px, 5.2vw, ${valueSize}px)`,
