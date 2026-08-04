@@ -5,14 +5,14 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-/** Small inline spinner using the brand teal. */
+/** Small inline spinner using the (theme-aware) brand colour. */
 export function Spinner({ size = 18, className }: { size?: number; className?: string }) {
   return (
     <span
       role="status"
       aria-label="Loading"
       className={cn('inline-block animate-spin rounded-full border-2 border-current border-t-transparent', className)}
-      style={{ width: size, height: size, color: '#00D4AA' }}
+      style={{ width: size, height: size, color: 'var(--brand)' }}
     />
   );
 }
@@ -55,7 +55,7 @@ export function DataState({
 }: DataStateProps) {
   if (loading) {
     return (
-      <div className={cn('flex items-center justify-center gap-2 py-10 text-[12px] text-text-muted', className)}>
+      <div className={cn('flex items-center justify-center gap-2 py-10 text-[12px] text-fg-muted', className)}>
         <Spinner />
         <span>{loadingLabel}</span>
       </div>
@@ -65,12 +65,12 @@ export function DataState({
   if (error) {
     return (
       <div className={cn('flex flex-col items-center justify-center gap-2 py-10 text-center', className)}>
-        <p className="text-[12px] text-red-500">{errorMessage(error)}</p>
+        <p className="text-[12px] text-danger">{errorMessage(error)}</p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
-            className="text-[12px] rounded-[6px] border font-semibold text-text-muted px-3 py-1.5 hover:border-navy hover:text-navy transition-colors"
+            className="text-[12px] rounded-[6px] border border-line font-semibold text-fg-muted px-3 py-1.5 hover:border-brand hover:text-brand transition-colors"
           >
             Try again
           </button>
@@ -81,7 +81,7 @@ export function DataState({
 
   if (empty) {
     return (
-      <div className={cn('flex items-center justify-center py-10 text-[12px] text-text-muted', className)}>
+      <div className={cn('flex items-center justify-center py-10 text-[12px] text-fg-muted', className)}>
         {emptyLabel}
       </div>
     );

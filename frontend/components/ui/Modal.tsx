@@ -108,13 +108,13 @@ export function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          'w-full rounded-[12px] bg-white p-5 shadow-2xl animate-fade-up outline-none my-auto',
+          'w-full rounded-[12px] bg-surface text-fg p-5 shadow-2xl animate-fade-up outline-none my-auto',
           SIZE[size],
           className,
         )}
       >
         {title && (
-          <h3 id={titleId} className="font-display font-bold text-[15px] text-navy mb-3">
+          <h3 id={titleId} className="font-display font-bold text-[15px] text-fg mb-3">
             {title}
           </h3>
         )}
