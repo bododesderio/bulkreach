@@ -36,6 +36,8 @@
 
     --info: #3ec9d6;
     --warning: #f59e0b;
+    --warning-fg: #92400e;              /* readable warning TEXT on a light tint */
+    --warning-050: rgba(245, 158, 11, 0.1);
     --danger: #ef4444;
 
     --surface: #ffffff;       /* cards, panels */
@@ -93,6 +95,8 @@
     --fg: #e6e8f0;
     --fg-muted: #99a2ba;
     --line: #2a2f47;
+    --warning-fg: #fcd34d;              /* light amber text for the dark surface */
+    --warning-050: rgba(245, 158, 11, 0.16);
 
     /* legacy palette vars used directly by older surfaces */
     --bg: #0d0f1e;
@@ -144,6 +148,8 @@
     --fg: #1a1d2e;
     --fg-muted: #6b7280;
     --line: #e5e7eb;
+    --warning-fg: #92400e;
+    --warning-050: rgba(245, 158, 11, 0.1);
 
     --bg: #f7f8fc;
     --white: #ffffff;

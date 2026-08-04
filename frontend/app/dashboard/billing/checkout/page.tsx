@@ -700,7 +700,7 @@ function CheckoutInner() {
               role="alert"
             >
               <CreditCard className="h-6 w-6" style={{ color: '#F59E0B' }} aria-hidden="true" />
-              <p style={{ color: '#92400E' }}>
+              <p style={{ color: 'var(--warning-fg)' }}>
                 No payment methods are enabled &mdash; contact support.
               </p>
             </div>

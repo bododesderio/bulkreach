@@ -192,7 +192,7 @@ export default function DashboardPage() {
         <Reveal>
           <div
             className="flex flex-wrap items-center justify-between gap-2 rounded-[11px] border p-3 text-[12px]"
-            style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)', color: '#92400E' }}
+            style={{ borderColor: 'rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.08)', color: 'var(--warning-fg)' }}
             role="alert"
           >
             <span>Some of your dashboard data couldn&apos;t be loaded.</span>

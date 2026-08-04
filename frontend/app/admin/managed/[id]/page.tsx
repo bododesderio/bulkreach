@@ -273,7 +273,7 @@ export default function ManagedJobPage() {
                       </span>
                     )}
                     {job.on_hold && (
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}>On hold</span>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--warning-fg)' }}>On hold</span>
                     )}
                     {job.cancelled && (
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(239,68,68,0.12)', color: '#DC2626' }}>Cancelled</span>

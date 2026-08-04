@@ -291,10 +291,10 @@ export default function BillingPage() {
           >
             <AlertTriangle
               className="mt-0.5 h-4 w-4 flex-shrink-0"
-              style={{ color: '#B45309' }}
+              style={{ color: 'var(--warning-fg)' }}
               aria-hidden
             />
-            <div style={{ color: '#92400E' }}>
+            <div style={{ color: 'var(--warning-fg)' }}>
               <p className="text-[12px] font-semibold">Your subscription payment is overdue.</p>
               <p className="mt-0.5 text-[11.5px]">
                 Renew now to keep your account active

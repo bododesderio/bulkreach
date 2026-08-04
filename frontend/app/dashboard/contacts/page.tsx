@@ -13,6 +13,7 @@ import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
+import { DataState } from "@/components/ui";
 import ContactsDrawer from "@/components/dashboard/ContactsDrawer";
 
 const cardBase = "bg-surface border rounded-[11px] p-4";
@@ -46,12 +47,14 @@ export default function ContactsPage() {
   const [lastImport, setLastImport] = useState<ImportResult | null>(null);
   const [viewList, setViewList] = useState<ContactList | null>(null);
 
-  const { data: listsData } = useApiQuery(
+  const {
+    data: listsData,
+    isError: listsError,
+    error: listsErrObj,
+    refetch: refetchLists,
+  } = useApiQuery(
     ["dashboard", "contacts"],
-    () =>
-      api<ContactList[]>("/contacts/lists", { auth: true }).catch(
-        () => [] as ContactList[],
-      ),
+    () => api<ContactList[]>("/contacts/lists", { auth: true }),
     { enabled: !!user },
   );
   const lists = listsData ?? null;
@@ -392,7 +395,9 @@ export default function ContactsPage() {
             Your contact lists
           </div>
 
-          {lists === null ? (
+          {listsError ? (
+            <DataState error={listsErrObj} onRetry={() => refetchLists()} />
+          ) : lists === null ? (
             <div className="space-y-3 py-2">
               {[0, 1].map((i) => (
                 <div

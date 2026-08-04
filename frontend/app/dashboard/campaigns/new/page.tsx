@@ -30,6 +30,7 @@ import {
   streamProgress,
 } from "@/lib/campaigns";
 import { useAuth } from "@/store/auth";
+import { Modal, DataState } from "@/components/ui";
 import { Reveal } from "@/components/admin/Reveal";
 
 const cardBase = "bg-surface border rounded-[11px] p-4";
@@ -108,12 +109,14 @@ function smsSegments(len: number): number {
 export default function CampaignComposerPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const { data: listsData } = useApiQuery(
+  const {
+    data: listsData,
+    isError: listsError,
+    error: listsErrObj,
+    refetch: refetchLists,
+  } = useApiQuery(
     ["dashboard", "composer", "lists"],
-    () =>
-      api<ContactList[]>("/contacts/lists", { auth: true }).catch(
-        () => [] as ContactList[],
-      ),
+    () => api<ContactList[]>("/contacts/lists", { auth: true }),
     { enabled: !!user },
   );
   const lists = listsData ?? null;
@@ -129,6 +132,7 @@ export default function CampaignComposerPage() {
 
   // Dispatch lifecycle: idle → sending → done.
   const [phase, setPhase] = useState<"idle" | "sending" | "done">("idle");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
 
@@ -345,8 +349,44 @@ export default function CampaignComposerPage() {
     }
   }
 
+  const channelLabel = channel === "both" ? "SMS + Email" : channel === "email" ? "Email" : "SMS";
+
   return (
     <div className="space-y-[18px]">
+
+      {/* Send confirmation — this dispatches a real, irreversible bulk send. */}
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Send this campaign now?"
+        size="sm"
+      >
+        <p className="text-[13px] text-fg-muted">
+          This immediately dispatches{" "}
+          <span className="font-semibold text-fg">{channelLabel}</span> to{" "}
+          <span className="font-semibold text-fg">{audience.toLocaleString()} recipient{audience === 1 ? "" : "s"}</span>.
+          It counts against your quota and cannot be undone.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            className="btn-outline text-sm px-4"
+            onClick={() => setConfirmOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-primary text-sm px-4"
+            onClick={() => {
+              setConfirmOpen(false);
+              send();
+            }}
+          >
+            <Send className="mr-2 h-4 w-4" /> Send to {audience.toLocaleString()}
+          </button>
+        </div>
+      </Modal>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <Reveal>
@@ -403,7 +443,9 @@ export default function CampaignComposerPage() {
               <p className="mb-3 mt-1 text-[11px] text-fg-muted">
                 Pick an imported contact list. Counts come from your live contacts.
               </p>
-              {lists === null ? (
+              {listsError ? (
+                <DataState error={listsErrObj} onRetry={() => refetchLists()} />
+              ) : lists === null ? (
                 <div className="h-10 animate-pulse rounded-[7px] bg-surface-2" />
               ) : lists.length === 0 ? (
                 <div className="rounded-[7px] border border-dashed p-4 text-[12px] text-fg-muted">
@@ -707,7 +749,7 @@ export default function CampaignComposerPage() {
                   <button
                     type="button"
                     className="btn-primary flex-1"
-                    onClick={send}
+                    onClick={() => setConfirmOpen(true)}
                     disabled={busy || !!validation}
                     title={validation ?? "Send now"}
                   >

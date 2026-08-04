@@ -83,7 +83,7 @@ export default function ManagedListPage() {
             </span>
             <span className="text-[10px] text-fg-muted">{st.label}</span>
             {(m.on_hold || m.cancelled) && (
-              <span className="text-[10px] font-semibold" style={{ color: m.cancelled ? '#DC2626' : '#B45309' }}>
+              <span className="text-[10px] font-semibold" style={{ color: m.cancelled ? '#DC2626' : 'var(--warning-fg)' }}>
                 {m.cancelled ? 'Cancelled' : 'On hold'}
               </span>
             )}

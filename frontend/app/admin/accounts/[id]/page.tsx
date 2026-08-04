@@ -160,7 +160,7 @@ function KVItem({
       </div>
       <div
         className="text-[13px] font-semibold"
-        style={{ color: highlight ? '#B45309' : 'var(--text)' }}
+        style={{ color: highlight ? 'var(--warning-fg)' : 'var(--text)' }}
       >
         {children ?? value ?? '—'}
       </div>
@@ -450,7 +450,7 @@ export default function AccountDetailPage() {
                 <span
                   style={{
                     background: 'rgba(245,158,11,0.12)',
-                    color: '#B45309',
+                    color: 'var(--warning-fg)',
                     padding: '2px 10px',
                     fontSize: '9.5px',
                     fontWeight: 700,

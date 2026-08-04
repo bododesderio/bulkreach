@@ -306,7 +306,7 @@ export default function PaymentProvidersPage() {
                           style={{ color: '#F59E0B', flexShrink: 0, marginTop: '1px' }}
                           aria-hidden="true"
                         />
-                        <p className="text-[11.5px]" style={{ color: '#92400E' }}>
+                        <p className="text-[11.5px]" style={{ color: 'var(--warning-fg)' }}>
                           Live mode is active — real money will be processed. Ensure KYC is
                           complete and you are using production credentials.
                         </p>
