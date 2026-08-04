@@ -141,18 +141,36 @@ async def _valid_contacts(
 
 
 async def estimate(db: AsyncSession, campaign: Campaign) -> dict:
-    """Recipient + message counts without materialising (for the detail view)."""
+    """Recipient + message counts without materialising (for the detail view).
+
+    A single SQL aggregate — never hydrates the contact rows (a 20k-contact list
+    used to load 20k ORM objects into Python on every draft detail view)."""
     if not campaign.contact_list_id:
         return {"recipients": 0, "messages": 0}
-    contacts = await _valid_contacts(db, campaign.contact_list_id, campaign.audience_tags)
-    recipients = messages = 0
-    for c in contacts:
-        has_sms = campaign.type in ("sms", "both") and bool(c.phone)
-        has_email = campaign.type in ("email", "both") and bool(c.email)
-        if has_sms or has_email:
-            recipients += 1
-        messages += int(has_sms) + int(has_email)
-    return {"recipients": recipients, "messages": messages}
+    conds = [Contact.list_id == campaign.contact_list_id, Contact.is_valid.is_(True)]
+    if campaign.audience_tags:
+        conds.append(or_(*[Contact.tags.contains([t]) for t in campaign.audience_tags]))
+
+    wants_sms = campaign.type in ("sms", "both")
+    wants_email = campaign.type in ("email", "both")
+    has_phone = Contact.phone.isnot(None)
+    has_email = Contact.email.isnot(None)
+    if campaign.type == "email":
+        recip_cond = has_email
+    elif campaign.type == "sms":
+        recip_cond = has_phone
+    else:
+        recip_cond = or_(has_phone, has_email)
+
+    row = (await db.execute(
+        select(
+            func.count().filter(recip_cond).label("recipients"),
+            func.count().filter(has_phone).label("with_phone"),
+            func.count().filter(has_email).label("with_email"),
+        ).select_from(Contact).where(*conds)
+    )).one()
+    messages = (row.with_phone if wants_sms else 0) + (row.with_email if wants_email else 0)
+    return {"recipients": row.recipients or 0, "messages": messages}
 
 
 async def materialise_and_queue(db: AsyncSession, campaign: Campaign) -> tuple[int, int]:

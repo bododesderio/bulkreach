@@ -112,12 +112,24 @@ async def list_accounts(
     accounts = (await db.execute(stmt)).scalars().all()
 
     items = [_out(a, msgs.get(a.id, 0), mrr.get(a.id, 0)) for a in accounts]
+    # KPI tiles are PLATFORM-WIDE totals, not "of the ≤500 rows shown" — compute
+    # them with a grouped COUNT over the whole (non-deleted) set so they stay
+    # correct beyond the list cap and independent of the current search/filter.
+    status_counts = dict(
+        (
+            await db.execute(
+                select(Account.status, func.count())
+                .where(Account.deleted_at.is_(None))
+                .group_by(Account.status)
+            )
+        ).all()
+    )
     stats = {
-        "total": len(items),
-        "active": sum(1 for i in items if i.status == "active"),
-        "trial": sum(1 for i in items if i.status == "trial"),
-        "suspended": sum(1 for i in items if i.status == "suspended"),
-        "mrr_ugx": sum(i.mrr_ugx for i in items),
+        "total": sum(status_counts.values()),
+        "active": status_counts.get("active", 0),
+        "trial": status_counts.get("trial", 0),
+        "suspended": status_counts.get("suspended", 0),
+        "mrr_ugx": sum(mrr.values()),
     }
     return AdminAccountsResponse(items=items, stats=stats)
 
