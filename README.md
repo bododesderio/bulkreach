@@ -95,6 +95,13 @@ There are two ways a customer uses BulkReach:
   DB-backed rotating refresh sessions with theft detection, active-session management, 15-minute access
   tokens (RS256), superadmin **impersonation** ("log in as"). Constant-time login + password-reset (no
   user-enumeration oracle); `/docs` off in production.
+- **Exports** — CSV export of a contact list (self-serve data portability) and of a campaign's full
+  per-recipient delivery results; branded campaign / client-success / invoice PDFs (WeasyPrint).
+- **Design system** — token-based UI with a persisted, OS-aware **light/dark theme** across the whole
+  app; shared component library (cards, tables, KPI tiles, forms, badges, modals, empty/loading states).
+- **Audit trail** — every privileged and state-changing action (account/plan, payments provider config
+  & routing, managed send/cancel/report, suppressions, invites, billing, password changes, …) is
+  written to an append-only audit log; auth events are logged separately.
 
 ---
 
@@ -273,7 +280,7 @@ shared Traefik edge routes them by Host over the external `web` network. `--env-
 ## Testing
 
 ```bash
-# backend integration suite (in-process ASGI vs the dev datastores) — 119 tests
+# backend integration suite (in-process ASGI vs the dev datastores) — 130+ tests
 cd backend && source .venv/bin/activate
 python -m pytest
 
@@ -359,9 +366,11 @@ emailed code; a "Dev code" shows on screen in non-production; expires in 15 min)
 **Dashboard.** Usage stat cards, a quota usage bar, quick actions, and recent campaigns. Left sidebar:
 Overview · Contacts · Campaigns · Reports · Billing · Settings. Top bar: profile, plan, notification bell.
 
-**Import contacts.** Contacts → Import → upload a CSV (drag-drop) or paste rows. Columns are
+**Import & export contacts.** Contacts → Import → upload a CSV (drag-drop) or paste rows. Columns are
 auto-detected (name/phone/email + custom merge fields), validated, and de-duplicated (e.g. "4 valid · 2
-duplicates · 0 errors"). Save into a named, reusable list.
+duplicates · 0 errors"). Save into a named, reusable list. Each list has an **Export** action that
+downloads it as CSV (phone, email, tags, and your original imported columns) — your data is yours to
+take at any time.
 
 **Create & send.** Campaigns → New (Composer): choose channel (SMS/Email/Both), pick a saved list,
 write the message with merge tags (`Hi {{name}}` — letters/numbers/underscores only, and every tag must
@@ -371,7 +380,13 @@ retry automatically. A payment-required message means you hit a quota/concurrenc
 Billing.
 
 **Campaigns & reports.** Campaigns lists everything with status/channel; open one for per-recipient
-detail and a branded **PDF**. Reports shows account-wide analytics with a PDF export.
+detail, a branded **PDF report**, and an **Export CSV** of the full per-recipient delivery results
+(status, provider, error, timestamps) for reconciliation. Reports shows account-wide analytics with a
+PDF export. Your **report header** text (Settings → Profile) is printed at the top of every branded
+campaign PDF.
+
+**Appearance.** A **light/dark theme toggle** (sun/moon, top bar) applies across the whole app and
+remembers your choice; on first visit it follows your operating-system preference with no flash.
 
 **Billing.** Current plan, available plans, invoices, payment history. Upgrade and pay via card
 (Flutterwave), Pesapal, MTN MoMo, or Airtel Money; mid-cycle upgrades are **prorated**. Invoices carry
@@ -420,10 +435,14 @@ Superadmins are created via a server-side bootstrap script, never self-signup.
 - **Managed queue** — the admin-only console for operator-run campaigns. The queue (`/admin/managed`)
   is a filterable table (client · stage · channel · age · next step); a row opens the focused job
   workspace (`/admin/managed/[id]`). There you run everything solo: write the brief, draft the SMS/email
-  copy, link the campaign that will dispatch, mark it sent, and issue the branded report. A single
-  primary action advances each state (**Start content → Schedule to send → Mark as sent → Issue report
-  → Close job**); Hold/Cancel are always available. New briefs start at `/admin/managed/new`. No client
-  sign-off, no team assignment.
+  copy, link the campaign that will dispatch, **actually send it**, and issue the branded report. A
+  single primary action advances each state (**Start content → Send now → Mark as sent → Issue report
+  → Close job**). **Send now really dispatches** the linked campaign — it materialises the recipient
+  messages and enqueues them through the same engine the client composer uses (confirm-gated), moving
+  the job to *Sending*; when delivery finishes, mark it *Sent* and issue the report. **Cancel** does not
+  just flag the job — if its campaign is still in flight it stops that dispatch too. Hold/Cancel are
+  always available; every action (send, cancel, report) is audited. New briefs start at
+  `/admin/managed/new`. No client sign-off, no team assignment.
 - **Other operations** — Campaigns/Subscriptions/Payments cross-account views (refund from Payments) ·
   CMS (marketing content) · Revenue (MRR/ARPU) · Health (Postgres/Redis/ClickHouse/MinIO/providers) ·
   Audit log (every privileged action) · Archive (retention, anonymisation, erasure, legal holds, access
