@@ -13,6 +13,7 @@ import FormField from '@/components/admin/FormField';
 import { Reveal } from '@/components/admin/Reveal';
 import { api, ApiError } from '@/lib/api';
 import { useApiQuery } from '@/lib/hooks';
+import { DataState } from '@/components/ui';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -272,7 +273,7 @@ function FaqsTab({ active }: { active: boolean }) {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data, isLoading: loading, refetch } = useApiQuery(
+  const { data, isLoading: loading, error, refetch } = useApiQuery(
     ['admin', 'content', 'faqs'],
     () => api<Faq[]>('/admin/content/faqs', { auth: true }),
     { enabled: active },
@@ -329,6 +330,7 @@ function FaqsTab({ active }: { active: boolean }) {
 
   if (!active) return null;
   if (loading) return <Skeletons />;
+  if (error) return <DataState error={error} onRetry={refetch} />;
 
   return (
     <>
@@ -419,7 +421,7 @@ function FeaturesTab({ active }: { active: boolean }) {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data, isLoading: loading, refetch } = useApiQuery(
+  const { data, isLoading: loading, error, refetch } = useApiQuery(
     ['admin', 'content', 'features'],
     () => api<Feature[]>('/admin/content/features', { auth: true }),
     { enabled: active },
@@ -477,6 +479,7 @@ function FeaturesTab({ active }: { active: boolean }) {
 
   if (!active) return null;
   if (loading) return <Skeletons />;
+  if (error) return <DataState error={error} onRetry={refetch} />;
 
   return (
     <>
@@ -565,7 +568,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data, isLoading: loading, refetch } = useApiQuery(
+  const { data, isLoading: loading, error, refetch } = useApiQuery(
     ['admin', 'content', 'testimonials'],
     () => api<Testimonial[]>('/admin/content/testimonials', { auth: true }),
     { enabled: active },
@@ -623,6 +626,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
 
   if (!active) return null;
   if (loading) return <Skeletons />;
+  if (error) return <DataState error={error} onRetry={refetch} />;
 
   return (
     <>
@@ -712,7 +716,7 @@ function SectionsTab({ active }: { active: boolean }) {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data, isLoading: loading, refetch } = useApiQuery(
+  const { data, isLoading: loading, error, refetch } = useApiQuery(
     ['admin', 'content', 'sections'],
     () => api<Section[]>('/admin/content/sections', { auth: true }),
     { enabled: active },
@@ -774,6 +778,7 @@ function SectionsTab({ active }: { active: boolean }) {
 
   if (!active) return null;
   if (loading) return <Skeletons />;
+  if (error) return <DataState error={error} onRetry={refetch} />;
 
   return (
     <>
