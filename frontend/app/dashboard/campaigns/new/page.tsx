@@ -14,6 +14,7 @@ import {
   Layers,
   Send,
   Info,
+  Clock,
   Sparkles,
   CheckCircle2,
   XCircle,
@@ -133,6 +134,8 @@ export default function CampaignComposerPage() {
   // Dispatch lifecycle: idle → sending → done.
   const [phase, setPhase] = useState<"idle" | "sending" | "done">("idle");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [scheduling, setScheduling] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
 
@@ -298,6 +301,32 @@ export default function CampaignComposerPage() {
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not save draft");
       setSavingDraft(false);
+    }
+  }
+
+  async function schedule() {
+    if (validation) return toast.error(validation);
+    const when = new Date(scheduleAt);
+    if (!scheduleAt || Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) {
+      return toast.error("Pick a date and time in the future");
+    }
+    setScheduling(true);
+    try {
+      const created = await api<{ id: string }>("/campaigns", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify(buildPayload()),
+      });
+      await api(`/campaigns/${created.id}/schedule`, {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ scheduled_at: when.toISOString() }),
+      });
+      toast.success(`Scheduled for ${when.toLocaleString()}`);
+      router.push("/dashboard/campaigns");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not schedule");
+      setScheduling(false);
     }
   }
 
@@ -761,6 +790,34 @@ export default function CampaignComposerPage() {
                     {validation}
                   </p>
                 )}
+
+                {/* Schedule for later — dispatches at the chosen time via the worker. */}
+                <div className="rounded-[11px] border border-line p-3">
+                  <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-fg-muted">
+                    <Clock size={13} aria-hidden /> Or schedule for later
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="datetime-local"
+                      className="input flex-1 min-w-[180px] text-[13px]"
+                      value={scheduleAt}
+                      onChange={(e) => setScheduleAt(e.target.value)}
+                      disabled={busy || scheduling}
+                    />
+                    <button
+                      type="button"
+                      className="btn-outline text-sm px-4"
+                      onClick={schedule}
+                      disabled={busy || scheduling || !!validation || !scheduleAt}
+                      title={validation ?? "Schedule"}
+                    >
+                      {scheduling ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Schedule
+                    </button>
+                  </div>
+                </div>
               </div>
             </Reveal>
           ) : (

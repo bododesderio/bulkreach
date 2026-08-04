@@ -240,6 +240,14 @@
     border-color: var(--teal);
     color: var(--fg);
   }
+  /* Visible keyboard-focus ring for the legacy button classes (the shared
+     components/ui Button already has one). Keyboard users could not see focus
+     across most of the dashboard before this. */
+  .btn-primary:focus-visible,
+  .btn-outline:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--brand-050), 0 0 0 1.5px var(--brand);
+  }
 
   /* Auth field input — used by InputField / PasswordField */
   .auth-input {

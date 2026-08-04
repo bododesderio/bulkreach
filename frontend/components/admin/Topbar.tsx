@@ -53,9 +53,9 @@ export default function Topbar({
       <div className="flex min-w-0 items-center gap-3">
         <NavMenuButton />
         <div className="min-w-0">
-          <div className="font-display font-extrabold text-[17px] text-fg leading-tight truncate">
+          <h1 className="font-display font-extrabold text-[17px] text-fg leading-tight truncate">
             {title}
-          </div>
+          </h1>
           <div className="text-[11px] text-fg-muted truncate">{subtitle}</div>
         </div>
       </div>

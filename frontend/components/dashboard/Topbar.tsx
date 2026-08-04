@@ -39,12 +39,12 @@ export default function Topbar({
       <div className="flex items-center gap-3">
         <NavMenuButton />
         <div>
-          <div
+          <h1
             className="font-display font-extrabold text-[17px] text-fg leading-tight"
             data-testid="page-title"
           >
             {title}
-          </div>
+          </h1>
           <div className="text-[11px] text-fg-muted">{subtitle}</div>
         </div>
       </div>

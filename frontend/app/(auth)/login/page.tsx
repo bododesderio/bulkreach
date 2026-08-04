@@ -7,7 +7,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -27,7 +26,6 @@ type Form = z.infer<typeof schema>;
 export default function LoginPage() {
   const router = useRouter();
   const afterAuth = useAuth((s) => s.afterAuth);
-  const [rememberMe, setRememberMe] = useState(false);
   const {
     register,
     handleSubmit,
@@ -86,7 +84,7 @@ export default function LoginPage() {
           error={errors.password?.message}
         />
 
-        <RememberMeRow checked={rememberMe} onChange={setRememberMe} />
+        <RememberMeRow />
 
         <button
           type="submit"
