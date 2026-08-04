@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 export type AuthVariant = "login" | "signup" | "forgot";
 
 interface VariantContent {
@@ -12,7 +16,7 @@ const content: Record<AuthVariant, VariantContent> = {
     tagline: "Reach Uganda.\nOne send.",
     valueProps: [
       "20,000 recipients per batch",
-      "98.4% delivery rate",
+      "98%+ delivery-rate target",
       "PDF analytics after every campaign",
     ],
     quote:
