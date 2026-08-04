@@ -108,6 +108,11 @@ services:
 
   api:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
+    # env_file supplies the provider/observability/webhook keys (MAILGUN_*, AT_*,
+    # SENDGRID/TWILIO, FLUTTERWAVE_*, WEBHOOK_CALLBACK_SECRET, SENTRY_DSN,
+    # KUMA_PUSH_URL). Without it the app has no send credentials → every message
+    # fails. `environment` (the anchor) still wins for infra URLs/secrets it sets.
+    env_file: [.env.production]
     environment:
       <<: *app-env
     depends_on:
@@ -145,6 +150,8 @@ services:
   worker:
     build: { context: ./backend, dockerfile: Dockerfile.prod }
     command: ["arq", "app.workers.WorkerSettings"]
+    # Same as api — the worker dispatches, so it needs the send credentials too.
+    env_file: [.env.production]
     environment:
       <<: *app-env
       RUN_MIGRATIONS: "0"   # api owns migrations

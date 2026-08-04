@@ -58,7 +58,7 @@ async def invoice_pdf(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
     try:
         data = invoice_pdf_svc.invoice_pdf(invoice)
-    except ImportError as exc:  # WeasyPrint native libs missing on this host
+    except (ImportError, OSError) as exc:  # WeasyPrint python or native libs missing
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "PDF rendering is unavailable on this server.",

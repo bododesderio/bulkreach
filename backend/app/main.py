@@ -57,9 +57,16 @@ async def _domain_error_handler(request: Request, exc: DomainError) -> JSONRespo
 
 
 app.add_middleware(SecurityHeadersMiddleware)
+# Allow the apex frontend origin and its www variant (the edge routes both to the
+# web app; a visitor on www.* must not have their XHR rejected by CORS).
+_cors_origins = [settings.FRONTEND_URL]
+if "://" in settings.FRONTEND_URL:
+    _scheme, _host = settings.FRONTEND_URL.split("://", 1)
+    _www = f"{_scheme}://www.{_host}" if not _host.startswith("www.") else f"{_scheme}://{_host[4:]}"
+    _cors_origins.append(_www)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

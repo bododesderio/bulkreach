@@ -370,7 +370,7 @@ async def issue_report(
     # Render the branded client-success PDF (reuses the M4a report renderer).
     try:
         data = await pdf.campaign_report_pdf(db, campaign, account)
-    except ImportError as exc:  # WeasyPrint native libs missing on this host
+    except (ImportError, OSError) as exc:  # WeasyPrint python or native libs missing
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "PDF rendering is unavailable on this server.",
@@ -445,7 +445,7 @@ async def download_report(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked campaign or account not found")
     try:
         data = await pdf.campaign_report_pdf(db, campaign, account)
-    except ImportError as exc:
+    except (ImportError, OSError) as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "PDF rendering is unavailable."
         ) from exc

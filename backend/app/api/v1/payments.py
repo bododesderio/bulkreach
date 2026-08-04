@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Payments API (Section 14): client checkout, verification, history, webhooks.
 
 Providers and method routing are configured by superadmins (see admin/payments).
@@ -68,6 +70,13 @@ async def checkout(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CheckoutResponse:
+    # Spending the account's money / changing its plan is an owner/admin action —
+    # a low-privilege member must not be able to initiate a charge.
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only an account owner or admin can make a payment.",
+        )
     if not await sliding_window_allow(f"pay:checkout:{user.account_id}", max_hits=10, window_seconds=60):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many checkout attempts, try again shortly")
     account = await db.get(Account, user.account_id)

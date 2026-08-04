@@ -1,3 +1,5 @@
+# @author Bodo Desderio <rooiboktechltd@gmail.com>
+# @copyright 2026 Rooibok Technologies. All rights reserved.
 """Reports API (Section 2.2): account analytics + branded per-campaign PDF."""
 from __future__ import annotations
 
@@ -41,7 +43,7 @@ async def campaign_pdf(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found.")
     try:
         data = await pdf.campaign_report_pdf(db, campaign, account)
-    except ImportError as exc:  # WeasyPrint native libs missing on this host
+    except (ImportError, OSError) as exc:  # WeasyPrint python or native libs missing
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "PDF rendering is unavailable on this server.",
