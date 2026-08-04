@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/store/auth';
-import { NavMenuButton } from '@/components/ui';
+import { NavMenuButton, ThemeToggle } from '@/components/ui';
 
 export type Period = 'Today' | 'Month' | 'Quarter';
 const PERIODS: Period[] = ['Today', 'Month', 'Quarter'];
@@ -46,17 +46,17 @@ export default function Topbar({
 
   return (
     <header
-      className="flex h-[60px] items-center justify-between gap-2 bg-white px-3 md:px-[22px]"
+      className="flex h-[60px] items-center justify-between gap-2 bg-surface px-3 md:px-[22px]"
       style={{ borderBottom: '1px solid var(--border)' }}
     >
       {/* Left: mobile menu + title + subtitle */}
       <div className="flex min-w-0 items-center gap-3">
         <NavMenuButton />
         <div className="min-w-0">
-          <div className="font-display font-extrabold text-[17px] text-navy leading-tight truncate">
+          <div className="font-display font-extrabold text-[17px] text-fg leading-tight truncate">
             {title}
           </div>
-          <div className="text-[11px] text-text-muted truncate">{subtitle}</div>
+          <div className="text-[11px] text-fg-muted truncate">{subtitle}</div>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ export default function Topbar({
                 className="px-3 py-[5px] rounded-[5px] text-[11.5px] font-semibold transition-colors"
                 style={
                   isActive
-                    ? { background: 'white', color: 'var(--navy)' }
+                    ? { background: 'var(--surface)', color: 'var(--fg)' }
                     : { color: 'var(--text-muted)' }
                 }
               >
@@ -88,13 +88,16 @@ export default function Topbar({
         </div>
         )}
 
+        {/* Theme toggle (moon/sun) */}
+        <ThemeToggle />
+
         {/* Notification bell — no fake unread dot */}
         <button
-          className="flex items-center justify-center border bg-transparent rounded-[7px] transition-colors hover:bg-bg"
+          className="flex items-center justify-center border border-line bg-transparent rounded-[7px] transition-colors hover:bg-surface-2"
           style={{ width: '32px', height: '32px' }}
           aria-label="Notifications"
         >
-          <Bell size={15} className="text-text-md" />
+          <Bell size={15} className="text-fg-muted" />
         </button>
 
         {/* Avatar with real user initials */}

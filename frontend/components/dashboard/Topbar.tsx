@@ -5,7 +5,7 @@
 'use client';
 
 import NotificationBell from '@/components/NotificationBell';
-import { NavMenuButton } from '@/components/ui';
+import { NavMenuButton, ThemeToggle } from '@/components/ui';
 
 interface TopbarProps {
   title: string;
@@ -32,7 +32,7 @@ export default function Topbar({
 }: TopbarProps) {
   return (
     <header
-      className="flex items-center justify-between bg-white"
+      className="flex items-center justify-between bg-surface"
       style={{ height: '60px', borderBottom: '1px solid var(--border)', padding: '0 16px' }}
     >
       {/* Left: mobile menu + title/subtitle */}
@@ -40,21 +40,22 @@ export default function Topbar({
         <NavMenuButton />
         <div>
           <div
-            className="font-display font-extrabold text-[17px] text-navy leading-tight"
+            className="font-display font-extrabold text-[17px] text-fg leading-tight"
             data-testid="page-title"
           >
             {title}
           </div>
-          <div className="text-[11px] text-text-muted">{subtitle}</div>
+          <div className="text-[11px] text-fg-muted">{subtitle}</div>
         </div>
       </div>
 
-      {/* Right: bell + account + avatar */}
+      {/* Right: theme toggle + bell + account + avatar */}
       <div className="flex items-center gap-[11px]" data-testid="topbar-profile">
+        <ThemeToggle />
         <NotificationBell />
         <div className="hidden text-right sm:block">
-          <div className="text-[12.5px] font-semibold text-navy leading-tight">{accountName}</div>
-          <div className="text-[10.5px] capitalize text-text-muted">{plan} plan</div>
+          <div className="text-[12.5px] font-semibold text-fg leading-tight">{accountName}</div>
+          <div className="text-[10.5px] capitalize text-fg-muted">{plan} plan</div>
         </div>
         <div
           className="flex items-center justify-center rounded-full font-display font-extrabold text-teal"

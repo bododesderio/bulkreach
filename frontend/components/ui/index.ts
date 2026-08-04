@@ -15,6 +15,7 @@ export type { Crumb } from './PageHeader';
 export { EmptyState } from './EmptyState';
 export { DataTable } from './DataTable';
 export type { Column } from './DataTable';
+export { ThemeToggle } from './ThemeToggle';
 export { AppShell, AppSidebar, NavMenuButton } from './AppShell';
 export type { NavItem, NavSection, NavBadgeType } from './AppShell';
 
