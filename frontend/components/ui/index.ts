@@ -7,6 +7,8 @@ export { Card } from './Card';
 export { Button } from './Button';
 export { Modal } from './Modal';
 export { DataState, Spinner } from './DataState';
+export { RowMenu } from './RowMenu';
+export type { RowMenuItem } from './RowMenu';
 export { StatusBadge, StatusPill, StatusDot } from './StatusBadge';
 export { Badge } from './Badge';
 export { StatTile } from './StatTile';

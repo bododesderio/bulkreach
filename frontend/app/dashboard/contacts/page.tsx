@@ -13,7 +13,7 @@ import { useApiQuery, useApiMutation } from "@/lib/hooks";
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
-import { DataState } from "@/components/ui";
+import { DataState, RowMenu } from "@/components/ui";
 import ContactsDrawer from "@/components/dashboard/ContactsDrawer";
 
 const cardBase = "bg-surface border rounded-[11px] p-4";
@@ -204,32 +204,46 @@ export default function ContactsPage() {
       label: "",
       align: "right",
       render: (l) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            onClick={() => setViewList(l)}
-            aria-label={`View & tag contacts in ${l.name}`}
-            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
-          >
-            <Tags className="h-3.5 w-3.5" aria-hidden />
-            Tags
-          </button>
-          <button
-            onClick={() => exportList(l)}
-            aria-label={`Export ${l.name} as CSV`}
-            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden />
-            Export
-          </button>
-          <button
-            onClick={() => remove(l)}
-            disabled={deleteMut.isPending}
-            aria-label={`Delete ${l.name}`}
-            className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-fg-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </div>
+        <>
+          {/* Inline on tablet+ (fast), collapsed to an overflow menu on phones
+              where three buttons overflow and force sideways table scroll. */}
+          <div className="hidden items-center justify-end gap-1.5 sm:flex">
+            <button
+              onClick={() => setViewList(l)}
+              aria-label={`View & tag contacts in ${l.name}`}
+              className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
+            >
+              <Tags className="h-3.5 w-3.5" aria-hidden />
+              Tags
+            </button>
+            <button
+              onClick={() => exportList(l)}
+              aria-label={`Export ${l.name} as CSV`}
+              className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              Export
+            </button>
+            <button
+              onClick={() => remove(l)}
+              disabled={deleteMut.isPending}
+              aria-label={`Delete ${l.name}`}
+              className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-fg-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+          <div className="flex justify-end sm:hidden">
+            <RowMenu
+              label={`Actions for ${l.name}`}
+              items={[
+                { label: 'View & tag', icon: <Tags className="h-3.5 w-3.5" />, onClick: () => setViewList(l) },
+                { label: 'Export CSV', icon: <Download className="h-3.5 w-3.5" />, onClick: () => exportList(l) },
+                { label: 'Delete', icon: <Trash2 className="h-3.5 w-3.5" />, onClick: () => remove(l), danger: true, disabled: deleteMut.isPending },
+              ]}
+            />
+          </div>
+        </>
       ),
     },
   ];
