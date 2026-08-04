@@ -125,6 +125,55 @@
     --input: 230 26% 22%;
     --ring: 168 82% 47%;
   }
+
+  /* --- Force light -----------------------------------------------------------
+   * The public marketing site is a fixed-brand experience with no theme toggle.
+   * A user who enabled dark mode in the app carries the global `.dark` class to
+   * these pages, which half-inverts them (light sections, but token-driven body
+   * text flips to faint grey). Wrapping the public subtree in `.force-light`
+   * re-points every dark-overridden token back to its light value — because CSS
+   * custom properties inherit, the nearest ancestor wins, so this subtree stays
+   * light regardless of `.dark` on <html>. Keep in sync with :root above. */
+  .force-light {
+    --brand: #00d4aa;
+    --brand-600: #00b28f;
+    --brand-050: rgba(0, 212, 170, 0.1);
+    --brand-fg: #0d0f2e;
+    --surface: #ffffff;
+    --surface-2: #f1f3f9;
+    --fg: #1a1d2e;
+    --fg-muted: #6b7280;
+    --line: #e5e7eb;
+
+    --bg: #f7f8fc;
+    --white: #ffffff;
+    --text: #1a1d2e;
+    --text-md: #4b5563;
+    --text-muted: #9ca3af;
+    --border: #e5e7eb;
+
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+    --shadow-lg: 0 2px 6px rgba(16, 24, 40, 0.06), 0 16px 40px rgba(16, 24, 40, 0.1);
+
+    --background: 0 0% 100%;
+    --foreground: 231 24% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 231 24% 14%;
+    --primary: 167 100% 42%;
+    --primary-foreground: 240 54% 12%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 20%;
+    --muted: 220 33% 98%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 167 100% 95%;
+    --accent-foreground: 168 100% 24%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border-hsl: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 167 100% 42%;
+  }
 }
 
 @layer base {
