@@ -75,3 +75,47 @@ async def test_hold_and_cancel_flags(client, super_headers):
     assert u.json()["on_hold"] is False
     c = await client.post(f"/api/v1/admin/managed/{mid}/cancel", headers=super_headers)
     assert c.json()["cancelled"] is True
+
+
+# ── Real dispatch from the managed workspace ──
+async def test_send_dispatches_linked_campaign(client, super_headers, owner_headers):
+    """POST /admin/managed/{id}/send actually materialises + dispatches the linked
+    campaign (not just a status flip) and moves the job to 'sending'."""
+    # Owner creates a draft SMS campaign against their contact list.
+    me = (await client.get("/api/v1/auth/me", headers=owner_headers)).json()
+    account_id = me["account"]["id"]
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+    camp = await client.post("/api/v1/campaigns", headers=owner_headers, json={
+        "name": "Managed send test", "type": "sms",
+        "contact_list_id": list_id, "sms_body": "Hi {{name|there}} from your team.",
+    })
+    assert camp.status_code == 201, camp.text
+    cid = camp.json()["id"]
+
+    # Admin creates a managed job for that account and links the campaign.
+    mid = (await client.post("/api/v1/admin/managed", headers=super_headers, json={
+        "account_id": account_id, "brief_text": "dispatch test", "campaign_id": cid,
+    })).json()["id"]
+
+    # Send it — should dispatch and move to 'sending'.
+    sent = await client.post(f"/api/v1/admin/managed/{mid}/send", headers=super_headers)
+    assert sent.status_code == 200, sent.text
+    assert sent.json()["status"] == "sending"
+
+    # The campaign left draft — it was really dispatched (inline simulator in tests).
+    detail = (await client.get(f"/api/v1/campaigns/{cid}", headers=owner_headers)).json()
+    assert detail["status"] != "draft"
+
+    # Sending again is refused (already dispatched).
+    again = await client.post(f"/api/v1/admin/managed/{mid}/send", headers=super_headers)
+    assert again.status_code == 409, again.text
+
+
+async def test_send_requires_linked_campaign(client, super_headers):
+    """A job with no linked campaign can't be dispatched."""
+    mid = await _new_job(client, super_headers)
+    r = await client.post(f"/api/v1/admin/managed/{mid}/send", headers=super_headers)
+    assert r.status_code == 409
+    assert "link the campaign" in r.json()["detail"].lower()

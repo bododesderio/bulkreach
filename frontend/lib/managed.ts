@@ -130,6 +130,7 @@ export function advanceTo(status: Status): Status | null {
  *  `status` PATCHes the target state; null means the job is Closed (done). */
 export type PrimaryAction =
   | { kind: 'status'; target: Status; label: string }
+  | { kind: 'send'; label: string }
   | { kind: 'report'; label: string }
   | null;
 
@@ -138,12 +139,21 @@ const _CONTENT_STATES: Status[] = [
   'internal_review', 'awaiting_approval', 'changes_requested', 'approved',
 ];
 
+/** True when the job is at a stage where its linked campaign can still be
+ *  dispatched (i.e. before it has actually gone out). Drives the "Send now"
+ *  button — the real dispatch, not a status flip. */
+export function canSendNow(status: Status): boolean {
+  return _CONTENT_STATES.includes(status) || status === 'scheduled';
+}
+
 export function primaryActionFor(status: Status): PrimaryAction {
   if (status === 'requested' || status === 'briefed')
     return { kind: 'status', target: 'drafting', label: 'Start content' };
-  if (_CONTENT_STATES.includes(status))
-    return { kind: 'status', target: 'scheduled', label: 'Schedule to send' };
-  if (status === 'scheduled' || status === 'sending')
+  // Real dispatch: materialises + queues the linked campaign's messages.
+  if (canSendNow(status))
+    return { kind: 'send', label: 'Send now' };
+  // Dispatch is in flight — let the admin mark it done once complete.
+  if (status === 'sending')
     return { kind: 'status', target: 'sent', label: 'Mark as sent' };
   if (status === 'sent') return { kind: 'report', label: 'Issue report' };
   if (status === 'report_issued')

@@ -14,21 +14,28 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import SuperadminUser
 from app.models.account import Account, User
 from app.models.campaign import Campaign, ManagedCampaign, Report
 from app.schemas.admin import ManagedCreate, ManagedOut, ManagedResponse, ManagedUpdate
+from app.services import campaign_service
 from app.services.audit import record_audit
+from app.services.dispatch import dispatch_campaign
 from app.services.email import send_email
 from app.services.managed import pipeline
 from app.services.reports import pdf
 from app.services.storage import get_storage
+
+# States from which a managed job can still be dispatched (i.e. not already
+# sending/sent/reported/closed). Mirrors the pre-"sending" pipeline stages.
+_SENDABLE_STATES = frozenset(pipeline.STAGES[: pipeline.index("sending")])
 
 log = logging.getLogger("bulkreach.managed")
 
@@ -235,6 +242,79 @@ async def unhold_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[
 @router.post("/{managed_id}/cancel", response_model=ManagedOut)
 async def cancel_managed(managed_id: UUID, admin: SuperadminUser, db: Annotated[AsyncSession, Depends(get_db)]):
     return await _toggle_flag(db, admin, managed_id, field="cancelled", value=True, action="managed.cancel")
+
+
+@router.post("/{managed_id}/send", response_model=ManagedOut)
+async def send_managed(
+    managed_id: UUID,
+    admin: SuperadminUser,
+    background: BackgroundTasks,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ManagedOut:
+    """Actually dispatch the linked campaign for a managed job.
+
+    This is the real "send" the admin was missing: it materialises the
+    campaign's recipient messages and enqueues dispatch — the same path the
+    client composer uses — then moves the job to ``sending``. Previously the
+    admin could only flip the status flag, which never sent anything.
+    """
+    mc = await db.get(ManagedCampaign, managed_id)
+    if mc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed campaign not found")
+    if mc.cancelled:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This job is cancelled.")
+    if mc.on_hold:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Resume the job before sending.")
+    if mc.campaign_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Link the campaign to dispatch in the Content step first.",
+        )
+    if mc.status not in _SENDABLE_STATES:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This job has already been dispatched.",
+        )
+
+    campaign = await db.get(Campaign, mc.campaign_id)
+    if campaign is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Linked campaign not found")
+    if campaign.account_id != mc.account_id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The linked campaign belongs to a different account.",
+        )
+    if campaign.status not in ("draft", "scheduled"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"The linked campaign is '{campaign.status}' and cannot be dispatched.",
+        )
+
+    # Materialise recipients + queue messages (FOR-UPDATE guarded → 409 on a
+    # concurrent double-send), then move the job to "sending".
+    recipients, messages = await campaign_service.materialise_and_queue(db, campaign)
+    mc.status = "sending"
+    await record_audit(
+        db, actor_id=admin.id, actor_email=admin.email, action="managed.send",
+        resource_type="managed_campaign", resource_id=str(mc.id),
+        details={"campaign_id": str(mc.campaign_id), "recipients": recipients,
+                 "messages": messages},
+    )
+    # Commit the queued rows BEFORE enqueuing dispatch, so a worker can't dequeue
+    # against an uncommitted campaign (same ordering the client send relies on).
+    await db.commit()
+    if settings.DISPATCH_INLINE:
+        background.add_task(dispatch_campaign, campaign.id)
+    else:
+        try:
+            from app.workers import enqueue_dispatch
+
+            await enqueue_dispatch(campaign.id)
+        except Exception:  # noqa: BLE001 — fall back to in-process rather than stranding a queued campaign
+            background.add_task(dispatch_campaign, campaign.id)
+
+    await db.refresh(mc)
+    return await _load_one(db, mc)
 
 
 @router.post("/{managed_id}/report", response_model=ManagedOut)

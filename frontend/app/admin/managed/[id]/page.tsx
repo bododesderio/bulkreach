@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Check, Pause, Play, Ban, Download, FileText, ExternalLink, Loader2,
+  ArrowLeft, Check, Pause, Play, Ban, Download, FileText, ExternalLink, Loader2, Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiDownload, ApiError } from '@/lib/api';
@@ -22,7 +22,7 @@ import { Reveal } from '@/components/admin/Reveal';
 import { DataState } from '@/components/ui';
 import {
   type Managed, type CampaignLite, type Status,
-  STEPS, STATUS_CFG, CHANNEL_CFG, stepIndexOf, primaryActionFor,
+  STEPS, STATUS_CFG, CHANNEL_CFG, stepIndexOf, primaryActionFor, canSendNow,
   initials, fmtDate,
 } from '@/lib/managed';
 
@@ -154,11 +154,21 @@ export default function ManagedJobPage() {
   const patch = (body: Record<string, unknown>) =>
     api(`/admin/managed/${id}`, { method: 'PATCH', auth: true, body: JSON.stringify(body) });
 
+  async function sendNow() {
+    if (!job || !job.campaign_id) return;
+    const who = job.campaign_name ?? 'the linked campaign';
+    const count = job.audience != null ? ` to ${job.audience.toLocaleString()} recipients` : '';
+    if (!window.confirm(`Send ${who}${count} now? Messages go out immediately — this cannot be undone.`)) return;
+    await run(() => api(`/admin/managed/${id}/send`, { method: 'POST', auth: true }), 'Campaign dispatching');
+  }
+
   async function doPrimary() {
     if (!job) return;
     const action = primaryActionFor(job.status);
     if (!action) return;
-    if (action.kind === 'report') {
+    if (action.kind === 'send') {
+      await sendNow();
+    } else if (action.kind === 'report') {
       await run(() => api(`/admin/managed/${id}/report`, { method: 'POST', auth: true }), 'Report issued');
     } else {
       await run(() => patch({ status: action.target }), `Moved to ${STATUS_CFG[action.target].label}`);
@@ -301,7 +311,13 @@ export default function ManagedJobPage() {
                       className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 font-display text-[13px] font-bold transition hover:opacity-90 disabled:opacity-50"
                       style={{ background: '#00D4AA', color: '#0D0F2E' }}
                     >
-                      {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Check size={14} aria-hidden />}
+                      {busy ? (
+                        <Loader2 size={14} className="animate-spin" aria-hidden />
+                      ) : action.kind === 'send' ? (
+                        <Send size={14} aria-hidden />
+                      ) : (
+                        <Check size={14} aria-hidden />
+                      )}
                       {action.label}
                     </button>
                   )}
@@ -417,28 +433,48 @@ export default function ManagedJobPage() {
         </SectionCard>
 
         {/* ── 3. Send ── */}
-        <SectionCard n={3} title="Send" subtitle="Schedule and dispatch the campaign" active={activeStep === 2}>
+        <SectionCard n={3} title="Send" subtitle="Dispatch the campaign to its recipients" active={activeStep === 2}>
           {!job.campaign_id ? (
             <p className="text-[12.5px] text-fg-muted">
               Link a campaign in the Content step first — that&apos;s what actually gets dispatched.
             </p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-3 text-[12.5px]">
-              <span className="text-fg-muted">
-                Ready to dispatch <span className="font-semibold text-fg">{job.campaign_name ?? 'the linked campaign'}</span>
-                {job.audience != null && <> · {job.audience.toLocaleString()} recipients</>}.
+          ) : canSendNow(job.status) ? (
+            // Ready to dispatch — the real send button.
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[12.5px] text-fg-muted">
+                Dispatch <span className="font-semibold text-fg">{job.campaign_name ?? 'the linked campaign'}</span>
+                {job.audience != null && <> · {job.audience.toLocaleString()} recipients</>}. Messages go out immediately.
               </span>
-              <Link
-                href="/admin/campaigns"
-                className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-1.5 text-[12px] font-semibold text-fg-muted hover:border-teal hover:text-fg"
+              <button
+                type="button"
+                onClick={sendNow}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 font-display text-[13px] font-bold transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#00D4AA', color: '#0D0F2E' }}
               >
-                Open campaign <ExternalLink size={12} aria-hidden />
-              </Link>
+                {busy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Send size={14} aria-hidden />}
+                Send now
+              </button>
             </div>
-          )}
-          {(job.status === 'scheduled' || job.status === 'sending') && (
-            <p className="mt-2 text-[11px] text-fg-muted">
-              Once the campaign has gone out, use <span className="font-semibold">Mark as sent</span> above.
+          ) : job.status === 'sending' ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[12.5px] text-fg">
+                <Loader2 size={14} className="animate-spin text-teal" aria-hidden />
+                Dispatching <span className="font-semibold">{job.campaign_name ?? 'the campaign'}</span>… Watch live progress on the campaign, then <span className="font-semibold">Mark as sent</span> above.
+              </span>
+              {job.campaign_id && (
+                <Link
+                  href={`/admin/accounts/${job.account_id}`}
+                  className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-1.5 text-[12px] font-semibold text-fg-muted hover:border-teal hover:text-fg"
+                >
+                  View client account <ExternalLink size={12} aria-hidden />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <p className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
+              <Check size={14} className="text-success" aria-hidden />
+              Campaign dispatched{job.audience != null && <> · {job.audience.toLocaleString()} recipients</>}.
             </p>
           )}
         </SectionCard>
