@@ -64,6 +64,28 @@ async def test_duplicate_campaign(client, owner_headers):
     assert body["name"].endswith("(copy)")
 
 
+# ── estimate() SQL count ──
+async def test_recipient_estimate_matches_phone_count(client, owner_headers):
+    """The draft recipient_estimate (now a SQL COUNT FILTER, not row hydration)
+    equals the number of valid contacts with a phone for an SMS campaign."""
+    lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
+    list_id = (lists[0]["id"] if isinstance(lists, list) and lists
+               else lists.get("items", [{}])[0].get("id"))
+    # Count valid phones directly from the list rows.
+    rows = (await client.get(
+        f"/api/v1/contacts/lists/{list_id}/rows?page_size=200", headers=owner_headers
+    )).json()
+    items = rows.get("items", rows) if isinstance(rows, dict) else rows
+    phone_count = sum(1 for r in items if r.get("phone"))
+
+    cid = (await client.post("/api/v1/campaigns", headers=owner_headers, json={
+        "name": "Estimate test", "type": "sms",
+        "contact_list_id": list_id, "sms_body": "Hi {{name|there}}",
+    })).json()["id"]
+    detail = (await client.get(f"/api/v1/campaigns/{cid}", headers=owner_headers)).json()
+    assert detail["recipient_estimate"] == phone_count
+
+
 # ── CSV exports ──
 async def test_export_contacts_csv(client, owner_headers):
     lists = (await client.get("/api/v1/contacts/lists", headers=owner_headers)).json()
