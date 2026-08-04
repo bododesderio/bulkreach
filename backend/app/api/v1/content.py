@@ -25,11 +25,20 @@ router = APIRouter(prefix="/content", tags=["content"])
 @router.get("/plans")
 async def public_plans(db: Annotated[AsyncSession, Depends(get_db)]) -> list[dict]:
     """Active subscription plans for the public pricing/landing pages, so the
-    marketing site tracks admin-edited pricing instead of hardcoded numbers."""
+    marketing site tracks admin-edited pricing instead of hardcoded numbers.
+
+    Deduplicated to one plan per price point (keeping the first by display order,
+    then the featured one) so the pricing grid stays clean even if several plans
+    share a price. A clean catalogue is unaffected."""
     rows = (await db.execute(
         select(Plan).where(Plan.status == "active")
-        .order_by(Plan.display_order.asc(), Plan.price_ugx.asc())
+        .order_by(Plan.display_order.asc(), Plan.featured.desc(), Plan.price_ugx.asc())
     )).scalars().all()
+    by_price: dict[int, Plan] = {}
+    for p in rows:
+        if p.price_ugx not in by_price:
+            by_price[p.price_ugx] = p
+    tiers = sorted(by_price.values(), key=lambda p: p.price_ugx)
     return [
         {
             "name": p.name,
@@ -38,7 +47,7 @@ async def public_plans(db: Annotated[AsyncSession, Depends(get_db)]) -> list[dic
             "featured": bool(p.featured),
             "bullets": (p.features or {}).get("bullets", []),
         }
-        for p in rows
+        for p in tiers
     ]
 
 
