@@ -39,12 +39,19 @@ export const metadata: Metadata = {
   },
 };
 
+// Runs before first paint so the theme is resolved with zero flash: an explicit
+// choice in localStorage wins, otherwise fall back to the OS preference.
+const NO_FLASH_THEME = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME }} />
+      </head>
       <body className={`${montserrat.variable} ${inter.variable} ${mono.variable}`}>
         <Providers>{children}</Providers>
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" theme="system" />
       </body>
     </html>
   );

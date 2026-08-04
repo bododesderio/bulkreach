@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  darkMode: ["class"],
   theme: {
     container: { center: true, padding: "1.5rem", screens: { "2xl": "1200px" } },
     extend: {
@@ -18,8 +19,17 @@ const config: Config = {
         "text-muted": "#9CA3AF",
         "sidebar-bg": "#0F1326",
         success: "#10B981",
+        warning: "#F59E0B",
+        danger: "#EF4444",
+        info: "#3EC9D6",
         error: "#EF4444",
         "pricing-bg": "#EEF0FA",
+        // Theme-aware semantic surfaces (driven by CSS vars → auto light/dark).
+        // Prefer these on re-skinned pages so dark mode is free.
+        brand: { DEFAULT: "var(--brand)", 600: "var(--brand-600)", fg: "var(--brand-fg)" },
+        surface: { DEFAULT: "var(--surface)", 2: "var(--surface-2)" },
+        line: "var(--line)",
+        fg: { DEFAULT: "var(--fg)", muted: "var(--fg-muted)" },
         // shadcn semantic tokens (client dashboard)
         border: "hsl(var(--border-hsl))",
         input: "hsl(var(--input))",
@@ -42,6 +52,13 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+      },
+      boxShadow: {
+        // Soft, layered shadows from the design system (theme-aware via tokens).
+        "soft-sm": "var(--shadow-sm)",
+        soft: "var(--shadow)",
+        "soft-lg": "var(--shadow-lg)",
       },
       keyframes: {
         "fade-up": {
