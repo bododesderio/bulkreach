@@ -15,7 +15,7 @@ import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusBadge, DataState } from '@/components/ui';
 import { RevealGroup, RevealItem, Reveal } from '@/components/admin/Reveal';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type Severity = 'info' | 'warn' | 'critical';
@@ -79,10 +79,10 @@ const COLUMNS: Column<AuditEntry>[] = [
     label: 'Actor',
     render: (row) => (
       <div>
-        <div className="text-[12px] font-semibold text-navy">
+        <div className="text-[12px] font-semibold text-fg">
           {row.actor_email || '—'}
         </div>
-        <div className="text-[10.5px] text-text-muted">
+        <div className="text-[10.5px] text-fg-muted">
           {row.resource_type || '—'}
         </div>
       </div>
@@ -92,7 +92,7 @@ const COLUMNS: Column<AuditEntry>[] = [
     key: 'action',
     label: 'Action',
     render: (row) => (
-      <span className="text-[12px] text-text-md">{humanizeAction(row.action)}</span>
+      <span className="text-[12px] text-fg">{humanizeAction(row.action)}</span>
     ),
   },
   {
@@ -101,7 +101,7 @@ const COLUMNS: Column<AuditEntry>[] = [
     render: (row) => {
       const parts = [row.resource_type, row.resource_id].filter(Boolean);
       return (
-        <span className="text-[12px] text-text-muted">
+        <span className="text-[12px] text-fg-muted">
           {parts.length > 0 ? parts.join(' ') : '—'}
         </span>
       );
@@ -111,7 +111,7 @@ const COLUMNS: Column<AuditEntry>[] = [
     key: 'ip',
     label: 'IP',
     render: (row) => (
-      <span className="font-mono text-[11px] text-text-md">
+      <span className="font-mono text-[11px] text-fg">
         {row.ip_address || '—'}
       </span>
     ),
@@ -120,7 +120,7 @@ const COLUMNS: Column<AuditEntry>[] = [
     key: 'when',
     label: 'When',
     render: (row) => (
-      <span className="font-mono text-[11px] text-text-muted whitespace-nowrap">
+      <span className="font-mono text-[11px] text-fg-muted whitespace-nowrap">
         {fmtDateTime(row.created_at)}
       </span>
     ),
@@ -177,13 +177,13 @@ export default function AuditLogPage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading audit log…
           </div>
         )}
 
         {!loading && isError && (
-          <div className="bg-white border rounded-[11px] p-4">
+          <div className="bg-surface border rounded-[11px] p-4">
             <DataState error={error} onRetry={() => refetch()} />
           </div>
         )}
@@ -233,10 +233,10 @@ export default function AuditLogPage() {
 
             {/* Activity trail */}
             <Reveal delay={0.2} lift className={cardBase}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Activity trail
               </div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="text-[11px] text-fg-muted mb-4">
                 All platform events — {total} total · showing {items.length}
               </div>
 

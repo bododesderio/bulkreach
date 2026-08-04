@@ -74,7 +74,7 @@ function Toggle({
     >
       <span className="sr-only">{checked ? 'Enabled' : 'Disabled'}</span>
       <span
-        className="inline-block rounded-full bg-white shadow transition-transform"
+        className="inline-block rounded-full bg-surface shadow transition-transform"
         style={{
           width: '16px',
           height: '16px',
@@ -228,7 +228,7 @@ export default function PaymentProvidersPage() {
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-48 animate-pulse rounded-[11px] border bg-white"
+                className="h-48 animate-pulse rounded-[11px] border bg-surface"
               />
             ))}
           </div>
@@ -251,7 +251,7 @@ export default function PaymentProvidersPage() {
                           style={{ height: '26px', maxWidth: '80px', objectFit: 'contain', flexShrink: 0 }}
                         />
                         <div className="min-w-0">
-                          <div className="font-display font-bold text-[14px] text-navy leading-tight">
+                          <div className="font-display font-bold text-[14px] text-fg leading-tight">
                             {p.display_name}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -277,7 +277,7 @@ export default function PaymentProvidersPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <label
                           htmlFor={`toggle-${p.slug}`}
-                          className="text-[12px] text-text-muted select-none"
+                          className="text-[12px] text-fg-muted select-none"
                         >
                           {localEnabled[p.slug] ? 'Enabled' : 'Disabled'}
                         </label>
@@ -379,10 +379,10 @@ export default function PaymentProvidersPage() {
             {/* Method routing card */}
             <Reveal delay={providers.length * 0.07}>
               <FormCard>
-                <div className="font-display font-bold text-[15px] text-navy mb-1">
+                <div className="font-display font-bold text-[15px] text-fg mb-1">
                   Method routing
                 </div>
-                <p className="text-[11.5px] text-text-muted mb-4">
+                <p className="text-[11.5px] text-fg-muted mb-4">
                   Route each payment method to an enabled provider. Card = Visa / Mastercard.
                   A method with no provider selected will be unavailable to clients.
                 </p>

@@ -27,7 +27,7 @@ import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
 import { StatusBadge, DataState } from "@/components/ui";
 
-const cardBase = "bg-white border rounded-[11px] p-4";
+const cardBase = "bg-surface border rounded-[11px] p-4";
 
 const STEPS = [
   {
@@ -113,11 +113,11 @@ export default function CampaignsPage() {
         <div>
           <Link
             href={`/dashboard/campaigns/${c.id}`}
-            className="font-semibold text-navy hover:text-teal transition-colors"
+            className="font-semibold text-fg hover:text-teal transition-colors"
           >
             {c.name}
           </Link>
-          <div className="text-[10.5px] text-text-muted mt-0.5">
+          <div className="text-[10.5px] text-fg-muted mt-0.5">
             {fmtDate(c.created_at)}
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function CampaignsPage() {
       render: (c) => {
         const Icon = channelIcon(c.type);
         return (
-          <span className="inline-flex items-center gap-1.5 text-text-muted capitalize">
+          <span className="inline-flex items-center gap-1.5 text-fg-muted capitalize">
             <Icon className="h-3.5 w-3.5" aria-hidden />
             {c.type}
           </span>
@@ -178,10 +178,10 @@ export default function CampaignsPage() {
       <Reveal>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-display text-[20px] font-extrabold text-navy">
+            <h2 className="font-display text-[20px] font-extrabold text-fg">
               Campaigns
             </h2>
-            <p className="mt-0.5 text-[12px] text-text-muted">
+            <p className="mt-0.5 text-[12px] text-fg-muted">
               Compose and send bulk SMS &amp; email — personalised per recipient.
             </p>
           </div>
@@ -197,7 +197,7 @@ export default function CampaignsPage() {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-14 animate-pulse rounded-[11px] border bg-bg"
+              className="h-14 animate-pulse rounded-[11px] border bg-surface-2"
             />
           ))}
         </div>
@@ -205,7 +205,7 @@ export default function CampaignsPage() {
 
       {/* ── Error state ───────────────────────────────────────────────────────── */}
       {!loading && isError && (
-        <div className="bg-white border rounded-[11px] p-4">
+        <div className="bg-surface border rounded-[11px] p-4">
           <DataState error={error} onRetry={() => refetch()} />
         </div>
       )}
@@ -223,8 +223,8 @@ export default function CampaignsPage() {
               >
                 <Send className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 font-semibold text-navy">No campaigns yet</p>
-              <p className="mt-1.5 max-w-md text-[12px] text-text-muted">
+              <p className="mt-3 font-semibold text-fg">No campaigns yet</p>
+              <p className="mt-1.5 max-w-md text-[12px] text-fg-muted">
                 {hasContacts
                   ? "Your contacts are ready. Open the composer to build and send your first personalised campaign."
                   : "Import a contact list first, then compose your first personalised campaign."}
@@ -252,10 +252,10 @@ export default function CampaignsPage() {
                   >
                     <step.icon className="h-5 w-5" aria-hidden />
                   </div>
-                  <p className="mt-3 font-display text-[14px] font-bold text-navy">
+                  <p className="mt-3 font-display text-[14px] font-bold text-fg">
                     {step.title}
                   </p>
-                  <p className="mt-1 text-[11px] text-text-muted">{step.desc}</p>
+                  <p className="mt-1 text-[11px] text-fg-muted">{step.desc}</p>
                 </div>
               </RevealItem>
             ))}
@@ -298,7 +298,7 @@ export default function CampaignsPage() {
           {/* Campaign table */}
           <Reveal delay={0.25}>
             <div className={cardBase}>
-              <div className="font-display text-[14px] font-bold text-navy mb-3">
+              <div className="font-display text-[14px] font-bold text-fg mb-3">
                 All campaigns
               </div>
               <DataTable<CampaignOut>

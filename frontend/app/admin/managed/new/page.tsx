@@ -19,7 +19,7 @@ import { Reveal } from '@/components/admin/Reveal';
 import { DataState } from '@/components/ui';
 import type { Managed, AccountLite } from '@/lib/managed';
 
-const cardBase = 'bg-white border rounded-[11px] p-5';
+const cardBase = 'bg-surface border rounded-[11px] p-5';
 
 export default function NewBriefPage() {
   const router = useRouter();
@@ -73,7 +73,7 @@ export default function NewBriefPage() {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="account" className="mb-1 block text-[12px] font-semibold text-navy">
+                  <label htmlFor="account" className="mb-1 block text-[12px] font-semibold text-fg">
                     Client account
                   </label>
                   <select
@@ -91,7 +91,7 @@ export default function NewBriefPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="brief" className="mb-1 block text-[12px] font-semibold text-navy">
+                  <label htmlFor="brief" className="mb-1 block text-[12px] font-semibold text-fg">
                     Brief
                   </label>
                   <textarea
@@ -102,7 +102,7 @@ export default function NewBriefPage() {
                     disabled={saving}
                     placeholder="Goal, audience, key message, timing, any assets…"
                   />
-                  <p className="mt-1 text-[11px] text-text-muted">
+                  <p className="mt-1 text-[11px] text-fg-muted">
                     You&apos;ll draft the copy and link the campaign in the next step.
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export default function NewBriefPage() {
                 <div className="flex justify-end gap-2">
                   <Link
                     href="/admin/managed"
-                    className="rounded-full border px-4 py-2 text-[13px] font-semibold text-text-muted hover:text-navy"
+                    className="rounded-full border px-4 py-2 text-[13px] font-semibold text-fg-muted hover:text-fg"
                   >
                     Cancel
                   </Link>

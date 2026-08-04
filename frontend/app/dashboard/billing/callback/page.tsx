@@ -76,7 +76,7 @@ function CallbackInner() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="bg-white border rounded-[11px] p-8 w-full max-w-sm text-center animate-fade-up">
+      <div className="bg-surface border rounded-[11px] p-8 w-full max-w-sm text-center animate-fade-up">
         {/* Verifying */}
         {!status && (
           <>
@@ -85,10 +85,10 @@ function CallbackInner() {
               style={{ color: '#00D4AA' }}
               aria-label="Verifying payment"
             />
-            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
               Verifying payment&hellip;
             </h2>
-            <p className="mt-2 text-[12px] text-text-muted">
+            <p className="mt-2 text-[12px] text-fg-muted">
               Please wait while we confirm your transaction.
             </p>
           </>
@@ -102,10 +102,10 @@ function CallbackInner() {
               style={{ color: '#10B981' }}
               aria-hidden="true"
             />
-            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
               Payment successful
             </h2>
-            <p className="mt-2 text-[12px] text-text-muted">
+            <p className="mt-2 text-[12px] text-fg-muted">
               Your plan is now active.
             </p>
             <Link href="/dashboard/billing" className="btn-primary mt-6 inline-flex">
@@ -122,10 +122,10 @@ function CallbackInner() {
               style={{ color: '#EF4444' }}
               aria-hidden="true"
             />
-            <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+            <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
               {status === 'timeout' ? 'Payment timed out' : 'Payment failed'}
             </h2>
-            <p className="mt-2 text-[12px] text-text-muted">
+            <p className="mt-2 text-[12px] text-fg-muted">
               {status === 'timeout'
                 ? 'We could not confirm your payment in time. Check your history or contact support.'
                 : 'The payment was not completed. Please try again.'}

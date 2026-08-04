@@ -85,7 +85,7 @@ const fmtDate = (iso: string) =>
     year: 'numeric',
   });
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── refund confirm modal ───────────────────────────────────────────────────────
 function RefundModal({
@@ -109,21 +109,21 @@ function RefundModal({
       aria-modal="true"
       aria-labelledby="refund-dialog-title"
     >
-      <div className="w-full max-w-sm rounded-[12px] bg-white p-5 shadow-2xl animate-fade-up">
+      <div className="w-full max-w-sm rounded-[12px] bg-surface p-5 shadow-2xl animate-fade-up">
         <h3
           id="refund-dialog-title"
-          className="font-display font-bold text-[15px] text-navy mb-1"
+          className="font-display font-bold text-[15px] text-fg mb-1"
         >
           Confirm refund
         </h3>
-        <p className="text-[11px] text-text-muted mb-3">
+        <p className="text-[11px] text-fg-muted mb-3">
           Tx ref:{' '}
           <span className="font-mono">{txRef}</span>
         </p>
 
         <label
           htmlFor="refund-reason"
-          className="block text-[10.5px] font-semibold uppercase tracking-wide text-text-muted mb-1"
+          className="block text-[10.5px] font-semibold uppercase tracking-wide text-fg-muted mb-1"
         >
           Reason (optional)
         </label>
@@ -140,7 +140,7 @@ function RefundModal({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 text-[12px] rounded-[6px] border bg-transparent font-semibold text-text-muted px-3 py-2 hover:border-navy hover:text-navy transition-colors"
+            className="flex-1 text-[12px] rounded-[6px] border bg-transparent font-semibold text-fg-muted px-3 py-2 hover:border-navy hover:text-fg transition-colors"
           >
             Cancel
           </button>
@@ -215,8 +215,8 @@ export default function PaymentsPage() {
       label: 'Account',
       render: (row) => (
         <div>
-          <div className="text-[12px] font-semibold text-navy">{row.account_name}</div>
-          <div className="text-[10.5px] text-text-muted">{row.account_email}</div>
+          <div className="text-[12px] font-semibold text-fg">{row.account_name}</div>
+          <div className="text-[10.5px] text-fg-muted">{row.account_email}</div>
         </div>
       ),
     },
@@ -224,7 +224,7 @@ export default function PaymentsPage() {
       key: 'tx_ref',
       label: 'Tx ref',
       render: (row) => (
-        <span className="font-mono text-[10.5px] text-text-muted">
+        <span className="font-mono text-[10.5px] text-fg-muted">
           {row.tx_ref.length > 16 ? `${row.tx_ref.slice(0, 16)}…` : row.tx_ref}
         </span>
       ),
@@ -234,7 +234,7 @@ export default function PaymentsPage() {
       label: 'Amount',
       align: 'right',
       render: (row) => (
-        <span className="font-mono text-[12px] text-navy">
+        <span className="font-mono text-[12px] text-fg">
           UGX {row.amount_ugx.toLocaleString()}
         </span>
       ),
@@ -243,14 +243,14 @@ export default function PaymentsPage() {
       key: 'method',
       label: 'Method',
       render: (row) => (
-        <span className="text-[11px] text-text-md">{paymentMethodLabel(row.method)}</span>
+        <span className="text-[11px] text-fg">{paymentMethodLabel(row.method)}</span>
       ),
     },
     {
       key: 'provider',
       label: 'Provider',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{paymentProviderLabel(row.provider)}</span>
+        <span className="text-[11px] text-fg-muted">{paymentProviderLabel(row.provider)}</span>
       ),
     },
     {
@@ -262,7 +262,7 @@ export default function PaymentsPage() {
       key: 'created_at',
       label: 'Date',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">
           {fmtDate(row.created_at)}
         </span>
       ),
@@ -277,7 +277,7 @@ export default function PaymentsPage() {
           <button
             type="button"
             onClick={() => setConfirmTx(row.tx_ref)}
-            className="text-[11px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-red-400 hover:text-red-500 transition-colors"
+            className="text-[11px] rounded-[5px] border bg-transparent font-semibold text-fg-muted px-2 py-1 hover:border-red-400 hover:text-red-500 transition-colors"
           >
             Refund
           </button>
@@ -296,7 +296,7 @@ export default function PaymentsPage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading transactions…
           </div>
         )}
@@ -369,10 +369,10 @@ export default function PaymentsPage() {
             >
               {donutData.length > 0 && (
                 <Reveal delay={0.15} lift className={cardBase}>
-                  <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                     Payment methods
                   </div>
-                  <div className="text-[11px] text-text-muted mb-3">
+                  <div className="text-[11px] text-fg-muted mb-3">
                     Share of collected volume
                   </div>
                   <div className="flex items-center gap-4">
@@ -396,11 +396,11 @@ export default function PaymentsPage() {
                               className="flex-shrink-0 rounded-full"
                               style={{ width: 8, height: 8, background: m.color }}
                             />
-                            <span className="text-[11.5px] font-semibold text-navy truncate">
+                            <span className="text-[11.5px] font-semibold text-fg truncate">
                               {m.label}
                             </span>
                           </div>
-                          <span className="text-[10.5px] text-text-muted ml-2 whitespace-nowrap">
+                          <span className="text-[10.5px] text-fg-muted ml-2 whitespace-nowrap">
                             UGX {(m.value / 1e6).toFixed(1)}M
                           </span>
                         </div>
@@ -411,10 +411,10 @@ export default function PaymentsPage() {
               )}
 
               <Reveal delay={0.22} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                   All transactions
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">
+                <div className="text-[11px] text-fg-muted mb-4">
                   {items.length} transaction{items.length !== 1 ? 's' : ''}
                 </div>
                 <DataTable<AdminPayment>
@@ -431,7 +431,7 @@ export default function PaymentsPage() {
         )}
 
         {!loading && !stats && (
-          <div className="py-16 text-center text-[12px] text-text-muted">
+          <div className="py-16 text-center text-[12px] text-fg-muted">
             No payment data available.
           </div>
         )}

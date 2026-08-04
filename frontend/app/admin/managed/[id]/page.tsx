@@ -26,7 +26,7 @@ import {
   initials, fmtDate,
 } from '@/lib/managed';
 
-const cardBase = 'bg-white border rounded-[11px] p-5';
+const cardBase = 'bg-surface border rounded-[11px] p-5';
 
 // ── Stepper ──────────────────────────────────────────────────────────────────
 function Stepper({ status }: { status: Status }) {
@@ -55,7 +55,7 @@ function Stepper({ status }: { status: Status }) {
                 >
                   {s.label}
                 </div>
-                {current && <div className="text-[10px] text-text-muted">{s.hint}</div>}
+                {current && <div className="text-[10px] text-fg-muted">{s.hint}</div>}
               </div>
             </div>
             {i < STEPS.length - 1 && (
@@ -90,8 +90,8 @@ function SectionCard({
             {n}
           </span>
           <div>
-            <div className="font-display text-[14px] font-bold text-navy">{title}</div>
-            {subtitle && <div className="text-[11px] text-text-muted">{subtitle}</div>}
+            <div className="font-display text-[14px] font-bold text-fg">{title}</div>
+            {subtitle && <div className="text-[11px] text-fg-muted">{subtitle}</div>}
           </div>
         </div>
         {children}
@@ -228,7 +228,7 @@ export default function ManagedJobPage() {
             <ArrowLeft size={14} aria-hidden /> Back to queue
           </Link>
           {job.account_id && (
-            <Link href={`/admin/accounts/${job.account_id}`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-text-muted hover:text-navy">
+            <Link href={`/admin/accounts/${job.account_id}`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-fg-muted hover:text-fg">
               View client account <ExternalLink size={12} aria-hidden />
             </Link>
           )}
@@ -247,7 +247,7 @@ export default function ManagedJobPage() {
                   {initials(job.account_name)}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="font-display text-[18px] font-extrabold text-navy truncate">
+                  <h1 className="font-display text-[18px] font-extrabold text-fg truncate">
                     {job.account_name ?? '—'}
                   </h1>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -268,7 +268,7 @@ export default function ManagedJobPage() {
                     {job.cancelled && (
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(239,68,68,0.12)', color: '#DC2626' }}>Cancelled</span>
                     )}
-                    <span className="text-[11px] text-text-muted">· Created {fmtDate(job.created_at)}</span>
+                    <span className="text-[11px] text-fg-muted">· Created {fmtDate(job.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -280,7 +280,7 @@ export default function ManagedJobPage() {
                     type="button"
                     onClick={toggleHold}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-2 text-[12px] font-semibold text-text-muted hover:border-teal hover:text-navy disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-2 text-[12px] font-semibold text-fg-muted hover:border-teal hover:text-fg disabled:opacity-50"
                   >
                     {job.on_hold ? <><Play size={13} aria-hidden /> Resume</> : <><Pause size={13} aria-hidden /> Hold</>}
                   </button>
@@ -288,7 +288,7 @@ export default function ManagedJobPage() {
                     type="button"
                     onClick={cancelJob}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-2 text-[12px] font-semibold text-text-muted hover:border-red-400 hover:text-red-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-2 text-[12px] font-semibold text-fg-muted hover:border-red-400 hover:text-red-600 disabled:opacity-50"
                     aria-label="Cancel job"
                   >
                     <Ban size={13} aria-hidden /> Cancel
@@ -341,7 +341,7 @@ export default function ManagedJobPage() {
         <SectionCard n={2} title="Content" subtitle="Draft the copy and link the campaign that will run" active={activeStep === 1}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-navy">SMS copy</label>
+              <label className="mb-1 block text-[11px] font-semibold text-fg">SMS copy</label>
               <textarea
                 className="input min-h-[80px] w-full text-[13px]"
                 value={copy.copy_sms}
@@ -352,7 +352,7 @@ export default function ManagedJobPage() {
             </div>
             <div className="space-y-2">
               <div>
-                <label className="mb-1 block text-[11px] font-semibold text-navy">Email subject</label>
+                <label className="mb-1 block text-[11px] font-semibold text-fg">Email subject</label>
                 <input
                   className="input w-full text-[13px]"
                   value={copy.copy_email_subject}
@@ -361,7 +361,7 @@ export default function ManagedJobPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-semibold text-navy">Email body</label>
+                <label className="mb-1 block text-[11px] font-semibold text-fg">Email body</label>
                 <textarea
                   className="input min-h-[80px] w-full text-[13px]"
                   value={copy.copy_email_body}
@@ -375,7 +375,7 @@ export default function ManagedJobPage() {
             {/* Campaign link */}
             <div className="text-[12px]">
               {linked ? (
-                <span className="text-text-muted">
+                <span className="text-fg-muted">
                   Linked campaign:{' '}
                   <Link href={`/admin/campaigns`} className="font-semibold text-teal hover:underline">
                     {linked.name}
@@ -383,7 +383,7 @@ export default function ManagedJobPage() {
                 </span>
               ) : accountCampaigns.length > 0 ? (
                 <label className="flex items-center gap-2">
-                  <span className="text-text-muted">Link campaign:</span>
+                  <span className="text-fg-muted">Link campaign:</span>
                   <select
                     className="input text-[12px]"
                     defaultValue=""
@@ -395,7 +395,7 @@ export default function ManagedJobPage() {
                   </select>
                 </label>
               ) : (
-                <span className="text-text-muted">
+                <span className="text-fg-muted">
                   No campaigns for this client yet — create one from the client&apos;s dashboard, then link it here.
                 </span>
               )}
@@ -419,25 +419,25 @@ export default function ManagedJobPage() {
         {/* ── 3. Send ── */}
         <SectionCard n={3} title="Send" subtitle="Schedule and dispatch the campaign" active={activeStep === 2}>
           {!job.campaign_id ? (
-            <p className="text-[12.5px] text-text-muted">
+            <p className="text-[12.5px] text-fg-muted">
               Link a campaign in the Content step first — that&apos;s what actually gets dispatched.
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-3 text-[12.5px]">
-              <span className="text-text-muted">
-                Ready to dispatch <span className="font-semibold text-navy">{job.campaign_name ?? 'the linked campaign'}</span>
+              <span className="text-fg-muted">
+                Ready to dispatch <span className="font-semibold text-fg">{job.campaign_name ?? 'the linked campaign'}</span>
                 {job.audience != null && <> · {job.audience.toLocaleString()} recipients</>}.
               </span>
               <Link
                 href="/admin/campaigns"
-                className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-1.5 text-[12px] font-semibold text-text-muted hover:border-teal hover:text-navy"
+                className="inline-flex items-center gap-1 rounded-[7px] border px-2.5 py-1.5 text-[12px] font-semibold text-fg-muted hover:border-teal hover:text-fg"
               >
                 Open campaign <ExternalLink size={12} aria-hidden />
               </Link>
             </div>
           )}
           {(job.status === 'scheduled' || job.status === 'sending') && (
-            <p className="mt-2 text-[11px] text-text-muted">
+            <p className="mt-2 text-[11px] text-fg-muted">
               Once the campaign has gone out, use <span className="font-semibold">Mark as sent</span> above.
             </p>
           )}
@@ -463,12 +463,12 @@ export default function ManagedJobPage() {
                 type="button"
                 onClick={downloadReport}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-bold text-navy transition hover:border-teal disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-bold text-fg transition hover:border-teal disabled:opacity-40"
               >
                 <Download size={13} aria-hidden /> Download PDF
               </button>
             ) : job.status !== 'sent' && (
-              <p className="text-[12.5px] text-text-muted">Report becomes available once the campaign is marked as sent.</p>
+              <p className="text-[12.5px] text-fg-muted">Report becomes available once the campaign is marked as sent.</p>
             )}
           </div>
         </SectionCard>

@@ -33,7 +33,7 @@ interface HealthResponse {
   checked_at: string;
 }
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 const fmtCheckedAt = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
@@ -57,17 +57,17 @@ interface OverallStatusCardProps {
 function OverallStatusCard({ overall, operationalCount, totalCount }: OverallStatusCardProps) {
   const { color, label } = resolveStatus('health', overall);
   return (
-    <div className="bg-white border rounded-[11px] p-4 h-full">
+    <div className="bg-surface border rounded-[11px] p-4 h-full">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
           Overall status
         </span>
-        <Activity size={15} className="text-text-muted" />
+        <Activity size={15} className="text-fg-muted" />
       </div>
       <div className="flex items-center gap-2 mt-2">
         <StatusDot color={color} pulse size={10} />
         <span
-          className="font-mono font-semibold text-navy leading-tight"
+          className="font-mono font-semibold text-fg leading-tight"
           style={{ fontSize: '22px' }}
         >
           {label}
@@ -85,7 +85,7 @@ function OverallStatusCard({ overall, operationalCount, totalCount }: OverallSta
 
 // ── skeleton card ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
-  return <div className="bg-white border rounded-[11px] p-4 h-full animate-pulse" />;
+  return <div className="bg-surface border rounded-[11px] p-4 h-full animate-pulse" />;
 }
 
 // ── page ──────────────────────────────────────────────────────────────────────
@@ -123,13 +123,13 @@ export default function HealthPage() {
       <div className="p-[18px]">
         {/* checked-at timestamp + refresh button */}
         <div className="flex items-center justify-between mb-4">
-          <div className="text-[11px] text-text-muted">
+          <div className="text-[11px] text-fg-muted">
             {data?.checked_at ? `Last checked ${fmtCheckedAt(data.checked_at)}` : ' '}
           </div>
           <button
             onClick={() => refetch()}
             disabled={loading}
-            className="flex items-center gap-1.5 text-[11px] font-semibold rounded-[6px] border px-3 py-1.5 hover:border-teal hover:text-navy transition-colors text-text-muted disabled:opacity-50"
+            className="flex items-center gap-1.5 text-[11px] font-semibold rounded-[6px] border px-3 py-1.5 hover:border-teal hover:text-fg transition-colors text-fg-muted disabled:opacity-50"
             aria-label="Refresh health data"
           >
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -139,7 +139,7 @@ export default function HealthPage() {
 
         {/* First-load failure — services empty because the health check itself errored. */}
         {isError && services.length === 0 && (
-          <div className="bg-white border rounded-[11px] p-4 mb-4">
+          <div className="bg-surface border rounded-[11px] p-4 mb-4">
             <DataState error={error} onRetry={() => refetch()} />
           </div>
         )}
@@ -188,17 +188,17 @@ export default function HealthPage() {
 
         {/* Services list */}
         <Reveal delay={0.3} lift className={cardBase}>
-          <div className="font-display text-[14px] font-bold text-navy mb-0.5">Services</div>
-          <div className="text-[11px] text-text-muted mb-4">
+          <div className="font-display text-[14px] font-bold text-fg mb-0.5">Services</div>
+          <div className="text-[11px] text-fg-muted mb-4">
             {loading ? '—' : `${services.length} monitored`}
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-[12px] text-text-muted">
+            <div className="flex items-center justify-center py-12 text-[12px] text-fg-muted">
               Loading services…
             </div>
           ) : services.length === 0 ? (
-            <div className="py-10 text-center text-[12px] text-text-muted">
+            <div className="py-10 text-center text-[12px] text-fg-muted">
               No services found.
             </div>
           ) : (
@@ -221,7 +221,7 @@ export default function HealthPage() {
                             pulse={svc.status === 'operational'}
                             size={7}
                           />
-                          <span className="text-[12px] font-semibold text-navy">{svc.name}</span>
+                          <span className="text-[12px] font-semibold text-fg">{svc.name}</span>
                           <span
                             className="text-[9.5px] font-semibold rounded-full px-2 py-0.5"
                             style={{ background: 'rgba(156,163,175,0.12)', color: '#9CA3AF' }}
@@ -230,7 +230,7 @@ export default function HealthPage() {
                           </span>
                         </div>
                         {svc.detail && (
-                          <div className="text-[11px] text-text-muted mt-0.5 pl-[19px]">
+                          <div className="text-[11px] text-fg-muted mt-0.5 pl-[19px]">
                             {svc.detail}
                           </div>
                         )}
@@ -238,7 +238,7 @@ export default function HealthPage() {
 
                       {/* Latency (null-safe) */}
                       <div className="w-16 text-right hidden sm:block">
-                        <span className="font-mono text-[11px] text-navy">
+                        <span className="font-mono text-[11px] text-fg">
                           {svc.latency_ms != null ? `${svc.latency_ms} ms` : '—'}
                         </span>
                       </div>

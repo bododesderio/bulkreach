@@ -113,7 +113,7 @@ function Toggle({
     >
       <span className="sr-only">{checked ? 'On' : 'Off'}</span>
       <span
-        className="inline-block rounded-full bg-white shadow transition-transform"
+        className="inline-block rounded-full bg-surface shadow transition-transform"
         style={{ width: '16px', height: '16px', transform: checked ? 'translateX(20px)' : 'translateX(3px)' }}
       />
     </button>
@@ -148,7 +148,7 @@ function Skeletons() {
   return (
     <div className="space-y-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-16 animate-pulse rounded-[11px] border bg-white" />
+        <div key={i} className="h-16 animate-pulse rounded-[11px] border bg-surface" />
       ))}
     </div>
   );
@@ -175,7 +175,7 @@ function RowActions({
         type="button"
         onClick={onEdit}
         aria-label={`Edit ${label}`}
-        className="rounded-md p-1.5 text-text-muted transition hover:bg-black/[0.05] hover:text-navy"
+        className="rounded-md p-1.5 text-fg-muted transition hover:bg-black/[0.05] hover:text-fg"
       >
         <Pencil size={15} />
       </button>
@@ -184,7 +184,7 @@ function RowActions({
         onClick={onDelete}
         disabled={deletingId === id}
         aria-label={`Delete ${label}`}
-        className="rounded-md p-1.5 text-text-muted transition hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+        className="rounded-md p-1.5 text-fg-muted transition hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <Trash2 size={15} />
       </button>
@@ -233,12 +233,12 @@ function Modal({
       <div className="w-full max-w-2xl animate-fade-up" onClick={(e) => e.stopPropagation()}>
         <FormCard>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-bold text-[16px] text-navy">{title}</h2>
+            <h2 className="font-display font-bold text-[16px] text-fg">{title}</h2>
             <button
               type="button"
               onClick={() => !saving && onClose()}
               aria-label="Close"
-              className="rounded-md p-1 text-text-muted transition hover:bg-black/[0.05] hover:text-navy"
+              className="rounded-md p-1 text-fg-muted transition hover:bg-black/[0.05] hover:text-fg"
             >
               <X size={18} />
             </button>
@@ -333,7 +333,7 @@ function FaqsTab({ active }: { active: boolean }) {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[12px] text-text-muted">Frequently asked questions shown on the public site.</p>
+        <p className="text-[12px] text-fg-muted">Frequently asked questions shown on the public site.</p>
         <button
           type="button"
           onClick={openNew}
@@ -346,16 +346,16 @@ function FaqsTab({ active }: { active: boolean }) {
 
       {rows.length === 0 ? (
         <FormCard>
-          <p className="text-center text-[13px] text-text-muted py-6">No FAQs yet. Add your first question.</p>
+          <p className="text-center text-[13px] text-fg-muted py-6">No FAQs yet. Add your first question.</p>
         </FormCard>
       ) : (
         <Reveal>
-          <div className="overflow-x-auto rounded-[11px] border bg-white">
+          <div className="overflow-x-auto rounded-[11px] border bg-surface">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b">
                   {['Order', 'Question', 'Category', 'Status', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-muted whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fg-muted whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -364,9 +364,9 @@ function FaqsTab({ active }: { active: boolean }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-black/[0.015] transition-colors">
-                    <td className="px-4 py-3 font-mono text-text-muted">{r.sort_order}</td>
-                    <td className="px-4 py-3 font-semibold text-navy max-w-xs truncate">{r.question}</td>
-                    <td className="px-4 py-3 text-text-muted">{r.category || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-fg-muted">{r.sort_order}</td>
+                    <td className="px-4 py-3 font-semibold text-fg max-w-xs truncate">{r.question}</td>
+                    <td className="px-4 py-3 text-fg-muted">{r.category || '—'}</td>
                     <td className="px-4 py-3"><StatusBadge published={r.is_published} /></td>
                     <td className="px-4 py-3">
                       <RowActions onEdit={() => openEdit(r)} onDelete={() => remove(r)} deletingId={deletingId} id={r.id} label={r.question} />
@@ -401,7 +401,7 @@ function FaqsTab({ active }: { active: boolean }) {
             <FormField label="Published" htmlFor="faq-pub">
               <div className="flex h-[38px] items-center gap-2">
                 <Toggle id="faq-pub" checked={form.is_published} onChange={(v) => upd('is_published', v)} />
-                <span className="text-[12px] text-text-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
+                <span className="text-[12px] text-fg-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
               </div>
             </FormField>
           </FormGrid>
@@ -481,7 +481,7 @@ function FeaturesTab({ active }: { active: boolean }) {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[12px] text-text-muted">Product features shown on the marketing site.</p>
+        <p className="text-[12px] text-fg-muted">Product features shown on the marketing site.</p>
         <button
           type="button"
           onClick={openNew}
@@ -494,16 +494,16 @@ function FeaturesTab({ active }: { active: boolean }) {
 
       {rows.length === 0 ? (
         <FormCard>
-          <p className="text-center text-[13px] text-text-muted py-6">No features yet. Add your first feature.</p>
+          <p className="text-center text-[13px] text-fg-muted py-6">No features yet. Add your first feature.</p>
         </FormCard>
       ) : (
         <Reveal>
-          <div className="overflow-x-auto rounded-[11px] border bg-white">
+          <div className="overflow-x-auto rounded-[11px] border bg-surface">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b">
                   {['Order', 'Icon', 'Title', 'Status', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-muted whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fg-muted whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -512,9 +512,9 @@ function FeaturesTab({ active }: { active: boolean }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-black/[0.015] transition-colors">
-                    <td className="px-4 py-3 font-mono text-text-muted">{r.sort_order}</td>
-                    <td className="px-4 py-3 font-mono text-[12px] text-text-muted">{r.icon}</td>
-                    <td className="px-4 py-3 font-semibold text-navy">{r.title}</td>
+                    <td className="px-4 py-3 font-mono text-fg-muted">{r.sort_order}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-fg-muted">{r.icon}</td>
+                    <td className="px-4 py-3 font-semibold text-fg">{r.title}</td>
                     <td className="px-4 py-3"><StatusBadge published={r.is_published} /></td>
                     <td className="px-4 py-3">
                       <RowActions onEdit={() => openEdit(r)} onDelete={() => remove(r)} deletingId={deletingId} id={r.id} label={r.title} />
@@ -547,7 +547,7 @@ function FeaturesTab({ active }: { active: boolean }) {
             <FormField label="Published" htmlFor="feat-pub">
               <div className="flex h-[38px] items-center gap-2">
                 <Toggle id="feat-pub" checked={form.is_published} onChange={(v) => upd('is_published', v)} />
-                <span className="text-[12px] text-text-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
+                <span className="text-[12px] text-fg-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
               </div>
             </FormField>
           </FormGrid>
@@ -627,7 +627,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[12px] text-text-muted">Customer quotes displayed on the marketing site.</p>
+        <p className="text-[12px] text-fg-muted">Customer quotes displayed on the marketing site.</p>
         <button
           type="button"
           onClick={openNew}
@@ -640,16 +640,16 @@ function TestimonialsTab({ active }: { active: boolean }) {
 
       {rows.length === 0 ? (
         <FormCard>
-          <p className="text-center text-[13px] text-text-muted py-6">No testimonials yet. Add your first quote.</p>
+          <p className="text-center text-[13px] text-fg-muted py-6">No testimonials yet. Add your first quote.</p>
         </FormCard>
       ) : (
         <Reveal>
-          <div className="overflow-x-auto rounded-[11px] border bg-white">
+          <div className="overflow-x-auto rounded-[11px] border bg-surface">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b">
                   {['Order', 'Name', 'Role', 'Quote', 'Status', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-muted whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fg-muted whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -658,10 +658,10 @@ function TestimonialsTab({ active }: { active: boolean }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-black/[0.015] transition-colors">
-                    <td className="px-4 py-3 font-mono text-text-muted">{r.sort_order}</td>
-                    <td className="px-4 py-3 font-semibold text-navy whitespace-nowrap">{r.name}</td>
-                    <td className="px-4 py-3 text-text-muted whitespace-nowrap">{r.role}</td>
-                    <td className="px-4 py-3 text-text-muted max-w-xs truncate">&ldquo;{r.quote}&rdquo;</td>
+                    <td className="px-4 py-3 font-mono text-fg-muted">{r.sort_order}</td>
+                    <td className="px-4 py-3 font-semibold text-fg whitespace-nowrap">{r.name}</td>
+                    <td className="px-4 py-3 text-fg-muted whitespace-nowrap">{r.role}</td>
+                    <td className="px-4 py-3 text-fg-muted max-w-xs truncate">&ldquo;{r.quote}&rdquo;</td>
                     <td className="px-4 py-3"><StatusBadge published={r.is_published} /></td>
                     <td className="px-4 py-3">
                       <RowActions onEdit={() => openEdit(r)} onDelete={() => remove(r)} deletingId={deletingId} id={r.id} label={r.name} />
@@ -694,7 +694,7 @@ function TestimonialsTab({ active }: { active: boolean }) {
             <FormField label="Published" htmlFor="test-pub">
               <div className="flex h-[38px] items-center gap-2">
                 <Toggle id="test-pub" checked={form.is_published} onChange={(v) => upd('is_published', v)} />
-                <span className="text-[12px] text-text-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
+                <span className="text-[12px] text-fg-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
               </div>
             </FormField>
           </FormGrid>
@@ -778,7 +778,7 @@ function SectionsTab({ active }: { active: boolean }) {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[12px] text-text-muted">Keyed text blocks by page. Edits go live on the public site.</p>
+        <p className="text-[12px] text-fg-muted">Keyed text blocks by page. Edits go live on the public site.</p>
         <button
           type="button"
           onClick={openNew}
@@ -791,16 +791,16 @@ function SectionsTab({ active }: { active: boolean }) {
 
       {rows.length === 0 ? (
         <FormCard>
-          <p className="text-center text-[13px] text-text-muted py-6">No page copy entries yet.</p>
+          <p className="text-center text-[13px] text-fg-muted py-6">No page copy entries yet.</p>
         </FormCard>
       ) : (
         <Reveal>
-          <div className="overflow-x-auto rounded-[11px] border bg-white">
+          <div className="overflow-x-auto rounded-[11px] border bg-surface">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b">
                   {['Order', 'Page', 'Key', 'Value', 'Status', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-muted whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fg-muted whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -809,10 +809,10 @@ function SectionsTab({ active }: { active: boolean }) {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-black/[0.015] transition-colors">
-                    <td className="px-4 py-3 font-mono text-text-muted">{r.sort_order}</td>
-                    <td className="px-4 py-3 font-mono text-[12px] text-navy">{r.page}</td>
-                    <td className="px-4 py-3 font-mono text-[12px] text-text-muted">{r.key}</td>
-                    <td className="px-4 py-3 text-text-muted max-w-xs truncate">{r.value || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-fg-muted">{r.sort_order}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-fg">{r.page}</td>
+                    <td className="px-4 py-3 font-mono text-[12px] text-fg-muted">{r.key}</td>
+                    <td className="px-4 py-3 text-fg-muted max-w-xs truncate">{r.value || '—'}</td>
                     <td className="px-4 py-3"><StatusBadge published={r.is_published} /></td>
                     <td className="px-4 py-3">
                       <RowActions onEdit={() => openEdit(r)} onDelete={() => remove(r)} deletingId={deletingId} id={r.id} label={`${r.page}/${r.key}`} />
@@ -866,7 +866,7 @@ function SectionsTab({ active }: { active: boolean }) {
             <FormField label="Published" htmlFor="sec-pub">
               <div className="flex h-[38px] items-center gap-2">
                 <Toggle id="sec-pub" checked={form.is_published} onChange={(v) => upd('is_published', v)} />
-                <span className="text-[12px] text-text-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
+                <span className="text-[12px] text-fg-muted select-none">{form.is_published ? 'Published' : 'Draft'}</span>
               </div>
             </FormField>
           </FormGrid>
@@ -892,7 +892,7 @@ export default function ContentPage() {
       <div className="p-[18px] space-y-4">
         {/* Tab bar */}
         <div
-          className="flex items-center gap-1 rounded-[9px] border bg-white p-1"
+          className="flex items-center gap-1 rounded-[9px] border bg-surface p-1"
           role="tablist"
           aria-label="Content sections"
           style={{ width: 'fit-content' }}

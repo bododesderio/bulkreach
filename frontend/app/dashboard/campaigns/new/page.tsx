@@ -32,7 +32,7 @@ import {
 import { useAuth } from "@/store/auth";
 import { Reveal } from "@/components/admin/Reveal";
 
-const cardBase = "bg-white border rounded-[11px] p-4";
+const cardBase = "bg-surface border rounded-[11px] p-4";
 
 interface ContactList {
   id: string;
@@ -356,10 +356,10 @@ export default function CampaignComposerPage() {
         >
           <ArrowLeft size={14} aria-hidden /> Campaigns
         </Link>
-        <h2 className="mt-2 font-display text-[20px] font-extrabold text-navy">
+        <h2 className="mt-2 font-display text-[20px] font-extrabold text-fg">
           New campaign
         </h2>
-        <p className="mt-1 text-[11px] text-text-muted">
+        <p className="mt-1 text-[11px] text-fg-muted">
           Compose once — personalised per recipient with merge tags.
         </p>
       </Reveal>
@@ -374,12 +374,12 @@ export default function CampaignComposerPage() {
           <Reveal delay={0.02}>
             <section className={cardBase}>
               <label
-                className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted"
+                className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted"
                 htmlFor="campaign-name"
               >
                 Campaign name
               </label>
-              <p className="mb-3 mt-1 text-[11px] text-text-muted">
+              <p className="mb-3 mt-1 text-[11px] text-fg-muted">
                 Internal label — recipients never see this.
               </p>
               <input
@@ -397,16 +397,16 @@ export default function CampaignComposerPage() {
           {/* Audience */}
           <Reveal delay={0.04}>
             <section className={cardBase}>
-              <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Audience
               </label>
-              <p className="mb-3 mt-1 text-[11px] text-text-muted">
+              <p className="mb-3 mt-1 text-[11px] text-fg-muted">
                 Pick an imported contact list. Counts come from your live contacts.
               </p>
               {lists === null ? (
-                <div className="h-10 animate-pulse rounded-[7px] bg-bg" />
+                <div className="h-10 animate-pulse rounded-[7px] bg-surface-2" />
               ) : lists.length === 0 ? (
-                <div className="rounded-[7px] border border-dashed p-4 text-[12px] text-text-muted">
+                <div className="rounded-[7px] border border-dashed p-4 text-[12px] text-fg-muted">
                   No contact lists yet.{" "}
                   <Link
                     href="/dashboard/contacts"
@@ -489,7 +489,7 @@ export default function CampaignComposerPage() {
           {/* Channel */}
           <Reveal delay={0.08}>
             <section className={cardBase}>
-              <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Channel
               </label>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -503,7 +503,7 @@ export default function CampaignComposerPage() {
                       className={`inline-flex items-center gap-2 rounded-[7px] border px-4 py-2 text-[12px] font-semibold transition-colors ${
                         active
                           ? "border-navy bg-navy text-white"
-                          : "text-text-muted hover:border-teal hover:text-teal"
+                          : "text-fg-muted hover:border-teal hover:text-teal"
                       }`}
                     >
                       <Icon size={14} aria-hidden /> {label}
@@ -518,7 +518,7 @@ export default function CampaignComposerPage() {
           <Reveal delay={0.12}>
             <section className={cardBase}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                <label className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                   Message
                 </label>
                 {/* Template library — load a saved message or save this one */}
@@ -544,7 +544,7 @@ export default function CampaignComposerPage() {
                     type="button"
                     onClick={saveTemplate}
                     disabled={savingTemplate || !body.trim()}
-                    className="rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-text-muted transition-colors hover:border-teal hover:text-teal disabled:opacity-40"
+                    className="rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition-colors hover:border-teal hover:text-teal disabled:opacity-40"
                   >
                     {savingTemplate ? "Saving…" : "Save as template"}
                   </button>
@@ -555,7 +555,7 @@ export default function CampaignComposerPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {mergeTags.length > 0 ? (
                   <>
-                    <span className="text-[11px] text-text-muted">
+                    <span className="text-[11px] text-fg-muted">
                       Insert tag:
                     </span>
                     {mergeTags.map((tag) => (
@@ -563,17 +563,17 @@ export default function CampaignComposerPage() {
                         key={tag}
                         type="button"
                         onClick={() => insertTag(tag)}
-                        className="rounded-[5px] border px-2 py-1 font-mono text-[11px] font-semibold text-text-muted transition-colors hover:border-teal hover:text-teal"
+                        className="rounded-[5px] border px-2 py-1 font-mono text-[11px] font-semibold text-fg-muted transition-colors hover:border-teal hover:text-teal"
                       >
                         {`{{${tag}}}`}
                       </button>
                     ))}
-                    <span className="text-[10.5px] text-text-muted">
+                    <span className="text-[10.5px] text-fg-muted">
                       Tip: add a fallback with <code className="font-mono">{`{{name|there}}`}</code>.
                     </span>
                   </>
                 ) : (
-                  <span className="text-[11px] text-text-muted">
+                  <span className="text-[11px] text-fg-muted">
                     This list has no personalisation columns — import a CSV with
                     named columns to use merge tags.
                   </span>
@@ -599,7 +599,7 @@ export default function CampaignComposerPage() {
               />
 
               {showSms && (
-                <div className="mt-2 flex items-center justify-between text-[10.5px] text-text-muted">
+                <div className="mt-2 flex items-center justify-between text-[10.5px] text-fg-muted">
                   <span>
                     {smsLen} characters · {segments} SMS segment
                     {segments === 1 ? "" : "s"}
@@ -622,22 +622,22 @@ export default function CampaignComposerPage() {
             <div className={`sticky top-4 ${cardBase}`}>
               <div className="mb-3 flex items-center gap-2">
                 <Sparkles size={14} style={{ color: "#00D4AA" }} aria-hidden />
-                <span className="font-display text-[14px] font-bold text-navy">
+                <span className="font-display text-[14px] font-bold text-fg">
                   Live preview
                 </span>
               </div>
-              <p className="mb-4 text-[11px] text-text-muted">
+              <p className="mb-4 text-[11px] text-fg-muted">
                 Rendered for a sample recipient. Every contact gets their own
                 values.
               </p>
 
               {showSms && (
                 <div className="mb-4">
-                  <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                     SMS
                   </div>
                   <div
-                    className="max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-[12px] text-navy"
+                    className="max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-[12px] text-fg"
                     style={{ background: "var(--bg)" }}
                   >
                     {renderPreview(body) || "Your message preview…"}
@@ -647,14 +647,14 @@ export default function CampaignComposerPage() {
 
               {showEmail && (
                 <div>
-                  <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                     Email
                   </div>
                   <div className="rounded-[7px] border">
-                    <div className="border-b px-4 py-2 text-[12px] font-semibold text-navy">
+                    <div className="border-b px-4 py-2 text-[12px] font-semibold text-fg">
                       {subject ? renderPreview(subject) : "No subject"}
                     </div>
-                    <div className="whitespace-pre-wrap px-4 py-3 text-[12px] leading-relaxed text-text-muted">
+                    <div className="whitespace-pre-wrap px-4 py-3 text-[12px] leading-relaxed text-fg-muted">
                       {renderPreview(body) || "Your message preview…"}
                     </div>
                   </div>
@@ -681,9 +681,9 @@ export default function CampaignComposerPage() {
                       style={{ color: "#00D4AA" }}
                       aria-hidden
                     />
-                    <p className="text-[11px] leading-relaxed text-text-muted">
+                    <p className="text-[11px] leading-relaxed text-fg-muted">
                       Sending dispatches to{" "}
-                      <span className="font-semibold text-navy">
+                      <span className="font-semibold text-fg">
                         {audience.toLocaleString()}
                       </span>{" "}
                       valid recipients via the live provider. Each contact gets
@@ -715,7 +715,7 @@ export default function CampaignComposerPage() {
                   </button>
                 </div>
                 {validation && (
-                  <p className="text-center text-[11px] text-text-muted">
+                  <p className="text-center text-[11px] text-fg-muted">
                     {validation}
                   </p>
                 )}
@@ -770,18 +770,18 @@ function DispatchPanel({
             aria-hidden
           />
         )}
-        <span className="text-[13px] font-semibold text-navy">
+        <span className="text-[13px] font-semibold text-fg">
           {completed ? "Campaign sent" : failed ? "Dispatch failed" : "Sending…"}
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-text-muted">
+      <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-fg-muted">
         <span>
           {(p?.sent ?? 0).toLocaleString()} of {(p?.total ?? 0).toLocaleString()}{" "}
           delivered
         </span>
-        <span className="font-mono font-semibold text-navy">{pct}%</span>
+        <span className="font-mono font-semibold text-fg">{pct}%</span>
       </div>
       <div
         className="h-1.5 overflow-hidden rounded-full"
@@ -819,7 +819,7 @@ function DispatchPanel({
             >
               {c.value.toLocaleString()}
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">
+            <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted">
               {c.label}
             </div>
           </div>

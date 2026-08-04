@@ -36,7 +36,7 @@ export default function SettingsPage() {
       <div className="p-[18px] space-y-[18px]">
         <Reveal>
           <div
-            className="flex items-start gap-2 rounded-[11px] border p-4 text-[12px] text-text-muted"
+            className="flex items-start gap-2 rounded-[11px] border p-4 text-[12px] text-fg-muted"
             style={{ background: '#F7F8FC' }}
           >
             <Info size={16} className="mt-0.5 shrink-0 text-teal" aria-hidden />
@@ -70,10 +70,10 @@ export default function SettingsPage() {
 
         <Reveal>
           <FormCard>
-            <div className="font-display text-[14px] font-bold text-navy mb-1">
+            <div className="font-display text-[14px] font-bold text-fg mb-1">
               Runtime configuration
             </div>
-            <div className="text-[11px] text-text-muted mb-3">
+            <div className="text-[11px] text-fg-muted mb-3">
               Editable without a redeploy.
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -83,10 +83,10 @@ export default function SettingsPage() {
                   href={r.href}
                   className="group block rounded-[10px] border p-3 transition-all hover:border-teal/60 hover:shadow-[0_8px_20px_-12px_rgba(27,31,74,0.25)]"
                 >
-                  <div className="text-[12.5px] font-semibold text-navy group-hover:text-teal">
+                  <div className="text-[12.5px] font-semibold text-fg group-hover:text-teal">
                     {r.label} →
                   </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">{r.desc}</div>
+                  <div className="text-[11px] text-fg-muted mt-0.5">{r.desc}</div>
                 </Link>
               ))}
             </div>

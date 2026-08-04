@@ -138,11 +138,11 @@ export default function ContactsDrawer({
       {/* Tag everyone at once */}
       <div className="mb-4 flex flex-wrap items-end gap-2 rounded-[9px] border p-3">
         <div className="flex-1 min-w-[180px]">
-          <label className="mb-1 block text-[11px] font-semibold text-text-muted">
+          <label className="mb-1 block text-[11px] font-semibold text-fg-muted">
             Tag every valid contact in this list
           </label>
           <div className="flex items-center gap-2">
-            <Tag size={14} className="text-text-muted" aria-hidden />
+            <Tag size={14} className="text-fg-muted" aria-hidden />
             <input
               value={bulkTag}
               onChange={(e) => setBulkTag(e.target.value)}
@@ -169,17 +169,17 @@ export default function ContactsDrawer({
         {isFetching && rows.length === 0 ? (
           <div className="space-y-2 py-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-[9px] bg-bg" />
+              <div key={i} className="h-10 animate-pulse rounded-[9px] bg-surface-2" />
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-[12px] text-text-muted">
+          <p className="py-8 text-center text-[12px] text-fg-muted">
             No contacts in this list.
           </p>
         ) : (
           <table className="w-full text-[12px]">
             <thead>
-              <tr className="text-left text-text-muted">
+              <tr className="text-left text-fg-muted">
                 <th className="pb-2 font-semibold">Contact</th>
                 <th className="pb-2 font-semibold">Tags</th>
               </tr>
@@ -188,9 +188,9 @@ export default function ContactsDrawer({
               {rows.map((r) => (
                 <tr key={r.id} className="border-t align-top">
                   <td className="py-2 pr-3">
-                    <div className="font-medium text-navy">{r.phone ?? "—"}</div>
+                    <div className="font-medium text-fg">{r.phone ?? "—"}</div>
                     {r.email && (
-                      <div className="text-[11px] text-text-muted break-all">{r.email}</div>
+                      <div className="text-[11px] text-fg-muted break-all">{r.email}</div>
                     )}
                   </td>
                   <td className="py-2">
@@ -203,7 +203,7 @@ export default function ContactsDrawer({
         )}
       </div>
 
-      <p className="mt-3 text-[11px] text-text-muted">
+      <p className="mt-3 text-[11px] text-fg-muted">
         Showing up to 200 contacts. Tags feed the composer&apos;s audience segment filter.
       </p>
     </Modal>

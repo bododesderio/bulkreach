@@ -100,7 +100,7 @@ function Toggle({
     >
       <span className="sr-only">{checked ? 'On' : 'Off'}</span>
       <span
-        className="inline-block rounded-full bg-white shadow transition-transform"
+        className="inline-block rounded-full bg-surface shadow transition-transform"
         style={{ width: '16px', height: '16px', transform: checked ? 'translateX(20px)' : 'translateX(3px)' }}
       />
     </button>
@@ -259,7 +259,7 @@ export default function PlansPage() {
       <div className="p-[18px] space-y-4">
         {/* Header row */}
         <div className="flex items-center justify-between">
-          <p className="text-[12px] text-text-muted">
+          <p className="text-[12px] text-fg-muted">
             Edits flow straight to the public pricing page and client checkout.
           </p>
           <button
@@ -275,18 +275,18 @@ export default function PlansPage() {
         {loading ? (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-[11px] border bg-white" />
+              <div key={i} className="h-16 animate-pulse rounded-[11px] border bg-surface" />
             ))}
           </div>
         ) : plans.length === 0 ? (
           <FormCard>
-            <p className="text-center text-[13px] text-text-muted py-6">
+            <p className="text-center text-[13px] text-fg-muted py-6">
               No plans yet. Create your first plan.
             </p>
           </FormCard>
         ) : (
           <Reveal>
-            <div className="overflow-x-auto rounded-[11px] border bg-white">
+            <div className="overflow-x-auto rounded-[11px] border bg-surface">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b">
@@ -294,7 +294,7 @@ export default function PlansPage() {
                       (h) => (
                         <th
                           key={h}
-                          className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-muted whitespace-nowrap"
+                          className="px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-[0.04em] text-fg-muted whitespace-nowrap"
                         >
                           {h}
                         </th>
@@ -305,10 +305,10 @@ export default function PlansPage() {
                 <tbody>
                   {plans.map((p) => (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-black/[0.015] transition-colors">
-                      <td className="px-4 py-3 font-mono text-text-muted">{p.display_order}</td>
+                      <td className="px-4 py-3 font-mono text-fg-muted">{p.display_order}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-navy">{p.name}</span>
+                          <span className="font-semibold text-fg">{p.name}</span>
                           {p.featured && (
                             <span
                               className="inline-flex items-center gap-0.5 rounded-full font-semibold uppercase"
@@ -329,19 +329,19 @@ export default function PlansPage() {
                         {p.price_ugx.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 font-mono whitespace-nowrap">{fmtMsgs(p.messages_per_month)}</td>
-                      <td className="px-4 py-3 font-mono text-text-muted">{p.batch_size.toLocaleString()}</td>
-                      <td className="px-4 py-3 capitalize text-text-muted">{p.period}</td>
+                      <td className="px-4 py-3 font-mono text-fg-muted">{p.batch_size.toLocaleString()}</td>
+                      <td className="px-4 py-3 capitalize text-fg-muted">{p.period}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={p.status} />
                       </td>
-                      <td className="px-4 py-3 font-mono text-text-muted">{p.subscriber_count}</td>
+                      <td className="px-4 py-3 font-mono text-fg-muted">{p.subscriber_count}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={() => openEdit(p)}
                             aria-label={`Edit ${p.name}`}
-                            className="rounded-md p-1.5 text-text-muted transition hover:bg-black/[0.05] hover:text-navy"
+                            className="rounded-md p-1.5 text-fg-muted transition hover:bg-black/[0.05] hover:text-fg"
                           >
                             <Pencil size={15} />
                           </button>
@@ -351,7 +351,7 @@ export default function PlansPage() {
                             disabled={p.subscriber_count > 0 || deletingId === p.id}
                             aria-label={`Delete ${p.name}`}
                             title={p.subscriber_count > 0 ? 'Has active subscribers — hide instead' : 'Delete'}
-                            className="rounded-md p-1.5 text-text-muted transition hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                            className="rounded-md p-1.5 text-fg-muted transition hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-fg-muted"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -382,14 +382,14 @@ export default function PlansPage() {
           >
             <FormCard>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-bold text-[16px] text-navy">
+                <h2 className="font-display font-bold text-[16px] text-fg">
                   {editing === 'new' ? 'New plan' : `Edit “${editing.name}”`}
                 </h2>
                 <button
                   type="button"
                   onClick={() => !saving && setEditing(null)}
                   aria-label="Close"
-                  className="rounded-md p-1 text-text-muted transition hover:bg-black/[0.05] hover:text-navy"
+                  className="rounded-md p-1 text-fg-muted transition hover:bg-black/[0.05] hover:text-fg"
                 >
                   <X size={18} />
                 </button>
@@ -434,7 +434,7 @@ export default function PlansPage() {
                       placeholder={form.unlimited ? 'Unlimited' : undefined}
                       onChange={(e) => update('messages_per_month', Number(e.target.value))}
                     />
-                    <label className="flex items-center gap-2 whitespace-nowrap text-[12px] text-text-muted select-none">
+                    <label className="flex items-center gap-2 whitespace-nowrap text-[12px] text-fg-muted select-none">
                       <Toggle
                         id="pf-unlimited"
                         checked={form.unlimited}
@@ -502,7 +502,7 @@ export default function PlansPage() {
                       checked={form.featured}
                       onChange={(v) => update('featured', v)}
                     />
-                    <span className="text-[12px] text-text-muted select-none">
+                    <span className="text-[12px] text-fg-muted select-none">
                       {form.featured ? 'Highlighted' : 'Not featured'}
                     </span>
                   </div>

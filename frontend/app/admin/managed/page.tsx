@@ -24,7 +24,7 @@ import {
   stepOf, primaryActionFor, initials, ageOf,
 } from '@/lib/managed';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 export default function ManagedListPage() {
   const [filter, setFilter] = useState<StatFilter>('all');
@@ -57,10 +57,10 @@ export default function ManagedListPage() {
             {initials(m.account_name)}
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-semibold text-navy group-hover:text-teal transition-colors">
+            <span className="block truncate font-semibold text-fg group-hover:text-teal transition-colors">
               {m.account_name ?? '—'}
             </span>
-            <span className="block max-w-[280px] truncate text-[11px] text-text-muted">
+            <span className="block max-w-[280px] truncate text-[11px] text-fg-muted">
               {m.brief_text}
             </span>
           </span>
@@ -81,7 +81,7 @@ export default function ManagedListPage() {
             >
               {step.label}
             </span>
-            <span className="text-[10px] text-text-muted">{st.label}</span>
+            <span className="text-[10px] text-fg-muted">{st.label}</span>
             {(m.on_hold || m.cancelled) && (
               <span className="text-[10px] font-semibold" style={{ color: m.cancelled ? '#DC2626' : '#B45309' }}>
                 {m.cancelled ? 'Cancelled' : 'On hold'}
@@ -100,22 +100,22 @@ export default function ManagedListPage() {
           <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: ch.bg, color: ch.color }}>
             {ch.label}
           </span>
-        ) : <span className="text-[11px] text-text-muted">—</span>;
+        ) : <span className="text-[11px] text-fg-muted">—</span>;
       },
     },
     {
       key: 'age',
       label: 'Age',
-      render: (m) => <span className="text-[11px] text-text-muted whitespace-nowrap">{ageOf(m.created_at)}</span>,
+      render: (m) => <span className="text-[11px] text-fg-muted whitespace-nowrap">{ageOf(m.created_at)}</span>,
     },
     {
       key: 'next',
       label: 'Next step',
       render: (m) => {
-        if (m.cancelled) return <span className="text-[11px] text-text-muted">—</span>;
+        if (m.cancelled) return <span className="text-[11px] text-fg-muted">—</span>;
         const a = primaryActionFor(m.status);
         return (
-          <span className="text-[11px] font-semibold text-navy">
+          <span className="text-[11px] font-semibold text-fg">
             {m.on_hold ? 'On hold' : a ? a.label : 'Done'}
           </span>
         );
@@ -128,7 +128,7 @@ export default function ManagedListPage() {
       render: (m) => (
         <Link
           href={`/admin/managed/${m.id}`}
-          className="inline-block rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-text-muted hover:border-teal hover:text-navy transition-colors"
+          className="inline-block rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted hover:border-teal hover:text-fg transition-colors"
         >
           Open →
         </Link>
@@ -175,8 +175,8 @@ export default function ManagedListPage() {
         <Reveal delay={0.12}>
           <div className={cardBase}>
             <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="font-display text-[14px] font-bold text-navy">Jobs</div>
-              <div className="flex items-center gap-2 text-[11px] text-text-muted">
+              <div className="font-display text-[14px] font-bold text-fg">Jobs</div>
+              <div className="flex items-center gap-2 text-[11px] text-fg-muted">
                 <span>
                   {visible.length}
                   {filter !== 'all' && ` of ${totalCount}`} job{visible.length !== 1 ? 's' : ''}

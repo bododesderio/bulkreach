@@ -18,7 +18,7 @@ import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/ui';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type AccountStatus = 'active' | 'trial' | 'past_due' | 'suspended';
@@ -174,10 +174,10 @@ export default function AccountsPage() {
         label: 'Account',
         render: (row) => (
           <div>
-            <div className="font-semibold text-[12px]" style={{ color: '#1B1F4A' }}>
+            <div className="font-semibold text-[12px]" style={{ color: 'var(--text)' }}>
               {row.name}
             </div>
-            <div className="text-[10.5px] text-text-muted mt-[1px]">{row.email}</div>
+            <div className="text-[10.5px] text-fg-muted mt-[1px]">{row.email}</div>
           </div>
         ),
       },
@@ -188,7 +188,7 @@ export default function AccountsPage() {
           <span
             style={{
               background: 'rgba(27,31,74,0.09)',
-              color: '#1B1F4A',
+              color: 'var(--text)',
               padding: '2px 9px',
               fontSize: '9.5px',
               fontWeight: 700,
@@ -206,7 +206,7 @@ export default function AccountsPage() {
         key: 'joined',
         label: 'Joined',
         render: (row) => (
-          <span className="text-[11px] text-text-muted whitespace-nowrap">
+          <span className="text-[11px] text-fg-muted whitespace-nowrap">
             {fmtDate(row.joined)}
           </span>
         ),
@@ -246,7 +246,7 @@ export default function AccountsPage() {
               <Link
                 href={`/admin/accounts/${row.id}`}
                 className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors"
-                style={{ color: '#1B1F4A', borderColor: 'var(--border)', background: 'transparent' }}
+                style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'transparent' }}
                 aria-label={`Manage ${row.name}`}
               >
                 <Settings2 size={12} aria-hidden="true" />
@@ -258,7 +258,7 @@ export default function AccountsPage() {
                   disabled={busy}
                   onClick={() => handleImpersonate(row)}
                   className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ color: '#1B1F4A', borderColor: 'var(--border)', background: 'transparent' }}
+                  style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'transparent' }}
                   aria-label={`Log in as ${row.name}`}
                 >
                   <LogIn size={12} aria-hidden="true" />
@@ -309,7 +309,7 @@ export default function AccountsPage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading accounts…
           </div>
         )}
@@ -361,10 +361,10 @@ export default function AccountsPage() {
             <Reveal delay={0.2} lift className={cardBase}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                     Client accounts
                   </div>
-                  <div className="text-[11px] text-text-muted">
+                  <div className="text-[11px] text-fg-muted">
                     Showing {rows.length} of {stats.total} client{stats.total !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export default function AccountsPage() {
                 <div className="relative">
                   <Search
                     size={13}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none"
                     aria-hidden="true"
                   />
                   <input
@@ -422,7 +422,7 @@ export default function AccountsPage() {
                 stagger={0.03}
                 baseDelay={0.08}
                 empty={
-                  <span className="text-text-muted">No accounts match your filter.</span>
+                  <span className="text-fg-muted">No accounts match your filter.</span>
                 }
               />
             </Reveal>
@@ -430,7 +430,7 @@ export default function AccountsPage() {
         )}
 
         {!loading && !stats && (
-          <div className="py-16 text-center text-[12px] text-text-muted">
+          <div className="py-16 text-center text-[12px] text-fg-muted">
             No account data available.
           </div>
         )}

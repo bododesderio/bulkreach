@@ -57,7 +57,7 @@ const fmtDate = (iso: string | null) => {
   });
 };
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── table columns ─────────────────────────────────────────────────────────────
 function buildColumns(): Column<AdminSub>[] {
@@ -67,8 +67,8 @@ function buildColumns(): Column<AdminSub>[] {
       label: 'Account',
       render: (row) => (
         <div>
-          <div className="text-[12px] font-semibold text-navy">{row.account_name}</div>
-          <div className="text-[10.5px] text-text-muted">{row.account_email}</div>
+          <div className="text-[12px] font-semibold text-fg">{row.account_name}</div>
+          <div className="text-[10.5px] text-fg-muted">{row.account_email}</div>
         </div>
       ),
     },
@@ -76,7 +76,7 @@ function buildColumns(): Column<AdminSub>[] {
       key: 'plan_name',
       label: 'Plan',
       render: (row) => (
-        <span className="text-[12px] font-semibold text-navy">{row.plan_name}</span>
+        <span className="text-[12px] font-semibold text-fg">{row.plan_name}</span>
       ),
     },
     {
@@ -84,7 +84,7 @@ function buildColumns(): Column<AdminSub>[] {
       label: 'Price',
       align: 'right',
       render: (row) => (
-        <span className="font-mono text-[12px] text-navy">
+        <span className="font-mono text-[12px] text-fg">
           {row.price_ugx != null ? `UGX ${row.price_ugx.toLocaleString()}` : '—'}
         </span>
       ),
@@ -98,7 +98,7 @@ function buildColumns(): Column<AdminSub>[] {
       key: 'current_period_end',
       label: 'Renews',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">
           {fmtDate(row.current_period_end)}
         </span>
       ),
@@ -135,13 +135,13 @@ export default function SubscriptionsPage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading subscriptions…
           </div>
         )}
 
         {!loading && isError && (
-          <div className="bg-white border rounded-[11px] p-4">
+          <div className="bg-surface border rounded-[11px] p-4">
             <DataState error={error} onRetry={() => refetch()} />
           </div>
         )}
@@ -195,10 +195,10 @@ export default function SubscriptionsPage() {
 
             {/* Subscriptions table */}
             <Reveal delay={0.15} lift className={cardBase}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Active subscriptions
               </div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="text-[11px] text-fg-muted mb-4">
                 {items.length} subscription{items.length !== 1 ? 's' : ''}{' '}
                 &middot; {stats.active} active
               </div>
@@ -216,7 +216,7 @@ export default function SubscriptionsPage() {
         )}
 
         {!loading && !stats && (
-          <div className="py-16 text-center text-[12px] text-text-muted">
+          <div className="py-16 text-center text-[12px] text-fg-muted">
             No subscription data available.
           </div>
         )}

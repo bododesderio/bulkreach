@@ -45,7 +45,7 @@ interface RevenueResponse {
 // ── constants ─────────────────────────────────────────────────────────────────
 const METHOD_COLORS = ['#00D4AA', '#1B1F4A', '#F59E0B', '#6366F1', '#10B981', '#EF4444'];
 const periodParam = (p: Period): string => p.toLowerCase();
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── page ──────────────────────────────────────────────────────────────────────
 export default function RevenuePage() {
@@ -92,13 +92,13 @@ export default function RevenuePage() {
 
       <div className="p-[18px]">
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading revenue data…
           </div>
         )}
 
         {!loading && isError && (
-          <div className="bg-white border rounded-[11px] p-4">
+          <div className="bg-surface border rounded-[11px] p-4">
             <DataState error={error} onRetry={() => refetch()} />
           </div>
         )}
@@ -167,10 +167,10 @@ export default function RevenuePage() {
             {/* Charts row: area trend (1.5fr) + method split donut (1fr) */}
             <div className="grid grid-cols-1 gap-3 lg:[grid-template-columns:1.5fr_1fr]">
               <Reveal delay={0.15} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                   Revenue trend
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">
+                <div className="text-[11px] text-fg-muted mb-4">
                   Monthly performance · UGX
                 </div>
                 {series.length === 0 ? (
@@ -178,7 +178,7 @@ export default function RevenuePage() {
                     className="flex items-center justify-center"
                     style={{ height: 230 }}
                   >
-                    <span className="text-[12px] text-text-muted">No series data yet.</span>
+                    <span className="text-[12px] text-fg-muted">No series data yet.</span>
                   </div>
                 ) : (
                   <AreaTrend
@@ -194,10 +194,10 @@ export default function RevenuePage() {
               </Reveal>
 
               <Reveal delay={0.22} lift className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                   Payment method split
                 </div>
-                <div className="text-[11px] text-text-muted mb-4">
+                <div className="text-[11px] text-fg-muted mb-4">
                   {splits.length} method{splits.length !== 1 ? 's' : ''} · {period}
                 </div>
                 {donutData.length === 0 ? (
@@ -205,7 +205,7 @@ export default function RevenuePage() {
                     className="flex items-center justify-center"
                     style={{ height: 180 }}
                   >
-                    <span className="text-[12px] text-text-muted">No payment data yet.</span>
+                    <span className="text-[12px] text-fg-muted">No payment data yet.</span>
                   </div>
                 ) : (
                   <>
@@ -231,9 +231,9 @@ export default function RevenuePage() {
                                 background: METHOD_COLORS[i % METHOD_COLORS.length],
                               }}
                             />
-                            <span className="text-navy font-medium">{s.method}</span>
+                            <span className="text-fg font-medium">{s.method}</span>
                           </div>
-                          <span className="font-mono text-text-muted">
+                          <span className="font-mono text-fg-muted">
                             {s.share_pct.toFixed(1)}%{' '}
                             · UGX {s.value_ugx.toLocaleString()}
                           </span>
@@ -248,7 +248,7 @@ export default function RevenuePage() {
         )}
 
         {!loading && !totals && (
-          <div className="py-16 text-center text-[12px] text-text-muted">
+          <div className="py-16 text-center text-[12px] text-fg-muted">
             No revenue data available.
           </div>
         )}

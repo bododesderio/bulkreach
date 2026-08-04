@@ -35,7 +35,7 @@ import CountUp from "@/components/admin/CountUp";
 import DataTable, { Column } from "@/components/admin/DataTable";
 import { StatusBadge, DataState } from "@/components/ui";
 
-const cardBase = "bg-white border rounded-[11px] p-4";
+const cardBase = "bg-surface border rounded-[11px] p-4";
 
 const CHANNEL_ICON = { sms: MessageSquare, email: Mail, both: Layers } as const;
 
@@ -171,10 +171,10 @@ export default function CampaignDetailPage() {
         </Link>
         <div className={cardBase}>
           <div className="py-12 text-center">
-            <div className="font-display text-[14px] font-bold text-navy">
+            <div className="font-display text-[14px] font-bold text-fg">
               Campaign not found
             </div>
-            <p className="mt-1 text-[12px] text-text-muted">
+            <p className="mt-1 text-[12px] text-fg-muted">
               It may have been deleted, or the link is incorrect.
             </p>
           </div>
@@ -202,9 +202,9 @@ export default function CampaignDetailPage() {
   if (!campaign) {
     return (
       <div className="space-y-[18px]">
-        <div className="h-8 w-40 animate-pulse rounded-lg bg-bg" />
-        <div className="h-24 animate-pulse rounded-[11px] border bg-bg" />
-        <div className="h-64 animate-pulse rounded-[11px] border bg-bg" />
+        <div className="h-8 w-40 animate-pulse rounded-lg bg-surface-2" />
+        <div className="h-24 animate-pulse rounded-[11px] border bg-surface-2" />
+        <div className="h-64 animate-pulse rounded-[11px] border bg-surface-2" />
       </div>
     );
   }
@@ -221,14 +221,14 @@ export default function CampaignDetailPage() {
       key: "recipient",
       label: "Recipient",
       render: (m) => (
-        <span className="font-mono text-[11px] text-navy">{m.recipient}</span>
+        <span className="font-mono text-[11px] text-fg">{m.recipient}</span>
       ),
     },
     {
       key: "channel",
       label: "Channel",
       render: (m) => (
-        <span className="capitalize text-text-muted">{m.channel}</span>
+        <span className="capitalize text-fg-muted">{m.channel}</span>
       ),
     },
     {
@@ -238,7 +238,7 @@ export default function CampaignDetailPage() {
         <span className="inline-flex flex-wrap items-center gap-1.5">
           <StatusBadge domain="message" status={m.status} />
           {m.error_reason && (
-            <span className="text-[10.5px] text-text-muted">
+            <span className="text-[10.5px] text-fg-muted">
               {m.error_reason}
             </span>
           )}
@@ -249,14 +249,14 @@ export default function CampaignDetailPage() {
       key: "provider",
       label: "Provider",
       render: (m) => (
-        <span className="text-text-muted">{m.provider ?? "—"}</span>
+        <span className="text-fg-muted">{m.provider ?? "—"}</span>
       ),
     },
     {
       key: "sent_at",
       label: "Sent",
       render: (m) => (
-        <span className="whitespace-nowrap text-text-muted">
+        <span className="whitespace-nowrap text-fg-muted">
           {fmtDateTime(m.sent_at)}
         </span>
       ),
@@ -276,7 +276,7 @@ export default function CampaignDetailPage() {
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="font-display text-[20px] font-extrabold text-navy">
+            <h2 className="font-display text-[20px] font-extrabold text-fg">
               {campaign.name}
             </h2>
             <StatusBadge domain="campaign" status={campaign.status} />
@@ -310,7 +310,7 @@ export default function CampaignDetailPage() {
             </button>
           </div>
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-muted">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-fg-muted">
           <Icon size={14} aria-hidden />
           <span className="capitalize">{campaign.type}</span>
           <span>·</span>
@@ -332,16 +332,16 @@ export default function CampaignDetailPage() {
                 style={{ color: "#00D4AA" }}
                 aria-hidden
               />
-              <span className="text-[13px] font-semibold text-navy">
+              <span className="text-[13px] font-semibold text-fg">
                 Dispatching…
               </span>
             </div>
-            <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-text-muted">
+            <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-fg-muted">
               <span>
                 {live.sent.toLocaleString()} of {live.total.toLocaleString()}{" "}
                 delivered
               </span>
-              <span className="font-mono font-semibold text-navy">
+              <span className="font-mono font-semibold text-fg">
                 {Math.round(live.pct)}%
               </span>
             </div>
@@ -381,7 +381,7 @@ export default function CampaignDetailPage() {
             style={{ color: "#EF4444" }}
             aria-hidden
           />
-          <p className="text-[12px] text-text-muted">{campaign.error_message}</p>
+          <p className="text-[12px] text-fg-muted">{campaign.error_message}</p>
         </div>
       )}
 
@@ -398,10 +398,10 @@ export default function CampaignDetailPage() {
         ].map((s) => (
           <RevealItem key={s.label} lift>
             <div className={`${cardBase} h-full`}>
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 {s.label}
               </div>
-              <div className="mt-1 font-mono text-[26px] font-semibold leading-tight text-navy">
+              <div className="mt-1 font-mono text-[26px] font-semibold leading-tight text-fg">
                 <CountUp value={s.value} suffix={s.suffix} />
               </div>
             </div>
@@ -415,24 +415,24 @@ export default function CampaignDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className={cardBase}>
               <div className="flex items-center gap-1.5">
-                <MessageSquare size={14} className="text-text-muted" aria-hidden />
-                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                <MessageSquare size={14} className="text-fg-muted" aria-hidden />
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                   SMS
                 </span>
               </div>
-              <div className="mt-1 text-[12px] text-text-muted">
+              <div className="mt-1 text-[12px] text-fg-muted">
                 {stats.sms_sent.toLocaleString()} sent ·{" "}
                 {stats.sms_failed.toLocaleString()} failed
               </div>
             </div>
             <div className={cardBase}>
               <div className="flex items-center gap-1.5">
-                <Mail size={14} className="text-text-muted" aria-hidden />
-                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                <Mail size={14} className="text-fg-muted" aria-hidden />
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                   Email
                 </span>
               </div>
-              <div className="mt-1 text-[12px] text-text-muted">
+              <div className="mt-1 text-[12px] text-fg-muted">
                 {stats.email_sent.toLocaleString()} sent ·{" "}
                 {stats.email_failed.toLocaleString()} failed
               </div>
@@ -444,17 +444,17 @@ export default function CampaignDetailPage() {
       {/* ── Message content ───────────────────────────────────────────────── */}
       <Reveal delay={0.25}>
         <div className={cardBase}>
-          <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+          <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
             Message
           </div>
           {campaign.email_subject && (
-            <div className="mt-2 text-[12px] text-text-md">
-              <span className="text-text-muted">Subject: </span>
+            <div className="mt-2 text-[12px] text-fg">
+              <span className="text-fg-muted">Subject: </span>
               {campaign.email_subject}
             </div>
           )}
           {campaign.sms_body && (
-            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-text-muted">
+            <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-fg-muted">
               {campaign.sms_body}
             </p>
           )}
@@ -463,9 +463,9 @@ export default function CampaignDetailPage() {
 
       {/* ── Per-message delivery table ────────────────────────────────────── */}
       <Reveal delay={0.3}>
-        <div className="overflow-hidden rounded-[11px] border bg-white">
+        <div className="overflow-hidden rounded-[11px] border bg-surface">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-            <div className="font-display text-[14px] font-bold text-navy">
+            <div className="font-display text-[14px] font-bold text-fg">
               Delivery
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -477,7 +477,7 @@ export default function CampaignDetailPage() {
                   className={`rounded-[5px] border px-2 py-1 text-[11px] font-semibold capitalize transition-colors ${
                     filter === f
                       ? "border-navy bg-navy text-white"
-                      : "text-text-muted hover:border-teal hover:text-teal"
+                      : "text-fg-muted hover:border-teal hover:text-teal"
                   }`}
                 >
                   {f} ({counts[f]})
@@ -497,7 +497,7 @@ export default function CampaignDetailPage() {
               }
             />
             {shown.length > 200 && (
-              <div className="pt-3 text-center text-[10.5px] text-text-muted">
+              <div className="pt-3 text-center text-[10.5px] text-fg-muted">
                 Showing first 200 of {shown.length.toLocaleString()}.
               </div>
             )}

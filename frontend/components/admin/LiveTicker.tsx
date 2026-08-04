@@ -64,7 +64,7 @@ export default function LiveTicker() {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <StatusDot color="#10B981" pulse />
-        <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
+        <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-fg-muted">
           Live activity
         </span>
       </div>
@@ -88,7 +88,7 @@ export default function LiveTicker() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.35 }}
-                  className="flex items-start gap-2.5 rounded-[8px] px-2.5 py-2 hover:bg-bg transition-colors"
+                  className="flex items-start gap-2.5 rounded-[8px] px-2.5 py-2 hover:bg-surface-2 transition-colors"
                 >
                   <span
                     className="flex items-center justify-center rounded-[7px] flex-shrink-0 mt-0.5"
@@ -97,12 +97,12 @@ export default function LiveTicker() {
                     <Icon size={13} color={meta.color} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-semibold text-navy leading-snug truncate">
+                    <div className="text-[12px] font-semibold text-fg leading-snug truncate">
                       {item.text}
                     </div>
-                    <div className="text-[10.5px] text-text-muted">{item.meta}</div>
+                    <div className="text-[10.5px] text-fg-muted">{item.meta}</div>
                   </div>
-                  <span className="text-[10px] text-text-muted whitespace-nowrap mt-0.5">
+                  <span className="text-[10px] text-fg-muted whitespace-nowrap mt-0.5">
                     {fmtWhen(item.when)}
                   </span>
                 </motion.div>

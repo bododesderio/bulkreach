@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 'use client';
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -53,10 +57,10 @@ export default function Donut({ data, height = 200, centerLabel, centerSub, form
       </ResponsiveContainer>
       {centerLabel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <div className="font-mono font-semibold text-navy text-[18px] leading-none">
+          <div className="font-mono font-semibold text-fg text-[18px] leading-none">
             {centerLabel}
           </div>
-          {centerSub && <div className="text-[10.5px] text-text-muted mt-1">{centerSub}</div>}
+          {centerSub && <div className="text-[10.5px] text-fg-muted mt-1">{centerSub}</div>}
         </div>
       )}
     </div>

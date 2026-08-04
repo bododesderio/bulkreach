@@ -161,7 +161,7 @@
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm outline-none transition
+    @apply w-full rounded-lg border bg-surface text-fg px-3.5 py-2.5 text-sm outline-none transition
       placeholder:text-[var(--text-muted)];
     border-color: var(--border);
   }
@@ -183,7 +183,7 @@
   }
   .btn-outline:hover {
     border-color: var(--teal);
-    color: var(--navy);
+    color: var(--fg);
   }
 
   /* Auth field input — used by InputField / PasswordField */

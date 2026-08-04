@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 interface FormGridProps {
   children: React.ReactNode;
   columns?: 1 | 2;
@@ -19,6 +23,6 @@ export function FormActions({ children }: { children: React.ReactNode }) {
 
 export function FormCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white border rounded-[11px] p-6">{children}</div>
+    <div className="bg-surface border rounded-[11px] p-6">{children}</div>
   );
 }

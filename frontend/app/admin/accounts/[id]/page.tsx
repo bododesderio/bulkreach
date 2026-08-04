@@ -104,8 +104,8 @@ interface PlanForm {
 }
 
 // ── constants ─────────────────────────────────────────────────────────────────
-const cardBase = 'bg-white border rounded-[11px] p-4';
-const cardLg = 'bg-white border rounded-[11px] p-6';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
+const cardLg = 'bg-surface border rounded-[11px] p-6';
 
 const EMPTY_FORM: PlanForm = {
   plan_id: '',
@@ -155,12 +155,12 @@ function KVItem({
 }) {
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-0.5">
+      <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-0.5">
         {label}
       </div>
       <div
         className="text-[13px] font-semibold"
-        style={{ color: highlight ? '#B45309' : '#1B1F4A' }}
+        style={{ color: highlight ? '#B45309' : 'var(--text)' }}
       >
         {children ?? value ?? '—'}
       </div>
@@ -261,7 +261,7 @@ export default function AccountDetailPage() {
       key: 'name',
       label: 'Campaign',
       render: (row) => (
-        <span className="font-semibold text-[12px]" style={{ color: '#1B1F4A' }}>
+        <span className="font-semibold text-[12px]" style={{ color: 'var(--text)' }}>
           {row.name}
         </span>
       ),
@@ -270,7 +270,7 @@ export default function AccountDetailPage() {
       key: 'type',
       label: 'Type',
       render: (row) => (
-        <span className="capitalize text-[11px] text-text-muted">{row.type}</span>
+        <span className="capitalize text-[11px] text-fg-muted">{row.type}</span>
       ),
     },
     {
@@ -290,7 +290,7 @@ export default function AccountDetailPage() {
       key: 'created_at',
       label: 'Date',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
       ),
     },
   ], []);
@@ -300,7 +300,7 @@ export default function AccountDetailPage() {
       key: 'tx_ref',
       label: 'Ref',
       render: (row) => (
-        <span className="font-mono text-[10.5px] text-text-muted">{row.tx_ref}</span>
+        <span className="font-mono text-[10.5px] text-fg-muted">{row.tx_ref}</span>
       ),
     },
     {
@@ -317,7 +317,7 @@ export default function AccountDetailPage() {
       key: 'method',
       label: 'Method',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{paymentMethodLabel(row.method)}</span>
+        <span className="text-[11px] text-fg-muted">{paymentMethodLabel(row.method)}</span>
       ),
     },
     {
@@ -329,7 +329,7 @@ export default function AccountDetailPage() {
       key: 'created_at',
       label: 'Date',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
       ),
     },
   ], []);
@@ -339,7 +339,7 @@ export default function AccountDetailPage() {
     return (
       <>
         <Topbar title="Account" subtitle="Loading…" showPeriod={false} />
-        <div className="p-[18px] flex items-center justify-center py-24 text-[12px] text-text-muted">
+        <div className="p-[18px] flex items-center justify-center py-24 text-[12px] text-fg-muted">
           Loading account…
         </div>
       </>
@@ -350,9 +350,9 @@ export default function AccountDetailPage() {
     return (
       <>
         <Topbar title="Account" subtitle="Not found" showPeriod={false} />
-        <div className="p-[18px] text-center py-20 text-[12px] text-text-muted">
+        <div className="p-[18px] text-center py-20 text-[12px] text-fg-muted">
           Account not found.{' '}
-          <Link href="/admin/accounts" className="underline hover:text-navy transition-colors">
+          <Link href="/admin/accounts" className="underline hover:text-fg transition-colors">
             Back to accounts
           </Link>
         </div>
@@ -371,7 +371,7 @@ export default function AccountDetailPage() {
         {/* ── Back link ──────────────────────────────────────────────────── */}
         <Link
           href="/admin/accounts"
-          className="inline-flex items-center gap-1.5 text-[11px] text-text-muted hover:text-navy transition-colors"
+          className="inline-flex items-center gap-1.5 text-[11px] text-fg-muted hover:text-fg transition-colors"
           aria-label="Back to accounts list"
         >
           <ArrowLeft size={13} aria-hidden="true" />
@@ -384,7 +384,7 @@ export default function AccountDetailPage() {
             {/* Identity */}
             <div className="flex flex-col gap-2 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-display font-extrabold text-[18px] text-navy leading-tight">
+                <h1 className="font-display font-extrabold text-[18px] text-fg leading-tight">
                   {account.name}
                 </h1>
                 <StatusBadge domain="account" status={account.status} />
@@ -392,7 +392,7 @@ export default function AccountDetailPage() {
                 <span
                   style={{
                     background: 'rgba(27,31,74,0.09)',
-                    color: '#1B1F4A',
+                    color: 'var(--text)',
                     padding: '2px 9px',
                     fontSize: '9.5px',
                     fontWeight: 700,
@@ -404,13 +404,13 @@ export default function AccountDetailPage() {
                   {account.plan || 'No plan'}
                 </span>
               </div>
-              <div className="text-[12px] text-text-muted truncate">{account.email}</div>
+              <div className="text-[12px] text-fg-muted truncate">{account.email}</div>
               <div className="flex items-center gap-4 flex-wrap mt-0.5">
-                <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+                <span className="inline-flex items-center gap-1 text-[11px] text-fg-muted">
                   <Calendar size={12} aria-hidden="true" />
                   Joined {fmtDate(account.joined)}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+                <span className="inline-flex items-center gap-1 text-[11px] text-fg-muted">
                   <Users size={12} aria-hidden="true" />
                   {users_count} user{users_count !== 1 ? 's' : ''}
                 </span>
@@ -420,18 +420,18 @@ export default function AccountDetailPage() {
             {/* Quick stats */}
             <div className="flex items-start gap-6 flex-wrap shrink-0">
               <div className="text-right">
-                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                   Messages / mo
                 </div>
-                <div className="font-mono font-semibold text-[20px] text-navy leading-tight mt-0.5">
+                <div className="font-mono font-semibold text-[20px] text-fg leading-tight mt-0.5">
                   {account.messages_month.toLocaleString()}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                <div className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                   MRR
                 </div>
-                <div className="font-mono font-semibold text-[20px] text-navy leading-tight mt-0.5">
+                <div className="font-mono font-semibold text-[20px] text-fg leading-tight mt-0.5">
                   {account.mrr_ugx > 0 ? `UGX ${account.mrr_ugx.toLocaleString()}` : '—'}
                 </div>
               </div>
@@ -443,7 +443,7 @@ export default function AccountDetailPage() {
         <Reveal delay={0.07}>
           <div className={cardBase}>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <div className="font-display text-[14px] font-bold text-navy">
+              <div className="font-display text-[14px] font-bold text-fg">
                 Subscription &amp; plan controls
               </div>
               {subscription?.manually_assigned && (
@@ -499,7 +499,7 @@ export default function AccountDetailPage() {
                 )}
               </div>
             ) : (
-              <p className="text-[12px] text-text-muted">No active subscription.</p>
+              <p className="text-[12px] text-fg-muted">No active subscription.</p>
             )}
           </div>
         </Reveal>
@@ -508,10 +508,10 @@ export default function AccountDetailPage() {
         <Reveal delay={0.14}>
           <div className={cardLg}>
             <div className="mb-4">
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Assign / override plan
               </div>
-              <p className="text-[11px] text-text-muted">
+              <p className="text-[11px] text-fg-muted">
                 Custom overrides mark this as a manual deal — payment settlement and dunning
                 won&apos;t reset it.
               </p>
@@ -654,7 +654,7 @@ export default function AccountDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Reveal delay={0.21}>
             <div className={cardBase}>
-              <div className="font-display text-[13px] font-bold text-navy mb-3">
+              <div className="font-display text-[13px] font-bold text-fg mb-3">
                 Recent campaigns
               </div>
               <DataTable<Campaign>
@@ -664,7 +664,7 @@ export default function AccountDetailPage() {
                 stagger={0.03}
                 baseDelay={0.1}
                 empty={
-                  <span className="text-text-muted">No campaigns yet.</span>
+                  <span className="text-fg-muted">No campaigns yet.</span>
                 }
               />
             </div>
@@ -672,7 +672,7 @@ export default function AccountDetailPage() {
 
           <Reveal delay={0.28}>
             <div className={cardBase}>
-              <div className="font-display text-[13px] font-bold text-navy mb-3">
+              <div className="font-display text-[13px] font-bold text-fg mb-3">
                 Recent payments
               </div>
               <DataTable<Payment>
@@ -682,7 +682,7 @@ export default function AccountDetailPage() {
                 stagger={0.03}
                 baseDelay={0.1}
                 empty={
-                  <span className="text-text-muted">No payments yet.</span>
+                  <span className="text-fg-muted">No payments yet.</span>
                 }
               />
             </div>

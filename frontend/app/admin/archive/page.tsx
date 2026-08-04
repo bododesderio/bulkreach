@@ -27,7 +27,7 @@ import StatCard from '@/components/admin/StatCard';
 import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -457,7 +457,7 @@ export default function ArchivePage() {
       label: 'Campaigns',
       align: 'right',
       render: (row) => (
-        <span className="font-mono text-[11px] text-text-md">
+        <span className="font-mono text-[11px] text-fg">
           {row.campaigns === 0 ? '—' : row.campaigns.toLocaleString()}
         </span>
       ),
@@ -503,14 +503,14 @@ export default function ArchivePage() {
       key: 'account_id',
       label: 'Scope',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.account_id ?? 'Global'}</span>
+        <span className="text-[11px] text-fg-muted">{row.account_id ?? 'Global'}</span>
       ),
     },
     {
       key: 'retention',
       label: 'Retention',
       render: (row) => (
-        <span className="font-mono text-[11px] text-text-md">
+        <span className="font-mono text-[11px] text-fg">
           {row.never_delete
             ? 'Never delete'
             : row.retention_months != null
@@ -523,7 +523,7 @@ export default function ArchivePage() {
       key: 'updated_at',
       label: 'Updated',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.updated_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.updated_at)}</span>
       ),
     },
   ], []);
@@ -539,7 +539,7 @@ export default function ArchivePage() {
             <div className="font-semibold text-[12px]" style={{ color: NAVY }}>
               {name || '—'}
             </div>
-            <div className="font-mono text-[10px] text-text-muted">
+            <div className="font-mono text-[10px] text-fg-muted">
               {row.phone ?? row.email ?? row.id}
             </div>
           </div>
@@ -550,7 +550,7 @@ export default function ArchivePage() {
       key: 'account_name',
       label: 'Account',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.account_name ?? '—'}</span>
+        <span className="text-[11px] text-fg-muted">{row.account_name ?? '—'}</span>
       ),
     },
     {
@@ -565,7 +565,7 @@ export default function ArchivePage() {
       key: 'last_seen_at',
       label: 'Last seen',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.last_seen_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.last_seen_at)}</span>
       ),
     },
     {
@@ -623,7 +623,7 @@ export default function ArchivePage() {
           <div className="text-[11px] font-semibold capitalize" style={{ color: NAVY }}>
             {row.resource_type.replace('_', ' ')}
           </div>
-          <div className="font-mono text-[10px] text-text-muted break-all">{row.resource_id}</div>
+          <div className="font-mono text-[10px] text-fg-muted break-all">{row.resource_id}</div>
         </div>
       ),
     },
@@ -631,21 +631,21 @@ export default function ArchivePage() {
       key: 'reason',
       label: 'Reason',
       render: (row) => (
-        <span className="text-[11px] text-text-md line-clamp-2 max-w-[200px] block">{row.reason}</span>
+        <span className="text-[11px] text-fg line-clamp-2 max-w-[200px] block">{row.reason}</span>
       ),
     },
     {
       key: 'placed_by_email',
       label: 'Placed by',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.placed_by_email}</span>
+        <span className="text-[11px] text-fg-muted">{row.placed_by_email}</span>
       ),
     },
     {
       key: 'placed_at',
       label: 'Placed',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.placed_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.placed_at)}</span>
       ),
     },
     {
@@ -696,7 +696,7 @@ export default function ArchivePage() {
       key: 'requested_by',
       label: 'Requested by',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.requested_by ?? '—'}</span>
+        <span className="text-[11px] text-fg-muted">{row.requested_by ?? '—'}</span>
       ),
     },
     {
@@ -714,14 +714,14 @@ export default function ArchivePage() {
       key: 'created_at',
       label: 'Created',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.created_at)}</span>
       ),
     },
     {
       key: 'executed_at',
       label: 'Executed',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.executed_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.executed_at)}</span>
       ),
     },
     {
@@ -775,21 +775,21 @@ export default function ArchivePage() {
       label: 'Size',
       align: 'right',
       render: (row) => (
-        <span className="font-mono text-[11px] text-text-md">{formatBytes(row.size_bytes)}</span>
+        <span className="font-mono text-[11px] text-fg">{formatBytes(row.size_bytes)}</span>
       ),
     },
     {
       key: 'storage_class',
       label: 'Storage',
       render: (row) => (
-        <span className="text-[11px] text-text-muted capitalize">{row.storage_class}</span>
+        <span className="text-[11px] text-fg-muted capitalize">{row.storage_class}</span>
       ),
     },
     {
       key: 'archived_at',
       label: 'Archived',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDate(row.archived_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDate(row.archived_at)}</span>
       ),
     },
   ], []);
@@ -806,7 +806,7 @@ export default function ArchivePage() {
       key: 'resource',
       label: 'Resource',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">
+        <span className="text-[11px] text-fg-muted">
           {row.resource_type}
           {row.resource_id ? ` · ${row.resource_id}` : ''}
         </span>
@@ -816,21 +816,21 @@ export default function ArchivePage() {
       key: 'actor_email',
       label: 'Actor',
       render: (row) => (
-        <span className="text-[11px] text-text-muted">{row.actor_email}</span>
+        <span className="text-[11px] text-fg-muted">{row.actor_email}</span>
       ),
     },
     {
       key: 'ip_address',
       label: 'IP',
       render: (row) => (
-        <span className="font-mono text-[11px] text-text-muted">{row.ip_address ?? '—'}</span>
+        <span className="font-mono text-[11px] text-fg-muted">{row.ip_address ?? '—'}</span>
       ),
     },
     {
       key: 'created_at',
       label: 'When',
       render: (row) => (
-        <span className="text-[11px] text-text-muted whitespace-nowrap">{fmtDateTime(row.created_at)}</span>
+        <span className="text-[11px] text-fg-muted whitespace-nowrap">{fmtDateTime(row.created_at)}</span>
       ),
     },
   ], []);
@@ -852,7 +852,7 @@ export default function ArchivePage() {
       <div className="p-[18px]">
         {/* ── header actions ─────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-3 mb-5 flex-wrap">
-          <p className="text-[11px] text-text-muted max-w-[480px]">
+          <p className="text-[11px] text-fg-muted max-w-[480px]">
             ClickHouse 7-yr analytics TTL and AWS Glacier transitions are infra-gated in this environment.
           </p>
           <div className="flex items-center gap-2 shrink-0">
@@ -860,7 +860,7 @@ export default function ArchivePage() {
               type="button"
               disabled={dryRunBusy}
               onClick={handleDryRun}
-              className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-[7px] border px-3 py-[7px] transition-colors hover:bg-bg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-[7px] border px-3 py-[7px] transition-colors hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderColor: AMBER, color: AMBER }}
               aria-label="Run retention dry-run"
             >
@@ -883,7 +883,7 @@ export default function ArchivePage() {
 
         {/* ── loading ────────────────────────────────────────────────────── */}
         {loading && (
-          <div className="flex items-center justify-center py-16 text-[12px] text-text-muted">
+          <div className="flex items-center justify-center py-16 text-[12px] text-fg-muted">
             Loading archive data…
           </div>
         )}
@@ -964,21 +964,21 @@ export default function ArchivePage() {
                 className="flex items-center gap-5 mb-[18px] px-4 py-2.5 rounded-[9px] border flex-wrap"
                 style={{ background: `${TEAL}08`, borderColor: `${TEAL}30` }}
               >
-                <span className="text-[11px] text-text-muted">
+                <span className="text-[11px] text-fg-muted">
                   Storage estimate:{' '}
-                  <strong className="text-navy font-semibold">
+                  <strong className="text-fg font-semibold">
                     {formatBytes(overview.storage_estimate_bytes)}
                   </strong>
                 </span>
-                <span className="text-[11px] text-text-muted">
+                <span className="text-[11px] text-fg-muted">
                   Oldest record:{' '}
-                  <strong className="text-navy font-semibold">
+                  <strong className="text-fg font-semibold">
                     {fmtDate(overview.oldest_archived_at)}
                   </strong>
                 </span>
-                <span className="text-[11px] text-text-muted">
+                <span className="text-[11px] text-fg-muted">
                   Retention policy:{' '}
-                  <strong className="text-navy font-semibold">
+                  <strong className="text-fg font-semibold">
                     {overview.live_retention_months} months
                   </strong>
                 </span>
@@ -987,10 +987,10 @@ export default function ArchivePage() {
 
             {/* ── retention breakdown ───────────────────────────────────── */}
             <Reveal delay={0.15} lift className={`${cardBase} mb-[18px]`}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Retention lifecycle
               </div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="text-[11px] text-fg-muted mb-4">
                 Archive periods — Hot → Warm → Glacier per policy
               </div>
               <div className="flex items-center gap-4 mb-4 flex-wrap" aria-label="Retention state legend">
@@ -1001,7 +1001,7 @@ export default function ArchivePage() {
                       style={{ background: STATE_COLOR[s] }}
                       aria-hidden="true"
                     />
-                    <span className="text-[10.5px] font-semibold text-text-muted capitalize">{s}</span>
+                    <span className="text-[10.5px] font-semibold text-fg-muted capitalize">{s}</span>
                   </div>
                 ))}
               </div>
@@ -1009,23 +1009,23 @@ export default function ArchivePage() {
                 columns={retentionColumns}
                 rows={retention}
                 rowKey={(row) => row.period}
-                empty={<span className="text-text-muted">No retention data yet.</span>}
+                empty={<span className="text-fg-muted">No retention data yet.</span>}
               />
             </Reveal>
 
             {/* ── retention rules ────────────────────────────────────────── */}
             <Reveal delay={0.2} lift className={`${cardBase} mb-[18px]`}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Retention rules
               </div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="text-[11px] text-fg-muted mb-4">
                 Per-domain overrides — blank rule uses the global policy
               </div>
               <DataTable
                 columns={rulesColumns}
                 rows={rules}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No custom rules. Global policy applies.</span>}
+                empty={<span className="text-fg-muted">No custom rules. Global policy applies.</span>}
               />
               <form
                 onSubmit={handleSaveRule}
@@ -1035,7 +1035,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="rule-domain"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Domain
                   </label>
@@ -1051,7 +1051,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="rule-months"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Months (blank = never)
                   </label>
@@ -1073,7 +1073,7 @@ export default function ArchivePage() {
                     onChange={(e) => setRuleNeverDelete(e.target.checked)}
                     className="rounded"
                   />
-                  <label htmlFor="rule-never-delete" className="text-[12px] text-text-md whitespace-nowrap cursor-pointer">
+                  <label htmlFor="rule-never-delete" className="text-[12px] text-fg whitespace-nowrap cursor-pointer">
                     Never delete
                   </label>
                 </div>
@@ -1092,10 +1092,10 @@ export default function ArchivePage() {
             <Reveal delay={0.25} lift className={`${cardBase} mb-[18px]`}>
               <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
                 <div>
-                  <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                     Master contacts
                   </div>
-                  <div className="text-[11px] text-text-muted">
+                  <div className="text-[11px] text-fg-muted">
                     Deduplicated contact registry · {contacts.length} shown
                   </div>
                 </div>
@@ -1104,7 +1104,7 @@ export default function ArchivePage() {
                 <div className="relative">
                   <Search
                     size={13}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none"
                     aria-hidden="true"
                   />
                   <input
@@ -1120,7 +1120,7 @@ export default function ArchivePage() {
                 <button
                   type="button"
                   onClick={handleSearchContacts}
-                  className="text-[12px] font-semibold rounded-[7px] border px-3 py-[6px] transition-colors hover:bg-bg"
+                  className="text-[12px] font-semibold rounded-[7px] border px-3 py-[6px] transition-colors hover:bg-surface-2"
                   style={{ borderColor: TEAL, color: TEAL }}
                   aria-label="Search contacts"
                 >
@@ -1131,21 +1131,21 @@ export default function ArchivePage() {
                 columns={contactColumns}
                 rows={contacts}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No contacts found.</span>}
+                empty={<span className="text-fg-muted">No contacts found.</span>}
               />
             </Reveal>
 
             {/* ── legal holds ───────────────────────────────────────────── */}
             <Reveal delay={0.3} lift className={`${cardBase} mb-[18px]`}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">Legal holds</div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">Legal holds</div>
+              <div className="text-[11px] text-fg-muted mb-4">
                 Active holds block deletion and anonymisation
               </div>
               <DataTable
                 columns={holdsColumns}
                 rows={legalHolds}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No legal holds placed.</span>}
+                empty={<span className="text-fg-muted">No legal holds placed.</span>}
               />
               <form
                 onSubmit={handlePlaceHold}
@@ -1155,7 +1155,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="hold-type"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Resource type
                   </label>
@@ -1174,7 +1174,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="hold-resource-id"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Resource ID
                   </label>
@@ -1190,7 +1190,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="hold-reason"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Reason
                   </label>
@@ -1216,17 +1216,17 @@ export default function ArchivePage() {
 
             {/* ── erasure requests ──────────────────────────────────────── */}
             <Reveal delay={0.35} lift className={`${cardBase} mb-[18px]`}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                 Erasure requests
               </div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="text-[11px] text-fg-muted mb-4">
                 GDPR / PDPA right-to-erasure requests
               </div>
               <DataTable
                 columns={erasureColumns}
                 rows={erasures}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No erasure requests yet.</span>}
+                empty={<span className="text-fg-muted">No erasure requests yet.</span>}
               />
               <form
                 onSubmit={handleNewErasure}
@@ -1236,7 +1236,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="erasure-phone"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Phone
                   </label>
@@ -1252,7 +1252,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="erasure-email"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Email
                   </label>
@@ -1268,7 +1268,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="erasure-requested-by"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Requested by
                   </label>
@@ -1294,15 +1294,15 @@ export default function ArchivePage() {
 
             {/* ── exports ───────────────────────────────────────────────── */}
             <Reveal delay={0.4} lift className={`${cardBase} mb-[18px]`}>
-              <div className="font-display text-[14px] font-bold text-navy mb-0.5">Exports</div>
-              <div className="text-[11px] text-text-muted mb-4">
+              <div className="font-display text-[14px] font-bold text-fg mb-0.5">Exports</div>
+              <div className="text-[11px] text-fg-muted mb-4">
                 Archive exports by domain · {exports.length} job{exports.length !== 1 ? 's' : ''}
               </div>
               <DataTable
                 columns={exportColumns}
                 rows={exports}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No exports yet.</span>}
+                empty={<span className="text-fg-muted">No exports yet.</span>}
               />
               <form
                 onSubmit={handleNewExport}
@@ -1312,7 +1312,7 @@ export default function ArchivePage() {
                 <div>
                   <label
                     htmlFor="export-domain"
-                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted mb-1 block"
+                    className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted mb-1 block"
                   >
                     Domain
                   </label>
@@ -1344,10 +1344,10 @@ export default function ArchivePage() {
             <Reveal delay={0.45} lift className={cardBase}>
               <div className="flex items-start justify-between mb-1 gap-2 flex-wrap">
                 <div>
-                  <div className="font-display text-[14px] font-bold text-navy mb-0.5">
+                  <div className="font-display text-[14px] font-bold text-fg mb-0.5">
                     Access log
                   </div>
-                  <div className="text-[11px] text-text-muted mb-4">
+                  <div className="text-[11px] text-fg-muted mb-4">
                     Append-only · tamper-evident · last {accessLog.length} entries
                   </div>
                 </div>
@@ -1357,7 +1357,7 @@ export default function ArchivePage() {
                 columns={accessLogColumns}
                 rows={accessLog}
                 rowKey={(row) => row.id}
-                empty={<span className="text-text-muted">No access log entries yet.</span>}
+                empty={<span className="text-fg-muted">No access log entries yet.</span>}
               />
             </Reveal>
           </>

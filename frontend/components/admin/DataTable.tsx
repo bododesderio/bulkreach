@@ -1,3 +1,7 @@
+/**
+ * @author Bodo Desderio <rooiboktechltd@gmail.com>
+ * @copyright 2026 Rooibok Technologies. All rights reserved.
+ */
 import React from 'react';
 
 export interface Column<T> {
@@ -32,7 +36,7 @@ export default function DataTable<T>({
   const lastIndex = rows.length - 1;
 
   if (rows.length === 0 && empty) {
-    return <div className="py-10 text-center text-[12px] text-text-muted">{empty}</div>;
+    return <div className="py-10 text-center text-[12px] text-fg-muted">{empty}</div>;
   }
 
   return (
@@ -43,7 +47,7 @@ export default function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted px-[10px] py-2 border-b"
+                className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted px-[10px] py-2 border-b"
                 style={{ textAlign: col.align ?? 'left' }}
               >
                 {col.label}
@@ -55,7 +59,7 @@ export default function DataTable<T>({
           {rows.map((row, i) => (
             <tr
               key={rowKey(row, i)}
-              className="animate-fade-up hover:bg-bg transition-colors"
+              className="animate-fade-up hover:bg-surface-2 transition-colors"
               style={{ animationDelay: `${baseDelay + i * stagger}s` }}
             >
               {columns.map((col) => {
@@ -65,7 +69,7 @@ export default function DataTable<T>({
                 return (
                   <td
                     key={col.key}
-                    className={`px-[10px] py-[10px] text-[12px] text-text-md align-middle ${
+                    className={`px-[10px] py-[10px] text-[12px] text-fg align-middle ${
                       i === lastIndex ? '' : 'border-b'
                     } ${col.className ?? ''}`}
                     style={{ textAlign: col.align ?? 'left' }}

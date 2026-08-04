@@ -15,7 +15,7 @@ import { Reveal } from "@/components/admin/Reveal";
 import DataTable, { Column } from "@/components/admin/DataTable";
 import ContactsDrawer from "@/components/dashboard/ContactsDrawer";
 
-const cardBase = "bg-white border rounded-[11px] p-4";
+const cardBase = "bg-surface border rounded-[11px] p-4";
 
 interface ContactList {
   id: string;
@@ -159,7 +159,7 @@ export default function ContactsPage() {
           >
             <FileText className="h-4 w-4" aria-hidden />
           </div>
-          <span className="font-semibold text-navy">{l.name}</span>
+          <span className="font-semibold text-fg">{l.name}</span>
         </div>
       ),
     },
@@ -167,7 +167,7 @@ export default function ContactsPage() {
       key: "source_format",
       label: "Source",
       render: (l) => (
-        <span className="text-text-muted">{l.source_format ?? "—"}</span>
+        <span className="text-fg-muted">{l.source_format ?? "—"}</span>
       ),
     },
     {
@@ -183,7 +183,7 @@ export default function ContactsPage() {
       label: "Dupes removed",
       align: "right",
       render: (l) => (
-        <span className="font-mono text-text-muted">
+        <span className="font-mono text-fg-muted">
           {l.duplicate_count.toLocaleString()}
         </span>
       ),
@@ -197,7 +197,7 @@ export default function ContactsPage() {
           <button
             onClick={() => setViewList(l)}
             aria-label={`View & tag contacts in ${l.name}`}
-            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-text-muted transition hover:text-teal hover:border-teal"
+            className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-semibold text-fg-muted transition hover:text-teal hover:border-teal"
           >
             <Tags className="h-3.5 w-3.5" aria-hidden />
             Tags
@@ -206,7 +206,7 @@ export default function ContactsPage() {
             onClick={() => remove(l)}
             disabled={deleteMut.isPending}
             aria-label={`Delete ${l.name}`}
-            className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-text-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
+            className="inline-flex items-center justify-center rounded-[5px] border p-1.5 text-fg-muted transition hover:text-[#EF4444] hover:border-[#EF4444]"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
           </button>
@@ -222,15 +222,15 @@ export default function ContactsPage() {
 
       {/* ── Description ──────────────────────────────────────────────────────── */}
       <Reveal>
-        <p className="text-[12px] text-text-muted">
+        <p className="text-[12px] text-fg-muted">
           Import a contact list to send your first campaign.
         </p>
       </Reveal>
 
       {/* ── Import card ──────────────────────────────────────────────────────── */}
       <Reveal delay={0.1}>
-        <div className="bg-white border rounded-[11px] p-5">
-          <div className="font-display text-[14px] font-bold text-navy mb-4">
+        <div className="bg-surface border rounded-[11px] p-5">
+          <div className="font-display text-[14px] font-bold text-fg mb-4">
             Import contacts
           </div>
 
@@ -296,10 +296,10 @@ export default function ContactsPage() {
               >
                 <Upload className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 text-[13px] font-semibold text-navy">
+              <p className="mt-3 text-[13px] font-semibold text-fg">
                 {busy ? "Importing…" : "Drop a file or click to browse"}
               </p>
-              <p className="mt-1 text-[11px] text-text-muted">
+              <p className="mt-1 text-[11px] text-fg-muted">
                 CSV, Excel (.xlsx), Word (.docx), or PDF · max 50MB
               </p>
             </div>
@@ -339,13 +339,13 @@ export default function ContactsPage() {
                 border: "1px solid var(--border)",
               }}
             >
-              <p className="font-semibold text-navy">
+              <p className="font-semibold text-fg">
                 {lastImport.list.name}: {lastImport.list.valid_contacts} valid ·{" "}
                 {lastImport.list.duplicate_count} duplicates ·{" "}
                 {lastImport.error_count} errors
               </p>
               {lastImport.list.phone_column && (
-                <p className="mt-1 text-text-muted">
+                <p className="mt-1 text-fg-muted">
                   Detected phone: <b>{lastImport.list.phone_column}</b>
                   {lastImport.list.email_column && (
                     <>
@@ -372,7 +372,7 @@ export default function ContactsPage() {
       {/* ── Contact lists ─────────────────────────────────────────────────────── */}
       <Reveal delay={0.2}>
         <div className={cardBase}>
-          <div className="font-display text-[14px] font-bold text-navy mb-3">
+          <div className="font-display text-[14px] font-bold text-fg mb-3">
             Your contact lists
           </div>
 
@@ -381,7 +381,7 @@ export default function ContactsPage() {
               {[0, 1].map((i) => (
                 <div
                   key={i}
-                  className="h-12 animate-pulse rounded-[9px] bg-bg"
+                  className="h-12 animate-pulse rounded-[9px] bg-surface-2"
                 />
               ))}
             </div>
@@ -393,10 +393,10 @@ export default function ContactsPage() {
               >
                 <Users className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 font-semibold text-navy">
+              <p className="mt-3 font-semibold text-fg">
                 No contact lists yet
               </p>
-              <p className="mt-1 text-[11px] text-text-muted">
+              <p className="mt-1 text-[11px] text-fg-muted">
                 Import one above to get started.
               </p>
             </div>

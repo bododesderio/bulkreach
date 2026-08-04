@@ -17,7 +17,7 @@ import StatCard from "@/components/admin/StatCard";
 import DataTable, { Column } from "@/components/admin/DataTable";
 import { StatusBadge, DataState } from "@/components/ui";
 
-const cardBase = "bg-white border rounded-[11px] p-4";
+const cardBase = "bg-surface border rounded-[11px] p-4";
 
 const PERIODS = [
   { key: "7d", label: "7 days" },
@@ -72,7 +72,7 @@ export default function ReportsPage() {
       render: (c) => (
         <Link
           href={`/dashboard/campaigns/${c.id}`}
-          className="font-semibold text-navy hover:text-teal transition-colors"
+          className="font-semibold text-fg hover:text-teal transition-colors"
         >
           {c.name}
         </Link>
@@ -82,21 +82,21 @@ export default function ReportsPage() {
       key: "created_at",
       label: "Date",
       render: (c) => (
-        <span className="text-text-muted whitespace-nowrap">{fmtDate(c.created_at)}</span>
+        <span className="text-fg-muted whitespace-nowrap">{fmtDate(c.created_at)}</span>
       ),
     },
     {
       key: "delivered",
       label: "Delivered",
       render: (c) => (
-        <span className="font-mono text-navy">{c.delivered.toLocaleString()}</span>
+        <span className="font-mono text-fg">{c.delivered.toLocaleString()}</span>
       ),
     },
     {
       key: "delivery_rate",
       label: "Rate",
       render: (c) => (
-        <span className="font-mono text-navy">{Math.round(c.delivery_rate)}%</span>
+        <span className="font-mono text-fg">{Math.round(c.delivery_rate)}%</span>
       ),
     },
     {
@@ -113,7 +113,7 @@ export default function ReportsPage() {
           type="button"
           onClick={() => download(c.id)}
           disabled={downloading === c.id}
-          className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 text-navy hover:text-teal hover:border-teal transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1 text-[11px] rounded-[5px] border font-semibold px-2 py-1 text-fg hover:text-teal hover:border-teal transition-colors disabled:opacity-50"
         >
           {downloading === c.id ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -133,8 +133,8 @@ export default function ReportsPage() {
       <Reveal>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-[20px] font-extrabold text-navy">Reports</h2>
-            <p className="mt-0.5 text-[12px] text-text-muted">
+            <h2 className="font-display text-[20px] font-extrabold text-fg">Reports</h2>
+            <p className="mt-0.5 text-[12px] text-fg-muted">
               Analytics and branded client-success PDFs from your sent campaigns.
             </p>
           </div>
@@ -147,7 +147,7 @@ export default function ReportsPage() {
                 className={`text-[11px] rounded-[5px] font-semibold px-2.5 py-1 border transition-colors ${
                   period === p.key
                     ? "border-teal text-teal"
-                    : "border-transparent text-text-muted hover:text-navy"
+                    : "border-transparent text-fg-muted hover:text-fg"
                 }`}
               >
                 {p.label}
@@ -162,10 +162,10 @@ export default function ReportsPage() {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-[11px] border bg-bg" />
+              <div key={i} className="h-20 animate-pulse rounded-[11px] border bg-surface-2" />
             ))}
           </div>
-          <div className="h-56 animate-pulse rounded-[11px] border bg-bg" />
+          <div className="h-56 animate-pulse rounded-[11px] border bg-surface-2" />
         </div>
       )}
 
@@ -191,8 +191,8 @@ export default function ReportsPage() {
             >
               <FileBarChart className="h-5 w-5" aria-hidden />
             </div>
-            <p className="mt-3 font-semibold text-navy">No campaign data yet</p>
-            <p className="mt-1 max-w-xs text-[12px] text-text-muted">
+            <p className="mt-3 font-semibold text-fg">No campaign data yet</p>
+            <p className="mt-1 max-w-xs text-[12px] text-fg-muted">
               Send a campaign and its analytics — plus a branded PDF report — appear here.
             </p>
             <Link href="/dashboard/campaigns/new" className="btn-primary mt-5">
@@ -248,14 +248,14 @@ export default function ReportsPage() {
 
               {/* Delivery over time */}
               <div className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy">
+                <div className="font-display text-[14px] font-bold text-fg">
                   Delivery over time
                 </div>
-                <p className="mb-4 mt-0.5 text-[11px] text-text-muted">
+                <p className="mb-4 mt-0.5 text-[11px] text-fg-muted">
                   Messages delivered per day.
                 </p>
                 {data.daily.length === 0 ? (
-                  <div className="py-10 text-center text-[12px] text-text-muted">
+                  <div className="py-10 text-center text-[12px] text-fg-muted">
                     No deliveries in this period.
                   </div>
                 ) : (
@@ -277,8 +277,8 @@ export default function ReportsPage() {
 
               {/* Channel breakdown */}
               <div className={cardBase}>
-                <div className="font-display text-[14px] font-bold text-navy">By channel</div>
-                <p className="mb-4 mt-0.5 text-[11px] text-text-muted">Delivered vs failed.</p>
+                <div className="font-display text-[14px] font-bold text-fg">By channel</div>
+                <p className="mb-4 mt-0.5 text-[11px] text-fg-muted">Delivered vs failed.</p>
                 <div className="space-y-4">
                   {[
                     { label: "SMS", sent: data.channels.sms_sent, failed: data.channels.sms_failed },
@@ -289,8 +289,8 @@ export default function ReportsPage() {
                     return (
                       <div key={c.label}>
                         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2">
-                          <span className="text-[12px] font-semibold text-navy">{c.label}</span>
-                          <span className="text-[10.5px] text-text-muted">
+                          <span className="text-[12px] font-semibold text-fg">{c.label}</span>
+                          <span className="text-[10.5px] text-fg-muted">
                             {c.sent.toLocaleString()} sent · {c.failed.toLocaleString()} failed
                           </span>
                         </div>
@@ -317,7 +317,7 @@ export default function ReportsPage() {
           {/* Recent campaigns */}
           <Reveal delay={0.35}>
             <div className={cardBase}>
-              <div className="mb-3 font-display text-[14px] font-bold text-navy">
+              <div className="mb-3 font-display text-[14px] font-bold text-fg">
                 Recent campaigns
               </div>
               <DataTable<CampaignSummaryRow>

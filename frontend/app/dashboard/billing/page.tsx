@@ -16,7 +16,7 @@ import DataTable, { Column } from '@/components/admin/DataTable';
 import { StatusPill } from '@/components/admin/StatusPill';
 import { StatusBadge, DataState } from '@/components/ui';
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -160,28 +160,28 @@ export default function BillingPage() {
       key: 'number',
       label: 'Invoice',
       render: (inv) => (
-        <span className="font-mono text-navy whitespace-nowrap">{inv.number}</span>
+        <span className="font-mono text-fg whitespace-nowrap">{inv.number}</span>
       ),
     },
     {
       key: 'issued_at',
       label: 'Date',
       render: (inv) => (
-        <span className="text-text-muted whitespace-nowrap">{fmtDate(inv.issued_at)}</span>
+        <span className="text-fg-muted whitespace-nowrap">{fmtDate(inv.issued_at)}</span>
       ),
     },
     {
       key: 'plan_name',
       label: 'Plan',
       render: (inv) => (
-        <span className="capitalize text-text-muted">{inv.plan_name ?? '—'}</span>
+        <span className="capitalize text-fg-muted">{inv.plan_name ?? '—'}</span>
       ),
     },
     {
       key: 'vat_ugx',
       label: 'VAT (UGX)',
       render: (inv) => (
-        <span className="font-mono text-text-muted whitespace-nowrap">
+        <span className="font-mono text-fg-muted whitespace-nowrap">
           {inv.vat_ugx.toLocaleString()}
         </span>
       ),
@@ -190,7 +190,7 @@ export default function BillingPage() {
       key: 'total_ugx',
       label: 'Total (UGX)',
       render: (inv) => (
-        <span className="font-mono font-semibold text-navy whitespace-nowrap">
+        <span className="font-mono font-semibold text-fg whitespace-nowrap">
           {inv.total_ugx.toLocaleString()}
         </span>
       ),
@@ -229,14 +229,14 @@ export default function BillingPage() {
       key: 'created_at',
       label: 'Date',
       render: (p) => (
-        <span className="text-text-muted whitespace-nowrap">{fmtDate(p.created_at)}</span>
+        <span className="text-fg-muted whitespace-nowrap">{fmtDate(p.created_at)}</span>
       ),
     },
     {
       key: 'amount_ugx',
       label: 'Amount (UGX)',
       render: (p) => (
-        <span className="font-mono font-semibold text-navy whitespace-nowrap">
+        <span className="font-mono font-semibold text-fg whitespace-nowrap">
           {p.amount_ugx.toLocaleString()}
         </span>
       ),
@@ -245,13 +245,13 @@ export default function BillingPage() {
       key: 'method',
       label: 'Method',
       render: (p) => (
-        <span className="capitalize text-text-muted">{p.method.replace(/_/g, ' ')}</span>
+        <span className="capitalize text-fg-muted">{p.method.replace(/_/g, ' ')}</span>
       ),
     },
     {
       key: 'provider',
       label: 'Provider',
-      render: (p) => <span className="text-text-muted">{p.provider}</span>,
+      render: (p) => <span className="text-fg-muted">{p.provider}</span>,
     },
     {
       key: 'status',
@@ -266,8 +266,8 @@ export default function BillingPage() {
 
       {/* ── Page heading ──────────────────────────────────────────────────── */}
       <Reveal>
-        <h2 className="font-display text-[20px] font-extrabold text-navy">Billing</h2>
-        <p className="mt-0.5 text-[12px] text-text-muted">
+        <h2 className="font-display text-[20px] font-extrabold text-fg">Billing</h2>
+        <p className="mt-0.5 text-[12px] text-fg-muted">
           Manage your subscription plan and view payment history.
         </p>
       </Reveal>
@@ -311,11 +311,11 @@ export default function BillingPage() {
       {account && (
         <Reveal delay={0.05}>
           <div className={cardBase}>
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
               Current plan
             </span>
             <div className="mt-2 flex flex-wrap items-center gap-2.5">
-              <span className="font-mono text-[26px] font-semibold capitalize leading-tight text-navy">
+              <span className="font-mono text-[26px] font-semibold capitalize leading-tight text-fg">
                 {account.plan}
               </span>
               <StatusPill
@@ -325,8 +325,8 @@ export default function BillingPage() {
               />
             </div>
             {account.trial_messages_remaining > 0 && (
-              <p className="mt-1.5 text-[11.5px] text-text-muted">
-                <span className="font-mono font-semibold text-navy">
+              <p className="mt-1.5 text-[11.5px] text-fg-muted">
+                <span className="font-mono font-semibold text-fg">
                   {account.trial_messages_remaining.toLocaleString()}
                 </span>{' '}
                 trial messages remaining
@@ -340,8 +340,8 @@ export default function BillingPage() {
                 style={{ borderColor: 'var(--border)' }}
               >
                 <div>
-                  <div className="text-[12px] font-semibold text-navy">Auto-renewal</div>
-                  <div className="text-[11px] text-text-muted">
+                  <div className="text-[12px] font-semibold text-fg">Auto-renewal</div>
+                  <div className="text-[11px] text-fg-muted">
                     {subscription.current_period_end
                       ? `Renews on ${fmtDate(subscription.current_period_end)}`
                       : 'Renew your plan automatically each period'}
@@ -358,7 +358,7 @@ export default function BillingPage() {
                   style={{ background: subscription.auto_renew ? '#00D4AA' : '#CBD5E1' }}
                 >
                   <span
-                    className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                    className="inline-block h-4 w-4 transform rounded-full bg-surface transition-transform"
                     style={{
                       transform: subscription.auto_renew ? 'translateX(24px)' : 'translateX(4px)',
                     }}
@@ -373,18 +373,18 @@ export default function BillingPage() {
       {/* ── Available plans ───────────────────────────────────────────────── */}
       <Reveal delay={0.1}>
         <div>
-          <h3 className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+          <h3 className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
             Available plans
           </h3>
 
           {loadingPlans ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-44 animate-pulse rounded-[11px] border bg-bg" />
+                <div key={i} className="h-44 animate-pulse rounded-[11px] border bg-surface-2" />
               ))}
             </div>
           ) : plans.length === 0 ? (
-            <p className="text-[12px] text-text-muted">No plans available.</p>
+            <p className="text-[12px] text-fg-muted">No plans available.</p>
           ) : (
             <RevealGroup className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" stagger={0.06}>
               {plans.map((plan) => {
@@ -410,12 +410,12 @@ export default function BillingPage() {
                           />
                         </div>
                       )}
-                      <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                      <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                         {plan.name}
                       </div>
-                      <div className="mt-2 font-mono text-[22px] font-semibold text-navy leading-tight">
+                      <div className="mt-2 font-mono text-[22px] font-semibold text-fg leading-tight">
                         UGX {plan.price_ugx.toLocaleString()}
-                        <span className="text-[13px] font-normal text-text-muted"> /mo</span>
+                        <span className="text-[13px] font-normal text-fg-muted"> /mo</span>
                       </div>
                       <ul className="mt-3 space-y-1.5 flex-1">
                         <li className="flex items-center gap-1.5">
@@ -424,7 +424,7 @@ export default function BillingPage() {
                             style={{ color: '#00D4AA' }}
                             aria-hidden
                           />
-                          <span className="text-[12px] text-text-muted">
+                          <span className="text-[12px] text-fg-muted">
                             {plan.messages_per_month < 0 ? (
                               'Unlimited messages'
                             ) : (
@@ -443,7 +443,7 @@ export default function BillingPage() {
                             style={{ color: '#00D4AA' }}
                             aria-hidden
                           />
-                          <span className="text-[12px] text-text-muted">
+                          <span className="text-[12px] text-fg-muted">
                             Batch size:{' '}
                             <span className="font-mono">{plan.batch_size.toLocaleString()}</span>
                           </span>
@@ -471,14 +471,14 @@ export default function BillingPage() {
       {/* ── Invoices & receipts ───────────────────────────────────────────── */}
       <Reveal delay={0.15}>
         <div className={cardBase}>
-          <div className="mb-3 font-display text-[14px] font-bold text-navy">
+          <div className="mb-3 font-display text-[14px] font-bold text-fg">
             Invoices &amp; receipts
           </div>
 
           {loadingInvoices ? (
             <div className="space-y-3 py-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-10 animate-pulse rounded-lg bg-bg" />
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-2" />
               ))}
             </div>
           ) : invoices.length === 0 ? (
@@ -489,7 +489,7 @@ export default function BillingPage() {
               >
                 <FileText className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 text-[12px] text-text-muted">
+              <p className="mt-3 text-[12px] text-fg-muted">
                 No invoices yet. They appear here after your first payment.
               </p>
             </div>
@@ -506,14 +506,14 @@ export default function BillingPage() {
       {/* ── Payment history ───────────────────────────────────────────────── */}
       <Reveal delay={0.2}>
         <div className={cardBase}>
-          <div className="mb-3 font-display text-[14px] font-bold text-navy">
+          <div className="mb-3 font-display text-[14px] font-bold text-fg">
             Payment history
           </div>
 
           {loadingHistory ? (
             <div className="space-y-3 py-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-10 animate-pulse rounded-lg bg-bg" />
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-2" />
               ))}
             </div>
           ) : history.length === 0 ? (
@@ -524,7 +524,7 @@ export default function BillingPage() {
               >
                 <CreditCard className="h-5 w-5" aria-hidden />
               </div>
-              <p className="mt-3 text-[12px] text-text-muted">No payments yet.</p>
+              <p className="mt-3 text-[12px] text-fg-muted">No payments yet.</p>
             </div>
           ) : (
             <DataTable<PaymentOut>

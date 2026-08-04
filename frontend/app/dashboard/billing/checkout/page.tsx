@@ -130,7 +130,7 @@ function MethodLogo({ method }: { method: string }) {
 function CenteredCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="bg-white border rounded-[11px] p-8 w-full max-w-sm text-center animate-fade-up">
+      <div className="bg-surface border rounded-[11px] p-8 w-full max-w-sm text-center animate-fade-up">
         {children}
       </div>
     </div>
@@ -394,18 +394,18 @@ function CheckoutInner() {
       <div className="space-y-[18px]">
         <Link
           href="/dashboard/billing"
-          className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-navy transition-colors"
+          className="inline-flex items-center gap-1.5 text-[12px] text-fg-muted hover:text-fg transition-colors"
         >
           <ArrowLeft className="h-4 w-4" /> Billing
         </Link>
         {plansFailed ? (
-          <div className="bg-white border rounded-[11px] p-6">
+          <div className="bg-surface border rounded-[11px] p-6">
             <DataState error="Couldn't load plans. Check your connection and retry." onRetry={() => refetch()} />
           </div>
         ) : (
-        <div className="bg-white border rounded-[11px] p-12 text-center">
-          <h3 className="font-display text-[20px] font-extrabold text-navy">Plan not found</h3>
-          <p className="mt-1 text-[12px] text-text-muted">
+        <div className="bg-surface border rounded-[11px] p-12 text-center">
+          <h3 className="font-display text-[20px] font-extrabold text-fg">Plan not found</h3>
+          <p className="mt-1 text-[12px] text-fg-muted">
             The selected plan is unavailable. Go back and choose a plan.
           </p>
           <Link href="/dashboard/billing" className="btn-primary mt-6 inline-flex">
@@ -427,10 +427,10 @@ function CheckoutInner() {
           style={{ color: '#10B981' }}
           aria-hidden="true"
         />
-        <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+        <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
           You&apos;re all set!
         </h2>
-        <p className="mt-2 text-[12px] text-text-muted">
+        <p className="mt-2 text-[12px] text-fg-muted">
           Your <strong>{plan.name}</strong> plan is now active.
         </p>
         <Link href="/dashboard" className="btn-primary mt-6 inline-flex">
@@ -451,10 +451,10 @@ function CheckoutInner() {
           style={{ color: '#EF4444' }}
           aria-hidden="true"
         />
-        <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+        <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
           {isTimeout ? 'Payment timed out' : 'Payment not completed'}
         </h2>
-        <p className="mt-2 text-[12px] text-text-muted">
+        <p className="mt-2 text-[12px] text-fg-muted">
           {failReason ||
             (isTimeout
               ? 'We could not confirm your payment in time. Check your history or contact support.'
@@ -511,10 +511,10 @@ function CheckoutInner() {
           style={{ color: '#00D4AA' }}
           aria-hidden="true"
         />
-        <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+        <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
           Processing payment&hellip;
         </h2>
-        <p className="mt-2 text-[12px] text-text-muted">
+        <p className="mt-2 text-[12px] text-fg-muted">
           Please wait while we process your payment.
         </p>
         <div
@@ -548,12 +548,12 @@ function CheckoutInner() {
         >
           <Phone className="h-8 w-8" style={{ color: '#00D4AA' }} />
         </div>
-        <h2 className="mt-4 font-display text-[20px] font-extrabold text-navy">
+        <h2 className="mt-4 font-display text-[20px] font-extrabold text-fg">
           Check your phone
         </h2>
-        <p className="mt-2 text-[12px] text-text-muted">
+        <p className="mt-2 text-[12px] text-fg-muted">
           We sent a payment request to{' '}
-          <span className="font-mono font-semibold text-navy">{phone}</span>. Open
+          <span className="font-mono font-semibold text-fg">{phone}</span>. Open
           it and enter your Mobile Money PIN to approve.
         </p>
         <div
@@ -571,7 +571,7 @@ function CheckoutInner() {
             />
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-text-muted">Waiting for confirmation&hellip;</p>
+        <p className="mt-3 text-[11px] text-fg-muted">Waiting for confirmation&hellip;</p>
         <button
           type="button"
           onClick={() => {
@@ -603,18 +603,18 @@ function CheckoutInner() {
       {/* Back nav */}
       <Link
         href="/dashboard/billing"
-        className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-navy transition-colors"
+        className="inline-flex items-center gap-1.5 text-[12px] text-fg-muted hover:text-fg transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Billing
       </Link>
 
-      <h2 className="font-display text-[20px] font-extrabold text-navy">
+      <h2 className="font-display text-[20px] font-extrabold text-fg">
         Complete your purchase
       </h2>
 
       <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2">
         {/* ── LEFT: Order summary ──────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 bg-white border rounded-[11px] p-5">
+        <div className="flex flex-col gap-4 bg-surface border rounded-[11px] p-5">
           {/* BulkReach lockup */}
           <div className="flex items-center gap-2">
             <span
@@ -633,12 +633,12 @@ function CheckoutInner() {
 
           {/* Plan name + price */}
           <div>
-            <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
               {plan.name} plan
             </div>
-            <div className="mt-1 font-mono text-[26px] font-semibold text-navy">
+            <div className="mt-1 font-mono text-[26px] font-semibold text-fg">
               UGX {plan.price_ugx.toLocaleString()}
-              <span className="text-[12px] font-normal text-text-muted">
+              <span className="text-[12px] font-normal text-fg-muted">
                 {' '}/ {plan.period || 'month'}
               </span>
             </div>
@@ -647,7 +647,7 @@ function CheckoutInner() {
           {/* Proration: credit for unused time on the current plan */}
           {proration?.applies && (
             <div className="rounded-[8px] border p-3 text-[12px]" style={{ borderColor: 'rgba(0,212,170,0.35)', background: 'rgba(0,212,170,0.06)' }}>
-              <div className="flex items-center justify-between text-text-muted">
+              <div className="flex items-center justify-between text-fg-muted">
                 <span>Plan price</span>
                 <span className="font-mono">UGX {proration.base_price_ugx.toLocaleString()}</span>
               </div>
@@ -655,7 +655,7 @@ function CheckoutInner() {
                 <span>Upgrade credit ({proration.days_remaining}d left)</span>
                 <span className="font-mono">− UGX {proration.credit_ugx.toLocaleString()}</span>
               </div>
-              <div className="mt-1.5 flex items-center justify-between border-t pt-1.5 font-semibold text-navy">
+              <div className="mt-1.5 flex items-center justify-between border-t pt-1.5 font-semibold text-fg">
                 <span>Due today</span>
                 <span className="font-mono">UGX {proration.amount_due_ugx.toLocaleString()}</span>
               </div>
@@ -663,7 +663,7 @@ function CheckoutInner() {
           )}
 
           {/* Feature bullets */}
-          <ul className="space-y-2 text-[12px] text-text-muted">
+          <ul className="space-y-2 text-[12px] text-fg-muted">
             {bullets.map((b, i) => (
               <li key={i} className="flex items-start gap-2">
                 <CheckCircle2
@@ -677,15 +677,15 @@ function CheckoutInner() {
           </ul>
 
           {/* Trust line */}
-          <div className="mt-auto flex items-center gap-1.5 border-t pt-4 text-[11px] text-text-muted">
+          <div className="mt-auto flex items-center gap-1.5 border-t pt-4 text-[11px] text-fg-muted">
             <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
             <span>Secured payment&nbsp;&middot;&nbsp;You can cancel anytime.</span>
           </div>
         </div>
 
         {/* ── RIGHT: Payment card ──────────────────────────────────────────── */}
-        <div className="flex flex-col gap-5 bg-white border rounded-[11px] p-5">
-          <h3 className="font-display text-[14px] font-bold text-navy">
+        <div className="flex flex-col gap-5 bg-surface border rounded-[11px] p-5">
+          <h3 className="font-display text-[14px] font-bold text-fg">
             Payment method
           </h3>
 
@@ -709,7 +709,7 @@ function CheckoutInner() {
           {/* Mobile Money group */}
           {mobileMethods.length > 0 && (
             <div>
-              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Mobile Money
               </p>
               <div className="grid gap-2">
@@ -730,7 +730,7 @@ function CheckoutInner() {
                     aria-pressed={selectedMethod === m.method}
                   >
                     <MethodLogo method={m.method} />
-                    <span className="text-[13px] font-medium text-navy">
+                    <span className="text-[13px] font-medium text-fg">
                       {m.provider_name}
                     </span>
                   </button>
@@ -742,7 +742,7 @@ function CheckoutInner() {
           {/* Card group */}
           {cardMethods.length > 0 && (
             <div>
-              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                 Card
               </p>
               <div className="grid gap-2">
@@ -763,7 +763,7 @@ function CheckoutInner() {
                     aria-pressed={selectedMethod === m.method}
                   >
                     <MethodLogo method={m.method} />
-                    <span className="text-[13px] font-medium text-navy">
+                    <span className="text-[13px] font-medium text-fg">
                       {m.provider_name}
                     </span>
                   </button>
@@ -777,14 +777,14 @@ function CheckoutInner() {
             <div>
               <label
                 htmlFor="checkout-phone"
-                className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted"
+                className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted"
               >
                 Mobile Money number
               </label>
               <div className="relative">
                 <Phone
                   size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted"
                   aria-hidden="true"
                 />
                 <input
@@ -829,7 +829,7 @@ function CheckoutInner() {
                   `Pay UGX ${(proration?.applies ? proration.amount_due_ugx : plan.price_ugx).toLocaleString()}`
                 )}
               </button>
-              <p className="text-center text-[11px] text-text-muted">
+              <p className="text-center text-[11px] text-fg-muted">
                 By paying you agree to our terms of service.
               </p>
             </>

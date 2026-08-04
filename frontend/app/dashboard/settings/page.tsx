@@ -116,8 +116,8 @@ const TIMEZONES: string[] = [
   "UTC",
 ];
 
-const cardBase = "bg-white border rounded-[11px] p-4";
-const labelClass = "mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted";
+const cardBase = "bg-surface border rounded-[11px] p-4";
+const labelClass = "mb-1 block text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -448,7 +448,7 @@ export default function SettingsPage() {
     {
       key: "email",
       label: "Email",
-      render: (i) => <span className="font-semibold text-navy">{i.email}</span>,
+      render: (i) => <span className="font-semibold text-fg">{i.email}</span>,
     },
     {
       key: "role",
@@ -480,8 +480,8 @@ export default function SettingsPage() {
 
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <Reveal>
-        <h2 className="font-display text-[20px] font-extrabold text-navy">Settings</h2>
-        <p className="mt-0.5 text-[12px] text-text-muted">
+        <h2 className="font-display text-[20px] font-extrabold text-fg">Settings</h2>
+        <p className="mt-0.5 text-[12px] text-fg-muted">
           Manage your profile, security, team, and account details.
         </p>
       </Reveal>
@@ -532,7 +532,7 @@ export default function SettingsPage() {
             aria-labelledby="tab-profile"
             className={cardBase}
           >
-            <div className="mb-3 font-display text-[14px] font-bold text-navy">Profile</div>
+            <div className="mb-3 font-display text-[14px] font-bold text-fg">Profile</div>
 
             {/* Read-only account overview */}
             <dl className="mb-5 grid grid-cols-1 gap-x-6 gap-y-3 border-b pb-5 sm:grid-cols-2">
@@ -545,10 +545,10 @@ export default function SettingsPage() {
                 ] satisfies [string, string, boolean][]
               ).map(([label, value, raw]) => (
                 <div key={label}>
-                  <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                  <dt className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                     {label}
                   </dt>
-                  <dd className={`mt-0.5 text-[12px] font-semibold text-navy ${raw ? "normal-case break-all" : "capitalize"}`}>{value}</dd>
+                  <dd className={`mt-0.5 text-[12px] font-semibold text-fg ${raw ? "normal-case break-all" : "capitalize"}`}>{value}</dd>
                 </div>
               ))}
             </dl>
@@ -658,7 +658,7 @@ export default function SettingsPage() {
                       setDraft((d) => d ? { ...d, marketing_opt_in: e.target.checked } : d)
                     }
                   />
-                  <label htmlFor="pf-marketing" className="cursor-pointer text-[12px] font-semibold text-navy">
+                  <label htmlFor="pf-marketing" className="cursor-pointer text-[12px] font-semibold text-fg">
                     Receive product updates and tips by email
                   </label>
                 </div>
@@ -699,10 +699,10 @@ export default function SettingsPage() {
             className={cardBase}
           >
             <div className="mb-0.5 flex items-center gap-2">
-              <Key size={15} className="text-text-muted" aria-hidden />
-              <div className="font-display text-[14px] font-bold text-navy">Change password</div>
+              <Key size={15} className="text-fg-muted" aria-hidden />
+              <div className="font-display text-[14px] font-bold text-fg">Change password</div>
             </div>
-            <p className="mb-5 text-[11px] text-text-muted">
+            <p className="mb-5 text-[11px] text-fg-muted">
               Changing your password signs you out of all other devices.
             </p>
 
@@ -783,11 +783,11 @@ export default function SettingsPage() {
             aria-labelledby="tab-team"
             className={cardBase}
           >
-            <div className="mb-0.5 font-display text-[14px] font-bold text-navy">Team</div>
+            <div className="mb-0.5 font-display text-[14px] font-bold text-fg">Team</div>
 
             {canInvite ? (
               <>
-                <p className="mb-4 text-[11px] text-text-muted">
+                <p className="mb-4 text-[11px] text-fg-muted">
                   Invite teammates to your account. They join with the role you choose.
                 </p>
 
@@ -829,7 +829,7 @@ export default function SettingsPage() {
 
                 {invites.length > 0 && (
                   <div className="mt-4 border-t pt-4">
-                    <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-text-muted">
+                    <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-fg-muted">
                       Pending invitations
                     </div>
                     <DataTable<Invite>
@@ -841,7 +841,7 @@ export default function SettingsPage() {
                 )}
               </>
             ) : (
-              <p className="mt-2 text-[12px] text-text-muted">
+              <p className="mt-2 text-[12px] text-fg-muted">
                 Only account owners and admins can manage team invitations.
               </p>
             )}
@@ -860,8 +860,8 @@ export default function SettingsPage() {
           >
             <div className="mb-0.5 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={15} className="text-text-muted" aria-hidden />
-                <div className="font-display text-[14px] font-bold text-navy">Active sessions</div>
+                <ShieldCheck size={15} className="text-fg-muted" aria-hidden />
+                <div className="font-display text-[14px] font-bold text-fg">Active sessions</div>
               </div>
               {sessions !== null && sessions.length > 1 && (
                 <button
@@ -876,14 +876,14 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
-            <p className="mb-4 text-[11px] text-text-muted">
+            <p className="mb-4 text-[11px] text-fg-muted">
               Devices currently signed in to your account. Revoking one signs it out within a few minutes.
             </p>
 
             {sessions === null ? (
-              <div className="py-8 text-center text-[12px] text-text-muted">Loading…</div>
+              <div className="py-8 text-center text-[12px] text-fg-muted">Loading…</div>
             ) : sessions.length === 0 ? (
-              <div className="py-8 text-center text-[12px] text-text-muted">No active sessions.</div>
+              <div className="py-8 text-center text-[12px] text-fg-muted">No active sessions.</div>
             ) : (
               <ul className="divide-y">
                 {sessions.map((s) => (
@@ -897,14 +897,14 @@ export default function SettingsPage() {
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-navy">
+                          <span className="text-[13px] font-semibold text-fg">
                             {deviceLabel(s.user_agent)}
                           </span>
                           {s.current && (
                             <StatusPill label="This device" color="#00D4AA" bg="rgba(0,212,170,0.12)" pulse />
                           )}
                         </div>
-                        <span className="mt-0.5 block text-[11px] text-text-muted">
+                        <span className="mt-0.5 block text-[11px] text-fg-muted">
                           {s.ip_address ?? "unknown IP"} · active{" "}
                           {fmtWhen(s.last_used_at ?? s.created_at)}
                         </span>
@@ -940,15 +940,15 @@ export default function SettingsPage() {
             className={cardBase}
           >
             <div className="mb-0.5 flex items-center gap-2">
-              <Bell size={15} className="text-text-muted" aria-hidden />
-              <div className="font-display text-[14px] font-bold text-navy">Notifications</div>
+              <Bell size={15} className="text-fg-muted" aria-hidden />
+              <div className="font-display text-[14px] font-bold text-fg">Notifications</div>
             </div>
-            <p className="mb-4 text-[11px] text-text-muted">
+            <p className="mb-4 text-[11px] text-fg-muted">
               In-app alerts are always on. Choose which also arrive by email.
             </p>
 
             {channels === null ? (
-              <div className="py-8 text-center text-[12px] text-text-muted">Loading…</div>
+              <div className="py-8 text-center text-[12px] text-fg-muted">Loading…</div>
             ) : (
               <ul className="divide-y">
                 {PREF_CATEGORIES.map(({ key, label }) => {
@@ -957,14 +957,14 @@ export default function SettingsPage() {
                   return (
                     <li key={key} className="flex items-center justify-between py-3.5">
                       <div>
-                        <span className="text-[13px] font-semibold text-navy">{label}</span>
-                        <span className="mt-0.5 block text-[11px] text-text-muted">
+                        <span className="text-[13px] font-semibold text-fg">{label}</span>
+                        <span className="mt-0.5 block text-[11px] text-fg-muted">
                           In-app{locked ? " (always on)" : ""}
                           {emailOn ? " · Email" : ""}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[10.5px] text-text-muted">Email</span>
+                        <span className="text-[10.5px] text-fg-muted">Email</span>
                         <button
                           type="button"
                           role="switch"
@@ -976,7 +976,7 @@ export default function SettingsPage() {
                           style={{ background: emailOn ? "#00D4AA" : "#CBD5E1" }}
                         >
                           <span
-                            className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                            className="inline-block h-4 w-4 transform rounded-full bg-surface transition-transform"
                             style={{ transform: emailOn ? "translateX(24px)" : "translateX(4px)" }}
                           />
                         </button>
@@ -1004,7 +1004,7 @@ export default function SettingsPage() {
               <AlertTriangle size={15} className="text-error" aria-hidden />
               <div className="font-display text-[14px] font-bold text-error">Close account</div>
             </div>
-            <p className="mb-5 text-[11px] text-text-muted">
+            <p className="mb-5 text-[11px] text-fg-muted">
               This permanently deletes your account, all campaigns, contacts, and billing data.
               This action cannot be undone.
             </p>
@@ -1027,9 +1027,9 @@ export default function SettingsPage() {
                   autoComplete="off"
                   aria-describedby="danger-name-hint"
                 />
-                <p id="danger-name-hint" className="mt-1 text-[10.5px] text-text-muted">
+                <p id="danger-name-hint" className="mt-1 text-[10.5px] text-fg-muted">
                   Must match exactly:{" "}
-                  <span className="font-semibold text-navy">{account.name}</span>
+                  <span className="font-semibold text-fg">{account.name}</span>
                 </p>
               </div>
 

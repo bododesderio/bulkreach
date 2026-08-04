@@ -58,7 +58,7 @@ interface CampaignResponse {
   stats: CampaignStats;
 }
 
-const cardBase = 'bg-white border rounded-[11px] p-4';
+const cardBase = 'bg-surface border rounded-[11px] p-4';
 
 // ── table columns ─────────────────────────────────────────────────────────────
 const columns: Column<AdminCampaign>[] = [
@@ -67,8 +67,8 @@ const columns: Column<AdminCampaign>[] = [
     label: 'Campaign',
     render: (row) => (
       <div className="min-w-0">
-        <div className="text-[12.5px] font-bold text-navy leading-snug">{row.name}</div>
-        <div className="text-[10.5px] text-text-muted">{row.account_name}</div>
+        <div className="text-[12.5px] font-bold text-fg leading-snug">{row.name}</div>
+        <div className="text-[10.5px] text-fg-muted">{row.account_name}</div>
       </div>
     ),
   },
@@ -82,7 +82,7 @@ const columns: Column<AdminCampaign>[] = [
     label: 'Audience',
     align: 'right',
     render: (row) => (
-      <span className="font-mono text-[12px] text-text-md">
+      <span className="font-mono text-[12px] text-fg">
         {row.audience.toLocaleString()}
       </span>
     ),
@@ -92,9 +92,9 @@ const columns: Column<AdminCampaign>[] = [
     label: 'Delivered',
     align: 'right',
     render: (row) => (
-      <span className="font-mono text-[12px] text-text-md">
+      <span className="font-mono text-[12px] text-fg">
         {row.delivered.toLocaleString()}
-        <span className="text-text-muted">/{row.sent.toLocaleString()}</span>
+        <span className="text-fg-muted">/{row.sent.toLocaleString()}</span>
       </span>
     ),
   },
@@ -125,7 +125,7 @@ const columns: Column<AdminCampaign>[] = [
               style={{ width: `${row.progress}%`, background: barColor }}
             />
           </div>
-          <span className="text-[10.5px] font-mono text-text-muted">{row.progress}%</span>
+          <span className="text-[10.5px] font-mono text-fg-muted">{row.progress}%</span>
         </div>
       );
     },
@@ -138,7 +138,7 @@ const columns: Column<AdminCampaign>[] = [
       <Link
         href={`/admin/accounts/${row.account_id}`}
         aria-label={`View ${row.account_name} — owner of ${row.name}`}
-        className="inline-block text-[11px] rounded-[5px] border bg-transparent font-semibold text-text-muted px-2 py-1 hover:border-teal hover:text-navy transition-colors"
+        className="inline-block text-[11px] rounded-[5px] border bg-transparent font-semibold text-fg-muted px-2 py-1 hover:border-teal hover:text-fg transition-colors"
       >
         Account →
       </Link>
@@ -236,12 +236,12 @@ export default function CampaignsPage() {
         {/* Main DataTable */}
         <Reveal delay={0.15} lift className={`${cardBase} mb-[18px]`}>
           <div className="flex items-center justify-between mb-0.5">
-            <div className="font-display text-[14px] font-bold text-navy">All campaigns</div>
+            <div className="font-display text-[14px] font-bold text-fg">All campaigns</div>
           </div>
 
           {/* sub-header: count + status filter */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div className="text-[11px] text-text-muted">
+            <div className="text-[11px] text-fg-muted">
               {loading
                 ? '—'
                 : `${items.length} campaign${items.length !== 1 ? 's' : ''} · platform-wide`}
