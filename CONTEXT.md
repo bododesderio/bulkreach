@@ -3,9 +3,37 @@
   @copyright 2026 Rooibok Technologies. All rights reserved.
 -->
 # Project Context
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
-## Latest session — ✅ Second full audit (4 parallel agents) + live testing + fixes (2026-08-03)
+## Latest session — 🚧 UX design-system upgrade + managed real-send + full-system audit (2026-08-04)
+Big multi-part session (all pushed to `main`):
+- **UX upgrade — Rooibok design system → native Tailwind, 6 commits `3bed07e`→`c12a1cb`.**
+  Phase 1 tokens + `darkMode:'class'` + no-flash script; Phase 2 canonical token-backed
+  `components/ui/` library (Button/StatTile/Badge/PageHeader/EmptyState/DataTable/Field + upgraded
+  Card/DataState/Modal); Phase 3 ThemeToggle (moon/sun, localStorage, wired into both topbars);
+  Phase 4 dashboards dark parity; Phase 5 per-page re-skin (every admin/* + dashboard/* swept to
+  tokens); polish sweep (inline-hex stragglers). **Full dark mode live.** Verified in-browser on 14
+  pages, both themes, 0 console errors. GOTCHA: named palette colors (bg/navy/text*) are hardcoded
+  hex and DON'T invert — only `surface`/`fg`/`line`/`brand` tokens + shadcn HSL do; `.input` CSS
+  class + inline `style` hex were separate straggler classes. Teal buttons `{#00D4AA,#0D0F2E}` +
+  amber banners are correct in both themes (untouched). Dark toggle sets `.dark` on `<html>`.
+- **Managed real Send button (`f249d3a`).** FIXED a real gap: the managed workspace's Send step only
+  flipped the job's status flag — the client's campaign was never dispatched. Added
+  `POST /admin/managed/{id}/send` (materialise + queue + enqueue dispatch, same as the client
+  composer; guards + `managed.send` audit; FOR-UPDATE double-send 409) + a real "Send now" button and
+  live "Dispatching…" state. 2 new tests. **All backend tests green.**
+- **Full-system audit IN PROGRESS** (user ask): page-by-page / file-by-file hunt for the SAME class
+  of gap — fake/dead actions (status-flip-with-no-work), seed/mock data shown instead of dynamic,
+  mutating endpoints missing `record_audit`, broken/missing report-generation / PDF / print / CSV
+  export / view-download options. Fixing findings + updating docs/user-manual next.
+- **Backend-up runbook (works this session):** `docker start brtest-pg brtest-redis`;
+  `cd backend && (PYTHONPATH=. .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 3101 &)`;
+  `cd frontend && (npx next dev -p 3100 &)` (proxies /api→3101). Superadmin `sa@bulkreach.ug` /
+  `Passw0rd!`; trial client `uxdark@example.com` / `Passw0rd!` (dev OTP is printed on the verify page).
+  Test creds: super@bulkreach.ug/SuperPass123!, verify+m7@bulkreach.ug/TestPass123!. GOTCHA: raw
+  DB-write via `python -c` is blocked by the auto-mode classifier — use the app's own flows/scripts.
+
+## Prior session — ✅ Second full audit (4 parallel agents) + live testing + fixes (2026-08-03)
 Ran the whole stack locally (dev datastores on 55432/63799/3112, host uvicorn :3101 + Next dev :3100,
 seeded 1721 accounts) and drove it in a real browser (Playwright). Live-verified the prior WIP
 (clickable KPI/StatCards + managed stat-filter, commit `229dae5`), then fanned out 4 audit agents
